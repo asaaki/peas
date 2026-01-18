@@ -1,10 +1,11 @@
 ---
 # peas-yo3m
 title: Define Pea struct and types
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-18T14:01:28Z
-updated_at: 2026-01-18T14:01:28Z
+updated_at: 2026-01-18T14:19:04Z
 parent: peas-d7zn
 ---
 

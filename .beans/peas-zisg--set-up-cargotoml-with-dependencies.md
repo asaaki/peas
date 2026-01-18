@@ -1,10 +1,11 @@
 ---
 # peas-zisg
 title: Set up Cargo.toml with dependencies
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-18T14:01:09Z
-updated_at: 2026-01-18T14:01:09Z
+updated_at: 2026-01-18T14:14:58Z
 parent: peas-t240
 ---
 
