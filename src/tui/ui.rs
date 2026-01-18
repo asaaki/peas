@@ -268,6 +268,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::DeleteConfirm => draw_delete_confirm(f, app),
         InputMode::ParentModal => draw_parent_modal(f, app),
         InputMode::BlockingModal => draw_blocking_modal(f, app),
+        InputMode::CreateModal => draw_create_modal(f, app),
         _ => {}
     }
 }
@@ -997,6 +998,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " DETAIL ",
             Style::default().bg(Color::Green).fg(Color::Black),
         ),
+        InputMode::CreateModal => Span::styled(
+            " CREATE ",
+            Style::default().bg(Color::Cyan).fg(Color::Black),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -1010,6 +1015,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         | InputMode::ParentModal => " j/k:nav  Enter:select  Esc:cancel ",
         InputMode::BlockingModal => " j/k:nav  Space:toggle  Enter:apply  Esc:cancel ",
         InputMode::DetailView => " j/k:scroll  e:edit  Esc/Enter/q:close ",
+        InputMode::CreateModal => " Tab:next field  ←→:change type  Enter:create  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
     };
 
@@ -1173,6 +1179,103 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
                 .border_style(Style::default().fg(Color::Red)),
         )
         .alignment(ratatui::layout::Alignment::Center);
+
+    f.render_widget(Clear, area);
+    f.render_widget(paragraph, area);
+}
+
+fn draw_create_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(50, 25, f.area());
+
+    let title_active = app.modal_selection == 0;
+    let type_active = app.modal_selection == 1;
+
+    // Build display text for title field
+    let title_display = if app.create_title.is_empty() {
+        Span::styled("Enter title...", Style::default().fg(Color::DarkGray))
+    } else {
+        Span::raw(app.create_title.clone())
+    };
+
+    let title_style = if title_active {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default().fg(Color::White)
+    };
+
+    let type_style = if type_active {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default().fg(Color::White)
+    };
+
+    let type_color = type_color(&app.create_type);
+
+    let content = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                if title_active { "▶ " } else { "  " },
+                Style::default().fg(Color::Cyan),
+            ),
+            Span::styled("Title: ", title_style.add_modifier(Modifier::BOLD)),
+            title_display,
+            if title_active {
+                Span::styled("_", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                if type_active { "▶ " } else { "  " },
+                Style::default().fg(Color::Cyan),
+            ),
+            Span::styled("Type:  ", type_style.add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("< {} >", app.create_type),
+                Style::default().fg(type_color),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  (use ←/→ to change type)",
+            Style::default().fg(Color::DarkGray),
+        )),
+    ];
+
+    // Show parent info if current selection would become parent
+    let parent_info = app.selected_pea().and_then(|p| {
+        if matches!(
+            p.pea_type,
+            crate::model::PeaType::Milestone
+                | crate::model::PeaType::Epic
+                | crate::model::PeaType::Story
+                | crate::model::PeaType::Feature
+        ) {
+            Some(format!("  Parent: {} ({})", p.id, p.title))
+        } else {
+            None
+        }
+    });
+
+    let mut all_content = content;
+    if let Some(info) = parent_info {
+        all_content.push(Line::from(""));
+        all_content.push(Line::from(Span::styled(
+            info,
+            Style::default().fg(Color::DarkGray),
+        )));
+    }
+
+    let paragraph = Paragraph::new(all_content).block(
+        Block::default()
+            .title(" Create Ticket ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Cyan)),
+    );
 
     f.render_widget(Clear, area);
     f.render_widget(paragraph, area);

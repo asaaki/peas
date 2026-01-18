@@ -28,6 +28,7 @@ pub enum InputMode {
     ParentModal,
     BlockingModal,
     DetailView,
+    CreateModal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -113,6 +114,8 @@ pub struct App {
     pub parent_candidates: Vec<Pea>, // Candidates for parent selection modal
     pub blocking_candidates: Vec<Pea>, // Candidates for blocking selection modal
     pub blocking_selected: Vec<bool>, // Which candidates are selected (multi-select)
+    pub create_title: String,        // Title input for create modal
+    pub create_type: PeaType,        // Type selection for create modal
 }
 
 impl App {
@@ -144,6 +147,8 @@ impl App {
             parent_candidates: Vec::new(),
             blocking_candidates: Vec::new(),
             blocking_selected: Vec::new(),
+            create_title: String::new(),
+            create_type: PeaType::Task,
         };
         app.build_tree();
         Ok(app)
@@ -672,6 +677,48 @@ impl App {
         self.input_mode = InputMode::Normal;
         Ok(())
     }
+
+    /// Open the create ticket modal
+    pub fn open_create_modal(&mut self) {
+        self.create_title.clear();
+        self.create_type = PeaType::Task;
+        self.modal_selection = 0; // 0 = title field, 1 = type field
+        self.input_mode = InputMode::CreateModal;
+    }
+
+    /// Create a new ticket from the modal inputs
+    pub fn create_from_modal(&mut self) -> Result<()> {
+        if self.create_title.trim().is_empty() {
+            self.message = Some("Title cannot be empty".to_string());
+            return Ok(());
+        }
+
+        // If current selection is a container type, use it as parent
+        let parent = self.selected_pea().and_then(|p| {
+            if matches!(
+                p.pea_type,
+                PeaType::Milestone | PeaType::Epic | PeaType::Story | PeaType::Feature
+            ) {
+                Some(p.id.clone())
+            } else {
+                None
+            }
+        });
+
+        let id = self.repo.generate_id();
+        let pea = crate::model::Pea::new(
+            id.clone(),
+            self.create_title.trim().to_string(),
+            self.create_type,
+        )
+        .with_parent(parent);
+
+        self.repo.create(&pea)?;
+        self.message = Some(format!("Created {}", id));
+        self.refresh()?;
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -759,6 +806,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Char('b') => {
                         app.open_blocking_modal();
+                    }
+                    KeyCode::Char('c') => {
+                        app.open_create_modal();
                     }
                     KeyCode::Char('d') => {
                         app.open_delete_confirm();
@@ -1013,6 +1063,56 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                             execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
                             terminal.clear()?;
                             let _ = app.refresh();
+                        }
+                    }
+                    _ => {}
+                },
+                InputMode::CreateModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.create_from_modal();
+                    }
+                    KeyCode::Tab => {
+                        // Toggle between title (0) and type (1) fields
+                        app.modal_selection = (app.modal_selection + 1) % 2;
+                    }
+                    KeyCode::BackTab => {
+                        app.modal_selection = if app.modal_selection == 0 { 1 } else { 0 };
+                    }
+                    KeyCode::Char(c) => {
+                        if app.modal_selection == 0 {
+                            // Title field - add character
+                            app.create_title.push(c);
+                        } else {
+                            // Type field - cycle through types with space
+                            // (handled below)
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        if app.modal_selection == 0 {
+                            app.create_title.pop();
+                        }
+                    }
+                    KeyCode::Left | KeyCode::Right => {
+                        if app.modal_selection == 1 {
+                            // Cycle type
+                            let types = App::type_options();
+                            let current_idx = types
+                                .iter()
+                                .position(|t| *t == app.create_type)
+                                .unwrap_or(0);
+                            let new_idx = if key.code == KeyCode::Right {
+                                (current_idx + 1) % types.len()
+                            } else {
+                                if current_idx == 0 {
+                                    types.len() - 1
+                                } else {
+                                    current_idx - 1
+                                }
+                            };
+                            app.create_type = types[new_idx];
                         }
                     }
                     _ => {}
