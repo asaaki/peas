@@ -2,11 +2,11 @@
 id = "peas-6hiid"
 title = "Edit ticket in $EDITOR (e key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:32.034573900Z"
-updated = "2026-01-18T19:20:32.034573900Z"
+updated = "2026-01-18T19:39:26.385521700Z"
 +++
 
 Add 'e' hotkey to open the selected ticket's markdown file in $EDITOR.

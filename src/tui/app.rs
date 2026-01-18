@@ -302,6 +302,11 @@ impl App {
         }
     }
 
+    pub fn selected_pea_file_path(&self) -> Option<PathBuf> {
+        self.selected_pea()
+            .and_then(|pea| self.repo.find_file_by_id(&pea.id).ok())
+    }
+
     pub fn next(&mut self) {
         let count = self.display_count();
         if count > 0 {
@@ -470,6 +475,47 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                                 }
                             } else {
                                 app.message = Some("Clipboard not available".to_string());
+                            }
+                        }
+                    }
+                    KeyCode::Char('e') => {
+                        if let Some(file_path) = app.selected_pea_file_path() {
+                            // Leave alternate screen temporarily
+                            disable_raw_mode()?;
+                            execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+
+                            // Get editor from environment
+                            let editor = std::env::var("EDITOR")
+                                .or_else(|_| std::env::var("VISUAL"))
+                                .unwrap_or_else(|_| {
+                                    if cfg!(windows) {
+                                        "notepad".to_string()
+                                    } else {
+                                        "vi".to_string()
+                                    }
+                                });
+
+                            // Spawn editor and wait
+                            let status =
+                                std::process::Command::new(&editor).arg(&file_path).status();
+
+                            // Re-enter alternate screen
+                            enable_raw_mode()?;
+                            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+                            terminal.clear()?;
+
+                            // Refresh and show result
+                            let _ = app.refresh();
+                            match status {
+                                Ok(s) if s.success() => {
+                                    app.message = Some("Editor closed".to_string());
+                                }
+                                Ok(_) => {
+                                    app.message = Some("Editor exited with error".to_string());
+                                }
+                                Err(e) => {
+                                    app.message = Some(format!("Failed to open editor: {}", e));
+                                }
                             }
                         }
                     }
