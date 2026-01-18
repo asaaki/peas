@@ -63,7 +63,10 @@ impl PeasConfig {
         let config_path = Self::find_config_file(start_path)?;
         let content = std::fs::read_to_string(&config_path)?;
         let config: PeasConfig = serde_yaml::from_str(&content)?;
-        let project_root = config_path.parent().unwrap().to_path_buf();
+        let project_root = config_path
+            .parent()
+            .ok_or_else(|| PeasError::Config("Config file has no parent directory".to_string()))?
+            .to_path_buf();
         Ok((config, project_root))
     }
 

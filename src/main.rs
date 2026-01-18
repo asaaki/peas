@@ -15,9 +15,14 @@ use std::{
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let config_opt = cli.config;
+    let peas_path_opt = cli.peas_path;
+
+    // Helper closure to load config with CLI overrides
+    let load = || load_config(config_opt.clone(), peas_path_opt.clone());
 
     match cli.command {
-        Commands::Init { prefix, id_length } => cmd_init(prefix, id_length),
+        Commands::Init { prefix, id_length } => cmd_init(prefix, id_length, peas_path_opt),
         Commands::Create {
             title,
             r#type,
@@ -30,7 +35,7 @@ fn main() -> Result<()> {
             tag,
             json,
         } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
 
             let body_content = resolve_body(body, body_file)?;
@@ -59,7 +64,10 @@ fn main() -> Result<()> {
             }
 
             let path = repo.create(&pea)?;
-            let filename = path.file_name().unwrap().to_string_lossy();
+            let filename = path
+                .file_name()
+                .map(|f| f.to_string_lossy())
+                .unwrap_or_default();
 
             if json {
                 println!("{}", serde_json::to_string_pretty(&pea)?);
@@ -69,7 +77,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Show { id, json } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let pea = repo.get(&id)?;
 
@@ -89,7 +97,7 @@ fn main() -> Result<()> {
             archived,
             json,
         } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
 
             let mut peas = if archived {
@@ -137,7 +145,7 @@ fn main() -> Result<()> {
             remove_tag,
             json,
         } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
 
@@ -170,7 +178,10 @@ fn main() -> Result<()> {
 
             pea.touch();
             let path = repo.update(&pea)?;
-            let filename = path.file_name().unwrap().to_string_lossy();
+            let filename = path
+                .file_name()
+                .map(|f| f.to_string_lossy())
+                .unwrap_or_default();
 
             if json {
                 println!("{}", serde_json::to_string_pretty(&pea)?);
@@ -180,15 +191,18 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Archive { id } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let path = repo.archive(&id)?;
-            let filename = path.file_name().unwrap().to_string_lossy();
+            let filename = path
+                .file_name()
+                .map(|f| f.to_string_lossy())
+                .unwrap_or_default();
             println!("{} {} -> {}", "Archived".yellow(), id.cyan(), filename);
             Ok(())
         }
         Commands::Delete { id, force } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
 
             if !force {
@@ -207,7 +221,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Search { query, json } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let peas = repo.list()?;
 
@@ -230,7 +244,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Start { id } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
             pea.status = PeaStatus::InProgress;
@@ -245,7 +259,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Done { id } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
             pea.status = PeaStatus::Completed;
@@ -260,25 +274,25 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Prime => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             print_prime_instructions(&config, &repo)?;
             Ok(())
         }
         Commands::Context => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             print_context(&repo)?;
             Ok(())
         }
         Commands::Roadmap => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             print_roadmap(&repo)?;
             Ok(())
         }
         Commands::Query { query, variables } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let schema = build_schema(config, root);
 
             let vars: async_graphql::Variables = if let Some(v) = variables {
@@ -297,7 +311,7 @@ fn main() -> Result<()> {
             mutation,
             variables,
         } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let schema = build_schema(config, root);
 
             let vars: async_graphql::Variables = if let Some(v) = variables {
@@ -315,7 +329,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Serve { port } => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             let schema = build_schema(config, root);
 
             println!("Starting GraphQL server on http://localhost:{}", port);
@@ -325,14 +339,14 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Tui => {
-            let (config, root) = load_config()?;
+            let (config, root) = load()?;
             peas::tui::run_tui(config, root)?;
             Ok(())
         }
     }
 }
 
-fn cmd_init(prefix: String, id_length: usize) -> Result<()> {
+fn cmd_init(prefix: String, id_length: usize, peas_path: Option<String>) -> Result<()> {
     let cwd = std::env::current_dir()?;
     let config_path = cwd.join(".peas.yml");
 
@@ -340,9 +354,11 @@ fn cmd_init(prefix: String, id_length: usize) -> Result<()> {
         anyhow::bail!("Project already initialized at {}", config_path.display());
     }
 
+    let data_dir = peas_path.unwrap_or_else(|| ".peas".to_string());
+
     let config = PeasConfig {
         peas: PeasSettings {
-            path: ".peas".to_string(),
+            path: data_dir.clone(),
             prefix,
             id_length,
             default_status: "todo".to_string(),
@@ -351,7 +367,7 @@ fn cmd_init(prefix: String, id_length: usize) -> Result<()> {
     };
 
     // Create data directory
-    let data_path = cwd.join(&config.peas.path);
+    let data_path = cwd.join(&data_dir);
     std::fs::create_dir_all(&data_path)?;
 
     // Save config
@@ -368,9 +384,30 @@ fn cmd_init(prefix: String, id_length: usize) -> Result<()> {
     Ok(())
 }
 
-fn load_config() -> Result<(PeasConfig, PathBuf)> {
-    let cwd = std::env::current_dir()?;
-    PeasConfig::load(&cwd).context("Failed to load peas configuration")
+fn load_config(
+    config_path: Option<String>,
+    peas_path: Option<String>,
+) -> Result<(PeasConfig, PathBuf)> {
+    let (mut config, project_root) = if let Some(path) = config_path {
+        let path = PathBuf::from(path);
+        let content = std::fs::read_to_string(&path)
+            .with_context(|| format!("Failed to read config from {}", path.display()))?;
+        let config: PeasConfig = serde_yaml::from_str(&content)?;
+        let root = path
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("Config path has no parent"))?
+            .to_path_buf();
+        (config, root)
+    } else {
+        let cwd = std::env::current_dir()?;
+        PeasConfig::load(&cwd).context("Failed to load peas configuration")?
+    };
+
+    if let Some(path) = peas_path {
+        config.peas.path = path;
+    }
+
+    Ok((config, project_root))
 }
 
 fn resolve_body(body: Option<String>, body_file: Option<String>) -> Result<Option<String>> {
@@ -617,10 +654,10 @@ async fn run_server(schema: peas::graphql::PeasSchema, port: u16) -> Result<()> 
     use async_graphql::http::GraphiQLSource;
     use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
     use axum::{
+        Router,
         extract::Extension,
         response::{Html, IntoResponse},
         routing::get,
-        Router,
     };
 
     async fn graphql_handler(

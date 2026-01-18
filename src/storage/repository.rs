@@ -3,6 +3,7 @@ use crate::{
     config::PeasConfig,
     error::{PeasError, Result},
     model::{Pea, PeaType},
+    validation,
 };
 use slug::slugify;
 use std::path::{Path, PathBuf};
@@ -43,6 +44,14 @@ impl PeaRepository {
     }
 
     pub fn create(&self, pea: &Pea) -> Result<PathBuf> {
+        // Validate input
+        validation::validate_id(&pea.id)?;
+        validation::validate_title(&pea.title)?;
+        validation::validate_body(&pea.body)?;
+        for tag in &pea.tags {
+            validation::validate_tag(tag)?;
+        }
+
         std::fs::create_dir_all(&self.data_path)?;
 
         let filename = self.generate_filename(&pea.id, &pea.title);
@@ -68,6 +77,13 @@ impl PeaRepository {
     }
 
     pub fn update(&self, pea: &Pea) -> Result<PathBuf> {
+        // Validate input
+        validation::validate_title(&pea.title)?;
+        validation::validate_body(&pea.body)?;
+        for tag in &pea.tags {
+            validation::validate_tag(tag)?;
+        }
+
         let old_path = self.find_file_by_id(&pea.id)?;
         let new_filename = self.generate_filename(&pea.id, &pea.title);
         let new_path = self.data_path.join(&new_filename);
@@ -92,7 +108,11 @@ impl PeaRepository {
         std::fs::create_dir_all(&self.archive_path)?;
 
         let old_path = self.find_file_by_id(id)?;
-        let filename = old_path.file_name().unwrap().to_string_lossy().to_string();
+        let filename = old_path
+            .file_name()
+            .ok_or_else(|| PeasError::Storage("Path has no filename".to_string()))?
+            .to_string_lossy()
+            .to_string();
         let new_path = self.archive_path.join(&filename);
 
         std::fs::rename(&old_path, &new_path)?;
@@ -121,7 +141,10 @@ impl PeaRepository {
             let path = entry.path();
 
             if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
-                let filename = path.file_name().unwrap().to_string_lossy();
+                let Some(filename) = path.file_name() else {
+                    continue;
+                };
+                let filename = filename.to_string_lossy();
                 if filename.starts_with(&self.prefix) {
                     match std::fs::read_to_string(&path) {
                         Ok(content) => match parse_markdown(&content) {
@@ -153,7 +176,10 @@ impl PeaRepository {
                 let path = entry.path();
 
                 if path.is_file() {
-                    let filename = path.file_name().unwrap().to_string_lossy();
+                    let Some(filename) = path.file_name() else {
+                        continue;
+                    };
+                    let filename = filename.to_string_lossy();
                     if filename.starts_with(&search_id) {
                         return Ok(path);
                     }

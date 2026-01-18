@@ -21,9 +21,11 @@ pub fn build_schema(config: PeasConfig, project_root: PathBuf) -> PeasSchema {
         .finish()
 }
 
-fn get_repo(ctx: &Context<'_>) -> PeaRepository {
-    let state = ctx.data::<Arc<AppState>>().unwrap();
-    PeaRepository::new(&state.config, &state.project_root)
+fn get_repo(ctx: &Context<'_>) -> async_graphql::Result<PeaRepository> {
+    let state = ctx
+        .data::<Arc<AppState>>()
+        .map_err(|_| async_graphql::Error::new("AppState not found in context"))?;
+    Ok(PeaRepository::new(&state.config, &state.project_root))
 }
 
 pub struct QueryRoot;
@@ -32,7 +34,7 @@ pub struct QueryRoot;
 impl QueryRoot {
     /// Get a single pea by ID
     async fn pea(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<Option<Pea>> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         match repo.get(&id) {
             Ok(pea) => Ok(Some(pea.into())),
             Err(crate::error::PeasError::NotFound(_)) => Ok(None),
@@ -48,7 +50,7 @@ impl QueryRoot {
         limit: Option<usize>,
         offset: Option<usize>,
     ) -> async_graphql::Result<PeaConnection> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let mut peas = repo.list()?;
 
         // Apply filters
@@ -101,7 +103,7 @@ impl QueryRoot {
         query: String,
         limit: Option<usize>,
     ) -> async_graphql::Result<Vec<Pea>> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let peas = repo.list()?;
         let query_lower = query.to_lowercase();
 
@@ -125,14 +127,14 @@ impl QueryRoot {
         ctx: &Context<'_>,
         parent_id: String,
     ) -> async_graphql::Result<Vec<Pea>> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let children = repo.find_children(&parent_id)?;
         Ok(children.into_iter().map(|p| p.into()).collect())
     }
 
     /// Get project statistics
     async fn stats(&self, ctx: &Context<'_>) -> async_graphql::Result<ProjectStats> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let peas = repo.list()?;
 
         use crate::model::{PeaStatus as MS, PeaType as MT};
@@ -167,7 +169,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: CreatePeaInput,
     ) -> async_graphql::Result<Pea> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let id = repo.generate_id();
 
         let pea_type = input.pea_type.map(|t| t.into()).unwrap_or_default();
@@ -202,7 +204,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: UpdatePeaInput,
     ) -> async_graphql::Result<Pea> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let mut pea = repo.get(&input.id)?;
 
         if let Some(title) = input.title {
@@ -255,7 +257,7 @@ impl MutationRoot {
         id: String,
         status: PeaStatus,
     ) -> async_graphql::Result<Pea> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let mut pea = repo.get(&id)?;
         pea.status = status.into();
         pea.touch();
@@ -265,14 +267,14 @@ impl MutationRoot {
 
     /// Archive a pea
     async fn archive_pea(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<bool> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         repo.archive(&id)?;
         Ok(true)
     }
 
     /// Delete a pea permanently
     async fn delete_pea(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<bool> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         repo.delete(&id)?;
         Ok(true)
     }
@@ -284,7 +286,7 @@ impl MutationRoot {
         id: String,
         tag: String,
     ) -> async_graphql::Result<Pea> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let mut pea = repo.get(&id)?;
         if !pea.tags.contains(&tag) {
             pea.tags.push(tag);
@@ -301,7 +303,7 @@ impl MutationRoot {
         id: String,
         tag: String,
     ) -> async_graphql::Result<Pea> {
-        let repo = get_repo(ctx);
+        let repo = get_repo(ctx)?;
         let mut pea = repo.get(&id)?;
         pea.tags.retain(|t| t != &tag);
         pea.touch();

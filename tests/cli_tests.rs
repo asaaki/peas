@@ -3,7 +3,7 @@ use predicates::prelude::*;
 use tempfile::TempDir;
 
 fn peas_cmd() -> Command {
-    Command::cargo_bin("peas").unwrap()
+    Command::new(assert_cmd::cargo::cargo_bin!("peas"))
 }
 
 #[test]
