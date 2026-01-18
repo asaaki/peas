@@ -1,19 +1,20 @@
-use std::io;
-use std::path::PathBuf;
-
+use super::ui;
+use crate::{
+    config::PeasConfig,
+    error::Result,
+    model::{Pea, PeaStatus, PeaType},
+    storage::PeaRepository,
+};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
-
-use crate::config::PeasConfig;
-use crate::error::Result;
-use crate::model::{Pea, PeaStatus, PeaType};
-use crate::storage::PeaRepository;
-
-use super::ui;
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
@@ -83,7 +84,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: &PeasConfig, project_root: &PathBuf) -> Result<Self> {
+    pub fn new(config: &PeasConfig, project_root: &Path) -> Result<Self> {
         let repo = PeaRepository::new(config, project_root);
         let all_peas = repo.list()?;
         let filtered_peas = all_peas.clone();

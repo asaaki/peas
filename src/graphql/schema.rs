@@ -1,13 +1,7 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use async_graphql::{Context, EmptySubscription, Object, Schema};
-
-use crate::config::PeasConfig;
-use crate::model::Pea as ModelPea;
-use crate::storage::PeaRepository;
-
 use super::types::*;
+use crate::{config::PeasConfig, model::Pea as ModelPea, storage::PeaRepository};
+use async_graphql::{Context, EmptySubscription, Object, Schema};
+use std::{path::PathBuf, sync::Arc};
 
 pub type PeasSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 

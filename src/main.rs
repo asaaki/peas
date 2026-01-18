@@ -1,15 +1,17 @@
-use std::io::{self, Read, Write};
-use std::path::PathBuf;
-
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
-
-use peas::cli::{Cli, Commands};
-use peas::config::{PeasConfig, PeasSettings};
-use peas::graphql::build_schema;
-use peas::model::{Pea, PeaStatus};
-use peas::storage::PeaRepository;
+use peas::{
+    cli::{Cli, Commands},
+    config::{PeasConfig, PeasSettings},
+    graphql::build_schema,
+    model::{Pea, PeaStatus},
+    storage::PeaRepository,
+};
+use std::{
+    io::{self, Read, Write},
+    path::PathBuf,
+};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -275,7 +277,7 @@ fn main() -> Result<()> {
             print_roadmap(&repo)?;
             Ok(())
         }
-        Commands::Graphql { query, variables } => {
+        Commands::Query { query, variables } => {
             let (config, root) = load_config()?;
             let schema = build_schema(config, root);
 
@@ -285,6 +287,27 @@ fn main() -> Result<()> {
                 async_graphql::Variables::default()
             };
 
+            let request = async_graphql::Request::new(&query).variables(vars);
+            let response = tokio::runtime::Runtime::new()?.block_on(schema.execute(request));
+
+            println!("{}", serde_json::to_string_pretty(&response)?);
+            Ok(())
+        }
+        Commands::Mutate {
+            mutation,
+            variables,
+        } => {
+            let (config, root) = load_config()?;
+            let schema = build_schema(config, root);
+
+            let vars: async_graphql::Variables = if let Some(v) = variables {
+                serde_json::from_str(&v)?
+            } else {
+                async_graphql::Variables::default()
+            };
+
+            // Auto-wrap in mutation { }
+            let query = format!("mutation {{ {} }}", mutation);
             let request = async_graphql::Request::new(&query).variables(vars);
             let response = tokio::runtime::Runtime::new()?.block_on(schema.execute(request));
 
@@ -465,16 +488,16 @@ For complex queries, use the GraphQL interface:
 
 ```bash
 # Get project stats
-peas graphql '{{ stats {{ total byStatus {{ todo inProgress completed }} }} }}'
+peas query '{{ stats {{ total byStatus {{ todo inProgress completed }} }} }}'
 
 # List all open peas
-peas graphql '{{ peas(filter: {{ isOpen: true }}) {{ nodes {{ id title peaType status }} }} }}'
+peas query '{{ peas(filter: {{ isOpen: true }}) {{ nodes {{ id title peaType status }} }} }}'
 
-# Create a pea
-peas graphql 'mutation {{ createPea(input: {{ title: "New Task", peaType: TASK }}) {{ id }} }}'
+# Create a pea (mutate auto-wraps in 'mutation {{ }}')
+peas mutate 'createPea(input: {{ title: "New Task", peaType: TASK }}) {{ id }}'
 
 # Update status
-peas graphql 'mutation {{ setStatus(id: "<id>", status: IN_PROGRESS) {{ id status }} }}'
+peas mutate 'setStatus(id: "<id>", status: IN_PROGRESS) {{ id status }}'
 ```
 
 ## Pea Types
@@ -594,10 +617,10 @@ async fn run_server(schema: peas::graphql::PeasSchema, port: u16) -> Result<()> 
     use async_graphql::http::GraphiQLSource;
     use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
     use axum::{
-        Router,
         extract::Extension,
         response::{Html, IntoResponse},
         routing::get,
+        Router,
     };
 
     async fn graphql_handler(

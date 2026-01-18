@@ -1,7 +1,6 @@
+use super::types::{PeaPriority, PeaStatus, PeaType};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-
-use super::types::{PeaPriority, PeaStatus, PeaType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pea {

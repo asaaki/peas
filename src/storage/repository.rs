@@ -1,18 +1,16 @@
-use std::path::{Path, PathBuf};
-
-use slug::slugify;
-
-use crate::config::PeasConfig;
-use crate::error::{PeasError, Result};
-use crate::model::{Pea, PeaType};
-
 use super::markdown::{parse_markdown, render_markdown};
+use crate::{
+    config::PeasConfig,
+    error::{PeasError, Result},
+    model::{Pea, PeaType},
+};
+use slug::slugify;
+use std::path::{Path, PathBuf};
 
 pub struct PeaRepository {
     data_path: PathBuf,
     archive_path: PathBuf,
     prefix: String,
-    id_length: usize,
 }
 
 impl PeaRepository {
@@ -21,15 +19,16 @@ impl PeaRepository {
             data_path: config.data_path(project_root),
             archive_path: config.archive_path(project_root),
             prefix: config.peas.prefix.clone(),
-            id_length: config.peas.id_length,
         }
     }
 
     pub fn generate_id(&self) -> String {
-        let alphabet: Vec<char> = "0123456789abcdefghijklmnopqrstuvwxyz".chars().collect();
-        let random = nanoid::nanoid!(4, &alphabet);
-        // Note: id_length from config is currently ignored in favor of fixed 4-char IDs
-        // to match beans compatibility. Future versions may support variable lengths.
+        const ALPHABET: &[char] = &[
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+            'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+            'y', 'z',
+        ];
+        let random = nanoid::nanoid!(4, ALPHABET);
         format!("{}{}", self.prefix, random)
     }
 

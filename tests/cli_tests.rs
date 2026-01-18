@@ -296,12 +296,43 @@ fn test_graphql_query() {
         .assert()
         .success();
 
+    // Test the query command
     peas_cmd()
-        .args(["graphql", "{ stats { total } }"])
+        .args(["query", "{ stats { total } }"])
         .current_dir(temp_dir.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("\"total\": 1"));
+}
+
+#[test]
+fn test_graphql_mutate() {
+    let temp_dir = TempDir::new().unwrap();
+
+    peas_cmd()
+        .arg("init")
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+
+    // Test the mutate command (auto-wraps in 'mutation { }')
+    peas_cmd()
+        .args([
+            "mutate",
+            "createPea(input: { title: \"Mutation Test\", peaType: TASK }) { id title }",
+        ])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Mutation Test"));
+
+    // Verify the pea was created
+    peas_cmd()
+        .arg("list")
+        .current_dir(temp_dir.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Mutation Test"));
 }
 
 #[test]

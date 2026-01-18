@@ -1,8 +1,6 @@
-use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
-
 use crate::error::{PeasError, Result};
+use serde::{Deserialize, Serialize};
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]

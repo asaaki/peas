@@ -199,10 +199,20 @@ pub enum Commands {
         id: String,
     },
 
-    /// Execute a GraphQL query or mutation
-    Graphql {
+    /// Execute a GraphQL query
+    Query {
         /// GraphQL query string
         query: String,
+
+        /// Variables as JSON
+        #[arg(long)]
+        variables: Option<String>,
+    },
+
+    /// Execute a GraphQL mutation (automatically wraps in 'mutation { }')
+    Mutate {
+        /// Mutation body (without 'mutation' keyword)
+        mutation: String,
 
         /// Variables as JSON
         #[arg(long)]

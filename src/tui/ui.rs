@@ -1,14 +1,12 @@
+use super::app::{App, FilterType, InputMode};
+use crate::model::{PeaPriority, PeaStatus, PeaType};
 use ratatui::{
-    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
+    Frame,
 };
-
-use crate::model::{PeaPriority, PeaStatus, PeaType};
-
-use super::app::{App, FilterType, InputMode};
 
 pub fn draw(f: &mut Frame, app: &App) {
     let chunks = Layout::default()

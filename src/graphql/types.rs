@@ -1,6 +1,5 @@
-use async_graphql::{Enum, InputObject, SimpleObject};
-
 use crate::model::{self, Pea as ModelPea};
+use async_graphql::{Enum, InputObject, SimpleObject};
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum PeaType {

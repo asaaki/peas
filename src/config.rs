@@ -1,9 +1,8 @@
+use crate::error::{PeasError, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::error::{PeasError, Result};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PeasConfig {
     #[serde(default)]
     pub peas: PeasSettings,
@@ -55,14 +54,6 @@ impl Default for PeasSettings {
             id_length: default_id_length(),
             default_status: default_status(),
             default_type: default_type(),
-        }
-    }
-}
-
-impl Default for PeasConfig {
-    fn default() -> Self {
-        Self {
-            peas: PeasSettings::default(),
         }
     }
 }
