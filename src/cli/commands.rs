@@ -30,7 +30,7 @@ pub enum Commands {
         prefix: String,
 
         /// Length of random ID suffix
-        #[arg(long, default_value = "4")]
+        #[arg(long, default_value = "5")]
         id_length: usize,
     },
 

@@ -35,7 +35,7 @@ fn default_prefix() -> String {
 }
 
 fn default_id_length() -> usize {
-    4
+    5
 }
 
 fn default_status() -> String {

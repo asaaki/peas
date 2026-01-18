@@ -29,7 +29,7 @@ impl PeaRepository {
             'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
             'y', 'z',
         ];
-        let random = nanoid::nanoid!(4, ALPHABET);
+        let random = nanoid::nanoid!(5, ALPHABET);
         format!("{}{}", self.prefix, random)
     }
 
