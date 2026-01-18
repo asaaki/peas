@@ -8,6 +8,25 @@ use ratatui::{
     text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Wrap},
 };
+use termimad::{Area, MadSkin, MadView};
+
+/// Info for rendering markdown body with termimad after ratatui frame
+pub struct MarkdownRenderInfo {
+    pub area: Area,
+    pub content: String,
+    pub scroll: u16,
+}
+
+/// Render markdown content using termimad in the specified area
+pub fn render_markdown(info: &MarkdownRenderInfo) {
+    let skin = MadSkin::default();
+    let mut view = MadView::from(info.content.clone(), info.area.clone(), skin);
+    // Scroll down by the scroll amount
+    for _ in 0..info.scroll {
+        view.try_scroll_lines(1);
+    }
+    let _ = view.write();
+}
 
 /// Returns priority indicator and color for a pea
 fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
@@ -31,187 +50,7 @@ fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
     }
 }
 
-/// Render a markdown line with basic formatting
-fn render_markdown_line(line: &str) -> Line<'static> {
-    let trimmed = line.trim_start();
-
-    // Headers - keep the # characters for visual distinction
-    if trimmed.starts_with("### ") {
-        return Line::from(Span::styled(
-            trimmed.to_string(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ));
-    }
-    if trimmed.starts_with("## ") {
-        return Line::from(Span::styled(
-            trimmed.to_string(),
-            Style::default()
-                .fg(Color::Blue)
-                .add_modifier(Modifier::BOLD),
-        ));
-    }
-    if trimmed.starts_with("# ") {
-        return Line::from(Span::styled(
-            trimmed.to_string(),
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ));
-    }
-
-    // Checkbox items
-    if trimmed.starts_with("- [x] ") || trimmed.starts_with("- [X] ") {
-        let indent = line.len() - trimmed.len();
-        return Line::from(vec![
-            Span::raw(" ".repeat(indent)),
-            Span::styled("✓ ", Style::default().fg(Color::Green)),
-            Span::raw(trimmed[6..].to_string()),
-        ]);
-    }
-    if trimmed.starts_with("- [ ] ") {
-        let indent = line.len() - trimmed.len();
-        return Line::from(vec![
-            Span::raw(" ".repeat(indent)),
-            Span::styled("○ ", Style::default().fg(Color::DarkGray)),
-            Span::raw(trimmed[6..].to_string()),
-        ]);
-    }
-
-    // Bullet points
-    if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
-        let indent = line.len() - trimmed.len();
-        return Line::from(vec![
-            Span::raw(" ".repeat(indent)),
-            Span::styled("• ", Style::default().fg(Color::Cyan)),
-            Span::raw(trimmed[2..].to_string()),
-        ]);
-    }
-
-    // Numbered lists
-    if let Some(rest) = trimmed
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .len()
-        .checked_sub(0)
-    {
-        if rest > 0 && trimmed.chars().nth(rest) == Some('.') {
-            let indent = line.len() - trimmed.len();
-            let num_end = rest + 1; // include the dot
-            if trimmed.len() > num_end && trimmed.chars().nth(num_end) == Some(' ') {
-                return Line::from(vec![
-                    Span::raw(" ".repeat(indent)),
-                    Span::styled(
-                        trimmed[..num_end].to_string(),
-                        Style::default().fg(Color::Yellow),
-                    ),
-                    Span::raw(trimmed[num_end..].to_string()),
-                ]);
-            }
-        }
-    }
-
-    // Code blocks (indented by 4+ spaces or starting with ```)
-    if trimmed.starts_with("```") {
-        return Line::from(Span::styled(
-            line.to_string(),
-            Style::default().fg(Color::DarkGray),
-        ));
-    }
-    if line.starts_with("    ") || line.starts_with("\t") {
-        return Line::from(Span::styled(
-            line.to_string(),
-            Style::default().fg(Color::Yellow),
-        ));
-    }
-
-    // Blockquotes
-    if trimmed.starts_with("> ") {
-        let indent = line.len() - trimmed.len();
-        return Line::from(vec![
-            Span::raw(" ".repeat(indent)),
-            Span::styled("│ ", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                trimmed[2..].to_string(),
-                Style::default()
-                    .fg(Color::Gray)
-                    .add_modifier(Modifier::ITALIC),
-            ),
-        ]);
-    }
-
-    // Default: render inline formatting
-    render_inline_markdown(line)
-}
-
-/// Render inline markdown formatting (bold, italic, code)
-fn render_inline_markdown(line: &str) -> Line<'static> {
-    let mut spans: Vec<Span<'static>> = Vec::new();
-    let chars: Vec<char> = line.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        // Inline code
-        if chars[i] == '`' {
-            if let Some(end) = chars[i + 1..].iter().position(|&c| c == '`') {
-                let code: String = chars[i + 1..i + 1 + end].iter().collect();
-                spans.push(Span::styled(code, Style::default().fg(Color::Yellow)));
-                i += end + 2;
-                continue;
-            }
-        }
-
-        // Bold (**text**)
-        if i + 1 < chars.len() && chars[i] == '*' && chars[i + 1] == '*' {
-            if let Some(end) = find_closing(&chars[i + 2..], "**") {
-                let text: String = chars[i + 2..i + 2 + end].iter().collect();
-                spans.push(Span::styled(
-                    text,
-                    Style::default().add_modifier(Modifier::BOLD),
-                ));
-                i += end + 4;
-                continue;
-            }
-        }
-
-        // Italic (*text* or _text_)
-        if chars[i] == '*' || chars[i] == '_' {
-            let marker = chars[i];
-            if let Some(end) = chars[i + 1..].iter().position(|&c| c == marker) {
-                if end > 0 {
-                    let text: String = chars[i + 1..i + 1 + end].iter().collect();
-                    spans.push(Span::styled(
-                        text,
-                        Style::default().add_modifier(Modifier::ITALIC),
-                    ));
-                    i += end + 2;
-                    continue;
-                }
-            }
-        }
-
-        // Regular character
-        spans.push(Span::raw(chars[i].to_string()));
-        i += 1;
-    }
-
-    Line::from(spans)
-}
-
-/// Find closing marker in a char slice
-fn find_closing(chars: &[char], marker: &str) -> Option<usize> {
-    let marker_chars: Vec<char> = marker.chars().collect();
-    for i in 0..chars.len().saturating_sub(marker_chars.len() - 1) {
-        if chars[i..].starts_with(&marker_chars) {
-            return Some(i);
-        }
-    }
-    None
-}
-
-pub fn draw(f: &mut Frame, app: &mut App) {
+pub fn draw(f: &mut Frame, app: &mut App) -> Option<MarkdownRenderInfo> {
     // Full-screen detail view when in DetailView mode
     if app.input_mode == InputMode::DetailView {
         let chunks = Layout::default()
@@ -222,9 +61,9 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             ])
             .split(f.area());
 
-        draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll);
+        let md_info = draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll);
         draw_footer(f, app, chunks[1]);
-        return;
+        return md_info;
     }
 
     let chunks = Layout::default()
@@ -253,6 +92,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::CreateModal => draw_create_modal(f, app),
         _ => {}
     }
+
+    None
 }
 
 fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
@@ -474,7 +315,12 @@ fn type_color(pea_type: &PeaType) -> Color {
     }
 }
 
-fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
+fn draw_detail_fullscreen(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    detail_scroll: u16,
+) -> Option<MarkdownRenderInfo> {
     let detail_block = Block::default()
         .title(" Details ")
         .borders(Borders::ALL)
@@ -640,48 +486,69 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u
             }
         }
 
-        if !pea.body.is_empty() {
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "Description:",
-                Style::default().add_modifier(Modifier::UNDERLINED),
-            )));
-            for line in pea.body.lines() {
-                lines.push(render_markdown_line(line));
-            }
-        }
+        // Calculate metadata height
+        let metadata_height = lines.len() as u16;
 
-        // Add scroll hint
-        let content_height = lines.len() as u16;
-        let visible_height = area.height.saturating_sub(2);
-        let scroll_hint = if content_height > visible_height {
-            format!(
-                " [↑↓ scroll: {}/{}] ",
-                detail_scroll + 1,
-                content_height.saturating_sub(visible_height) + 1
-            )
+        // Check if we have body content
+        let has_body = !pea.body.is_empty();
+        let body_content = pea.body.clone();
+
+        // Split area: metadata (top) + body (bottom) if body exists
+        let (metadata_area, body_area) = if has_body {
+            // Leave some space for the body - at least half the remaining space
+            let available = area.height.saturating_sub(2); // minus borders
+            let meta_lines = (metadata_height + 2).min(available / 2); // +2 for description header
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(meta_lines + 2), // metadata + border
+                    Constraint::Min(5),                 // body area
+                ])
+                .split(area);
+            (chunks[0], Some(chunks[1]))
         } else {
-            String::new()
+            (area, None)
         };
 
+        // Render metadata section
         let detail_block = Block::default()
             .title(format!(" {} ", pea.id))
-            .title_bottom(Line::from(scroll_hint).right_aligned())
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(Style::default().fg(Color::Green));
 
         let detail = Paragraph::new(Text::from(lines))
             .block(detail_block)
-            .wrap(Wrap { trim: true })
-            .scroll((detail_scroll, 0));
+            .wrap(Wrap { trim: true });
 
-        f.render_widget(detail, area);
+        f.render_widget(detail, metadata_area);
+
+        // Render body section placeholder and return info for termimad
+        if let Some(body_rect) = body_area {
+            let body_block = Block::default()
+                .title(" Description ")
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
+                .border_style(Style::default().fg(Color::DarkGray));
+
+            let inner = body_block.inner(body_rect);
+            f.render_widget(body_block, body_rect);
+
+            // Return markdown render info for termimad to handle
+            return Some(MarkdownRenderInfo {
+                area: Area::new(inner.x, inner.y, inner.width, inner.height),
+                content: body_content,
+                scroll: detail_scroll,
+            });
+        }
+
+        None
     } else {
         let empty = Paragraph::new("No pea selected")
             .block(detail_block)
             .style(Style::default().fg(Color::DarkGray));
         f.render_widget(empty, area);
+        None
     }
 }
 

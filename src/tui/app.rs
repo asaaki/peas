@@ -815,7 +815,16 @@ fn run_app(
     >,
 ) -> io::Result<()> {
     loop {
-        terminal.draw(|f| ui::draw(f, app))?;
+        // Draw UI and get markdown render info if in detail view
+        let mut md_info: Option<ui::MarkdownRenderInfo> = None;
+        terminal.draw(|f| {
+            md_info = ui::draw(f, app);
+        })?;
+
+        // If we have markdown to render, do it with termimad after ratatui's frame
+        if let Some(info) = md_info {
+            ui::render_markdown(&info);
+        }
 
         // Check for file system events (non-blocking)
         if let Ok(Ok(_events)) = fs_rx.try_recv() {
