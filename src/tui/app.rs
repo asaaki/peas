@@ -24,6 +24,7 @@ pub enum InputMode {
     StatusModal,
     PriorityModal,
     TypeModal,
+    DeleteConfirm,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -370,30 +371,6 @@ impl App {
         Ok(())
     }
 
-    pub fn start_selected(&mut self) -> Result<()> {
-        if let Some(pea) = self.selected_pea().cloned() {
-            let mut updated = pea.clone();
-            updated.status = PeaStatus::InProgress;
-            updated.touch();
-            self.repo.update(&updated)?;
-            self.message = Some(format!("Started {}", pea.id));
-            self.refresh()?;
-        }
-        Ok(())
-    }
-
-    pub fn complete_selected(&mut self) -> Result<()> {
-        if let Some(pea) = self.selected_pea().cloned() {
-            let mut updated = pea.clone();
-            updated.status = PeaStatus::Completed;
-            updated.touch();
-            self.repo.update(&updated)?;
-            self.message = Some(format!("Completed {}", pea.id));
-            self.refresh()?;
-        }
-        Ok(())
-    }
-
     /// Returns the list of available statuses for the modal
     pub fn status_options() -> &'static [PeaStatus] {
         &[
@@ -507,6 +484,24 @@ impl App {
         self.input_mode = InputMode::Normal;
         Ok(())
     }
+
+    /// Open delete confirmation dialog
+    pub fn open_delete_confirm(&mut self) {
+        if self.selected_pea().is_some() {
+            self.input_mode = InputMode::DeleteConfirm;
+        }
+    }
+
+    /// Delete the currently selected pea
+    pub fn delete_selected(&mut self) -> Result<()> {
+        if let Some(pea) = self.selected_pea().cloned() {
+            self.repo.delete(&pea.id)?;
+            self.message = Some(format!("Deleted {}", pea.id));
+            self.refresh()?;
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -583,7 +578,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                         app.open_type_modal();
                     }
                     KeyCode::Char('d') => {
-                        let _ = app.complete_selected();
+                        app.open_delete_confirm();
                     }
                     KeyCode::Char('r') => {
                         let _ = app.refresh();
@@ -732,6 +727,15 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                         } else {
                             app.modal_selection - 1
                         };
+                    }
+                    _ => {}
+                },
+                InputMode::DeleteConfirm => match key.code {
+                    KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        let _ = app.delete_selected();
                     }
                     _ => {}
                 },

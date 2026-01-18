@@ -248,6 +248,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::StatusModal => draw_status_modal(f, app),
         InputMode::PriorityModal => draw_priority_modal(f, app),
         InputMode::TypeModal => draw_type_modal(f, app),
+        InputMode::DeleteConfirm => draw_delete_confirm(f, app),
         _ => {}
     }
 }
@@ -751,16 +752,20 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " TYPE ",
             Style::default().bg(Color::Magenta).fg(Color::White),
         ),
+        InputMode::DeleteConfirm => {
+            Span::styled(" DELETE ", Style::default().bg(Color::Red).fg(Color::White))
+        }
     };
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " j/k:nav  /:search  v:view  s:status  d:done  e:edit  y:copy  ?:help  q:quit "
+            " j/k:nav  /:search  v:view  s:status  t:type  P:priority  d:delete  e:edit  y:copy  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
         InputMode::StatusModal | InputMode::PriorityModal | InputMode::TypeModal => {
             " j/k:nav  Enter:select  Esc:cancel "
         }
+        InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
     };
 
     let mut footer_spans = vec![mode_indicator];
@@ -878,6 +883,54 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
 
     f.render_widget(Clear, area);
     f.render_widget(list, area);
+}
+
+fn draw_delete_confirm(f: &mut Frame, app: &App) {
+    let area = centered_rect(50, 20, f.area());
+
+    let pea_info = if let Some(pea) = app.selected_pea() {
+        format!("{} - {}", pea.id, pea.title)
+    } else {
+        "No ticket selected".to_string()
+    };
+
+    let content = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "Are you sure you want to delete this ticket?",
+            Style::default().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(pea_info, Style::default().fg(Color::Cyan))),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                "y",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("/Enter = Yes    "),
+            Span::styled(
+                "n",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("/Esc = No"),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(content)
+        .block(
+            Block::default()
+                .title(" Delete Confirmation ")
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
+                .border_style(Style::default().fg(Color::Red)),
+        )
+        .alignment(ratatui::layout::Alignment::Center);
+
+    f.render_widget(Clear, area);
+    f.render_widget(paragraph, area);
 }
 
 fn draw_type_modal(f: &mut Frame, app: &App) {

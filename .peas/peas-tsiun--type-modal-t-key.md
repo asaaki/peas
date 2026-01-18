@@ -2,11 +2,11 @@
 id = "peas-tsiun"
 title = "Type modal (t key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:54.587525400Z"
-updated = "2026-01-18T19:20:54.587525400Z"
+updated = "2026-01-18T19:46:42.717624Z"
 +++
 
 Change 't' hotkey from 'toggle view' to open a type selection modal.
