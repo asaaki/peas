@@ -35,10 +35,10 @@ fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
 fn render_markdown_line(line: &str) -> Line<'static> {
     let trimmed = line.trim_start();
 
-    // Headers
+    // Headers - keep the # characters for visual distinction
     if trimmed.starts_with("### ") {
         return Line::from(Span::styled(
-            trimmed[4..].to_string(),
+            trimmed.to_string(),
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
@@ -46,7 +46,7 @@ fn render_markdown_line(line: &str) -> Line<'static> {
     }
     if trimmed.starts_with("## ") {
         return Line::from(Span::styled(
-            trimmed[3..].to_string(),
+            trimmed.to_string(),
             Style::default()
                 .fg(Color::Blue)
                 .add_modifier(Modifier::BOLD),
@@ -54,7 +54,7 @@ fn render_markdown_line(line: &str) -> Line<'static> {
     }
     if trimmed.starts_with("# ") {
         return Line::from(Span::styled(
-            trimmed[2..].to_string(),
+            trimmed.to_string(),
             Style::default()
                 .fg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
