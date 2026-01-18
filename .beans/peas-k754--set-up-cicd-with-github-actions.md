@@ -1,10 +1,11 @@
 ---
 # peas-k754
 title: Set up CI/CD with GitHub Actions
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-18T14:03:37Z
-updated_at: 2026-01-18T14:03:37Z
+updated_at: 2026-01-18T14:30:09Z
 parent: peas-9r1l
 ---
 

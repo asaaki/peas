@@ -1,12 +1,18 @@
 [package]
 name = "peas"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+rust-version = "1.75"
 description = "A CLI-based, flat-file issue tracker for humans and robots"
 license = "MIT"
 repository = "https://github.com/user/peas"
-keywords = ["cli", "issue-tracker", "graphql", "markdown"]
+homepage = "https://github.com/user/peas"
+documentation = "https://github.com/user/peas#readme"
+readme = "README.md"
+keywords = ["cli", "issue-tracker", "graphql", "markdown", "tui"]
 categories = ["command-line-utilities", "development-tools"]
+authors = ["peas contributors"]
+exclude = [".beans/", ".github/", "extras/", "tests/"]
 
 [dependencies]
 # CLI framework
