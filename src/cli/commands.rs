@@ -1,3 +1,4 @@
+use crate::config::PeasSettings;
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
@@ -26,11 +27,11 @@ pub enum Commands {
     /// Initialize a new peas project
     Init {
         /// Use a custom prefix for pea IDs
-        #[arg(long, default_value = "peas-")]
+        #[arg(long, default_value_t = PeasSettings::default().prefix)]
         prefix: String,
 
         /// Length of random ID suffix
-        #[arg(long, default_value = "5")]
+        #[arg(long, default_value_t = PeasSettings::default().id_length)]
         id_length: usize,
     },
 
