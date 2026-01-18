@@ -2,11 +2,11 @@
 id = "peas-qa6w0"
 title = "Reassign view toggle hotkey"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:21:06.530161100Z"
-updated = "2026-01-18T19:21:06.530161100Z"
+updated = "2026-01-18T19:36:45.390025500Z"
 +++
 
 Move the list/tree view toggle from 't' to 'v'.

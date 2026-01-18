@@ -437,7 +437,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::Filter;
                     }
-                    KeyCode::Char('t') | KeyCode::Char('l') => {
+                    KeyCode::Char('v') => {
                         app.toggle_view_mode();
                         let mode_name = match app.view_mode {
                             ViewMode::List => "List",
