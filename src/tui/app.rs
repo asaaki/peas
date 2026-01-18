@@ -27,6 +27,7 @@ pub enum InputMode {
     DeleteConfirm,
     ParentModal,
     BlockingModal,
+    DetailView,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -734,7 +735,14 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                         };
                         app.message = Some(format!("{} view", mode_name));
                     }
-                    KeyCode::Enter | KeyCode::Char(' ') => {
+                    KeyCode::Enter => {
+                        // Open full-screen detail view
+                        if app.selected_pea().is_some() {
+                            app.detail_scroll = 0;
+                            app.input_mode = InputMode::DetailView;
+                        }
+                    }
+                    KeyCode::Char(' ') => {
                         let _ = app.toggle_status();
                     }
                     KeyCode::Char('s') => {
@@ -959,6 +967,52 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                             } else {
                                 app.modal_selection - 1
                             };
+                        }
+                    }
+                    _ => {}
+                },
+                InputMode::DetailView => match key.code {
+                    KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
+                        app.scroll_detail_down();
+                    }
+                    KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
+                        app.scroll_detail_up();
+                    }
+                    KeyCode::PageDown => {
+                        for _ in 0..10 {
+                            app.scroll_detail_down();
+                        }
+                    }
+                    KeyCode::PageUp => {
+                        for _ in 0..10 {
+                            app.scroll_detail_up();
+                        }
+                    }
+                    KeyCode::Char('e') => {
+                        // Allow editing from detail view
+                        if let Some(file_path) = app.selected_pea_file_path() {
+                            disable_raw_mode()?;
+                            execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+
+                            let editor = std::env::var("EDITOR")
+                                .or_else(|_| std::env::var("VISUAL"))
+                                .unwrap_or_else(|_| {
+                                    if cfg!(windows) {
+                                        "notepad".to_string()
+                                    } else {
+                                        "vi".to_string()
+                                    }
+                                });
+
+                            let _ = std::process::Command::new(&editor).arg(&file_path).status();
+
+                            enable_raw_mode()?;
+                            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+                            terminal.clear()?;
+                            let _ = app.refresh();
                         }
                     }
                     _ => {}

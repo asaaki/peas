@@ -2,11 +2,11 @@
 id = "peas-9xl0p"
 title = "Blocking modal (b key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:19.426632100Z"
-updated = "2026-01-18T19:20:19.426632100Z"
+updated = "2026-01-18T19:52:43.641959400Z"
 +++
 
 Add 'b' hotkey to open a modal for managing blocking relationships.

@@ -226,6 +226,23 @@ fn find_closing(chars: &[char], marker: &str) -> Option<usize> {
 }
 
 pub fn draw(f: &mut Frame, app: &mut App) {
+    // Full-screen detail view when in DetailView mode
+    if app.input_mode == InputMode::DetailView {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(2), // Header
+                Constraint::Min(0),    // Full detail
+                Constraint::Length(2), // Footer (keybindings only)
+            ])
+            .split(f.area());
+
+        draw_header(f, app, chunks[0]);
+        draw_detail_fullscreen(f, app, chunks[1], app.detail_scroll);
+        draw_footer(f, app, chunks[2]);
+        return;
+    }
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -500,6 +517,217 @@ fn type_color(pea_type: &PeaType) -> Color {
     }
 }
 
+fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
+    let detail_block = Block::default()
+        .title(" Details ")
+        .borders(Borders::ALL)
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(Color::Green));
+
+    if let Some(pea) = app.selected_pea() {
+        let status_color = match pea.status {
+            PeaStatus::Draft => Color::DarkGray,
+            PeaStatus::Todo => Color::White,
+            PeaStatus::InProgress => Color::Yellow,
+            PeaStatus::Completed => Color::Green,
+            PeaStatus::Scrapped => Color::Red,
+        };
+
+        let priority_color = match pea.priority {
+            PeaPriority::Critical => Color::Red,
+            PeaPriority::High => Color::LightRed,
+            PeaPriority::Normal => Color::White,
+            PeaPriority::Low => Color::DarkGray,
+            PeaPriority::Deferred => Color::DarkGray,
+        };
+
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled(
+                    &pea.id,
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" "),
+                Span::styled(&pea.title, Style::default().add_modifier(Modifier::BOLD)),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("Type:     "),
+                Span::styled(
+                    format!("{}", pea.pea_type),
+                    Style::default().fg(Color::Blue),
+                ),
+            ]),
+            Line::from(vec![
+                Span::raw("Status:   "),
+                Span::styled(format!("{}", pea.status), Style::default().fg(status_color)),
+            ]),
+            Line::from(vec![
+                Span::raw("Priority: "),
+                Span::styled(
+                    format!("{}", pea.priority),
+                    Style::default().fg(priority_color),
+                ),
+            ]),
+        ];
+
+        if let Some(ref parent) = pea.parent {
+            let parent_title = app
+                .all_peas
+                .iter()
+                .find(|p| p.id == *parent)
+                .map(|p| p.title.as_str())
+                .unwrap_or("");
+            lines.push(Line::from(vec![
+                Span::raw("Parent:   "),
+                Span::styled(parent, Style::default().fg(Color::Cyan)),
+                Span::raw(" "),
+                Span::styled(parent_title, Style::default().fg(Color::DarkGray)),
+            ]));
+        }
+
+        // Show blocking tickets
+        if !pea.blocking.is_empty() {
+            lines.push(Line::from(vec![
+                Span::raw("Blocking: "),
+                Span::styled(
+                    format!("{} tickets", pea.blocking.len()),
+                    Style::default().fg(Color::LightRed),
+                ),
+            ]));
+            for id in pea.blocking.iter().take(5) {
+                let title = app
+                    .all_peas
+                    .iter()
+                    .find(|p| &p.id == id)
+                    .map(|p| format!("{} ({})", id, p.title))
+                    .unwrap_or_else(|| id.clone());
+                lines.push(Line::from(vec![
+                    Span::raw("          "),
+                    Span::styled(title, Style::default().fg(Color::DarkGray)),
+                ]));
+            }
+            if pea.blocking.len() > 5 {
+                lines.push(Line::from(Span::styled(
+                    format!("          ... and {} more", pea.blocking.len() - 5),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+        }
+
+        // Find children
+        let children: Vec<_> = app
+            .all_peas
+            .iter()
+            .filter(|p| p.parent.as_ref() == Some(&pea.id))
+            .collect();
+        if !children.is_empty() {
+            lines.push(Line::from(vec![
+                Span::raw("Children: "),
+                Span::styled(
+                    format!("{} items", children.len()),
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ]));
+        }
+
+        if !pea.tags.is_empty() {
+            lines.push(Line::from(vec![
+                Span::raw("Tags:     "),
+                Span::styled(pea.tags.join(", "), Style::default().fg(Color::Magenta)),
+            ]));
+        }
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![
+            Span::raw("Created:  "),
+            Span::styled(
+                pea.created.format("%Y-%m-%d %H:%M").to_string(),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]));
+        lines.push(Line::from(vec![
+            Span::raw("Updated:  "),
+            Span::styled(
+                pea.updated.format("%Y-%m-%d %H:%M").to_string(),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]));
+
+        // List children if any
+        if !children.is_empty() {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "Children:",
+                Style::default().add_modifier(Modifier::UNDERLINED),
+            )));
+            for child in children.iter().take(15) {
+                let (status_icon, status_color) = status_indicator(&child.status);
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        format!("  {} ", status_icon),
+                        Style::default().fg(status_color),
+                    ),
+                    Span::styled(&child.id, Style::default().fg(Color::Cyan)),
+                    Span::raw(" "),
+                    Span::raw(&child.title),
+                ]));
+            }
+            if children.len() > 15 {
+                lines.push(Line::from(Span::styled(
+                    format!("  ... and {} more", children.len() - 15),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+        }
+
+        if !pea.body.is_empty() {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "Description:",
+                Style::default().add_modifier(Modifier::UNDERLINED),
+            )));
+            for line in pea.body.lines() {
+                lines.push(render_markdown_line(line));
+            }
+        }
+
+        // Add scroll hint
+        let content_height = lines.len() as u16;
+        let visible_height = area.height.saturating_sub(2);
+        let scroll_hint = if content_height > visible_height {
+            format!(
+                " [↑↓ scroll: {}/{}] ",
+                detail_scroll + 1,
+                content_height.saturating_sub(visible_height) + 1
+            )
+        } else {
+            String::new()
+        };
+
+        let detail_block = Block::default()
+            .title(format!(" {} ", pea.id))
+            .title_bottom(Line::from(scroll_hint).right_aligned())
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Green));
+
+        let detail = Paragraph::new(Text::from(lines))
+            .block(detail_block)
+            .wrap(Wrap { trim: true })
+            .scroll((detail_scroll, 0));
+
+        f.render_widget(detail, area);
+    } else {
+        let empty = Paragraph::new("No pea selected")
+            .block(detail_block)
+            .style(Style::default().fg(Color::DarkGray));
+        f.render_widget(empty, area);
+    }
+}
+
 fn draw_detail(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
     let detail_block = Block::default()
         .title(" Details ")
@@ -765,6 +993,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " BLOCKING ",
             Style::default().bg(Color::LightRed).fg(Color::Black),
         ),
+        InputMode::DetailView => Span::styled(
+            " DETAIL ",
+            Style::default().bg(Color::Green).fg(Color::Black),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -777,6 +1009,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         | InputMode::TypeModal
         | InputMode::ParentModal => " j/k:nav  Enter:select  Esc:cancel ",
         InputMode::BlockingModal => " j/k:nav  Space:toggle  Enter:apply  Esc:cancel ",
+        InputMode::DetailView => " j/k:scroll  e:edit  Esc/Enter/q:close ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
     };
 
