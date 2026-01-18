@@ -292,16 +292,26 @@ fn draw_main(f: &mut Frame, app: &mut App, area: Rect) {
 
 fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
     // Calculate available width for title (area width minus borders and prefix)
-    // Prefix is: "○ [T] !! peas-xxxxx " = ~22 chars (with priority)
-    let prefix_len = 22;
+    // Prefix is: "▌○ [T] !! peas-xxxxx " = ~23 chars (with priority and selection bar)
+    let prefix_len = 23;
     let available_width = area.width.saturating_sub(2 + prefix_len) as usize; // 2 for borders
+    let selected_idx = app.list_state.selected().unwrap_or(usize::MAX);
 
     let items: Vec<ListItem> = app
         .filtered_peas
         .iter()
-        .map(|pea| {
+        .enumerate()
+        .map(|(idx, pea)| {
+            let is_selected = idx == selected_idx;
             let (status_icon, status_color) = status_indicator(&pea.status);
             let (type_ind, type_color) = type_indicator(&pea.pea_type);
+
+            // Selection indicator: bar for selected, space otherwise
+            let selection_indicator = if is_selected {
+                Span::styled("▌", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw(" ")
+            };
 
             // Truncate title with ellipsis if too long
             let title = if pea.title.len() > available_width && available_width > 3 {
@@ -311,6 +321,7 @@ fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
             };
 
             let mut spans = vec![
+                selection_indicator,
                 Span::styled(
                     format!("{} ", status_icon),
                     Style::default().fg(status_color),
@@ -329,38 +340,52 @@ fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
             spans.push(Span::raw(" "));
             spans.push(Span::styled(&pea.id, Style::default().fg(Color::Cyan)));
             spans.push(Span::raw(" "));
-            spans.push(Span::raw(title));
+
+            // Make selected row bold
+            if is_selected {
+                spans.push(Span::styled(
+                    title,
+                    Style::default().add_modifier(Modifier::BOLD),
+                ));
+            } else {
+                spans.push(Span::raw(title));
+            }
 
             ListItem::new(Line::from(spans))
         })
         .collect();
 
     let title = format!(" Peas ({}) ", app.filtered_peas.len());
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(Color::Cyan)),
-        )
-        .highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        );
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Cyan)),
+    );
 
     f.render_stateful_widget(list, area, &mut app.list_state);
 }
 
 fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
+    let selected_idx = app.list_state.selected().unwrap_or(usize::MAX);
+
     let items: Vec<ListItem> = app
         .tree_nodes
         .iter()
-        .map(|node| {
+        .enumerate()
+        .map(|(idx, node)| {
             let pea = &node.pea;
+            let is_selected = idx == selected_idx;
             let (status_icon, status_color) = status_indicator(&pea.status);
             let (type_ind, type_color) = type_indicator(&pea.pea_type);
+
+            // Selection indicator: bar for selected, space otherwise
+            let selection_indicator = if is_selected {
+                Span::styled("▌", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw(" ")
+            };
 
             // Build the tree prefix with ASCII art
             let mut prefix = String::new();
@@ -383,7 +408,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
             // Calculate available width for title
             let prefix_chars = prefix.chars().count();
-            let fixed_chars = 14; // " ○ [T]!! " + some buffer (with priority)
+            let fixed_chars = 15; // "▌ ○ [T]!! " + some buffer (with priority)
             let available_width =
                 area.width
                     .saturating_sub(2 + prefix_chars as u16 + fixed_chars) as usize;
@@ -395,6 +420,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             };
 
             let mut spans = vec![
+                selection_indicator,
                 Span::styled(prefix, Style::default().fg(Color::DarkGray)),
                 Span::styled(
                     format!("{} ", status_icon),
@@ -412,26 +438,29 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             }
 
             spans.push(Span::raw(" "));
-            spans.push(Span::raw(title));
+
+            // Make selected row bold
+            if is_selected {
+                spans.push(Span::styled(
+                    title,
+                    Style::default().add_modifier(Modifier::BOLD),
+                ));
+            } else {
+                spans.push(Span::raw(title));
+            }
 
             ListItem::new(Line::from(spans))
         })
         .collect();
 
     let title = format!(" Tree ({}) ", app.tree_nodes.len());
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(Color::Cyan)),
-        )
-        .highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        );
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Cyan)),
+    );
 
     f.render_stateful_widget(list, area, &mut app.list_state);
 }

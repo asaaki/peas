@@ -2,11 +2,11 @@
 id = "peas-qiyr8"
 title = "Selection indicator bar instead of full-row highlight"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-7z7f5"
 created = "2026-01-18T19:29:54.360727300Z"
-updated = "2026-01-18T19:29:54.360727300Z"
+updated = "2026-01-18T19:34:53.666683800Z"
 +++
 
 Change the selection indicator from full-row highlight to a vertical bar (▌) at the start of the line.
