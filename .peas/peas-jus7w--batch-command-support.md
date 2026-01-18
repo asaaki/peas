@@ -4,9 +4,9 @@ title = "Batch command support"
 type = "feature"
 status = "todo"
 priority = "normal"
-parent = "peas-b05su"
+parent = "peas-up8r0"
 created = "2026-01-18T17:52:21.823288800Z"
-updated = "2026-01-18T17:52:21.823288800Z"
+updated = "2026-01-18T17:55:48.689022800Z"
 +++
 
 Add 'peas batch create' command to create multiple tickets at once under a single parent. Reduces CLI overhead when adding many related tasks.
