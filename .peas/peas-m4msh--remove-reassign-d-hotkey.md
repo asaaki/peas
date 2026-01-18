@@ -6,7 +6,7 @@ status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:21:12.385782300Z"
-updated = "2026-01-18T19:48:28.549460800Z"
+updated = "2026-01-18T20:46:52.482944100Z"
 +++
 
 Current 'd' hotkey marks ticket as done/completed.

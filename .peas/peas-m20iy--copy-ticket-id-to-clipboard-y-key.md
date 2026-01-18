@@ -3,10 +3,10 @@ id = "peas-m20iy"
 title = "Copy ticket ID to clipboard (y key)"
 type = "feature"
 status = "completed"
-priority = "normal"
+priority = "critical"
 parent = "peas-xacva"
 created = "2026-01-18T19:21:00.614267500Z"
-updated = "2026-01-18T19:38:06.343044200Z"
+updated = "2026-01-18T20:46:29.730296700Z"
 +++
 
 Add 'y' hotkey to copy the selected ticket's ID to the system clipboard.

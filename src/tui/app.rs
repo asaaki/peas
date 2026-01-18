@@ -31,62 +31,6 @@ pub enum InputMode {
     CreateModal,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ViewMode {
-    List,
-    #[default]
-    Tree,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FilterType {
-    All,
-    Open,
-    InProgress,
-    Completed,
-    Milestones,
-    Epics,
-    Tasks,
-}
-
-impl FilterType {
-    pub fn label(&self) -> &'static str {
-        match self {
-            FilterType::All => "All",
-            FilterType::Open => "Open",
-            FilterType::InProgress => "In Progress",
-            FilterType::Completed => "Completed",
-            FilterType::Milestones => "Milestones",
-            FilterType::Epics => "Epics",
-            FilterType::Tasks => "Tasks",
-        }
-    }
-
-    pub fn next(&self) -> Self {
-        match self {
-            FilterType::All => FilterType::Open,
-            FilterType::Open => FilterType::InProgress,
-            FilterType::InProgress => FilterType::Completed,
-            FilterType::Completed => FilterType::Milestones,
-            FilterType::Milestones => FilterType::Epics,
-            FilterType::Epics => FilterType::Tasks,
-            FilterType::Tasks => FilterType::All,
-        }
-    }
-
-    pub fn prev(&self) -> Self {
-        match self {
-            FilterType::All => FilterType::Tasks,
-            FilterType::Open => FilterType::All,
-            FilterType::InProgress => FilterType::Open,
-            FilterType::Completed => FilterType::InProgress,
-            FilterType::Milestones => FilterType::Completed,
-            FilterType::Epics => FilterType::Milestones,
-            FilterType::Tasks => FilterType::Epics,
-        }
-    }
-}
-
 /// A node in the tree view representing a pea and its depth
 #[derive(Debug, Clone)]
 pub struct TreeNode {
@@ -101,11 +45,10 @@ pub struct App {
     pub all_peas: Vec<Pea>,
     pub filtered_peas: Vec<Pea>,
     pub tree_nodes: Vec<TreeNode>, // Flattened tree for display
-    pub selected_index: usize,
+    pub selected_index: usize,     // Global index in tree_nodes
+    pub page_height: usize,        // Number of items that fit on one page
     pub list_state: ListState,
     pub detail_scroll: u16, // Scroll offset for details view
-    pub filter: FilterType,
-    pub view_mode: ViewMode,
     pub input_mode: InputMode,
     pub search_query: String,
     pub show_help: bool,
@@ -135,10 +78,9 @@ impl App {
             filtered_peas,
             tree_nodes: Vec::new(),
             selected_index: 0,
+            page_height: 20, // Default, updated when drawing
             list_state,
             detail_scroll: 0,
-            filter: FilterType::All,
-            view_mode: ViewMode::default(),
             input_mode: InputMode::Normal,
             search_query: String::new(),
             show_help: false,
@@ -231,7 +173,10 @@ impl App {
                     });
 
                     // For children, add whether this level continues
-                    current_parent_lines.push(!is_last);
+                    // But only track continuation lines for depth > 0 (not for root items)
+                    if depth > 0 {
+                        current_parent_lines.push(!is_last);
+                    }
                     add_children(
                         Some(pea.id.clone()),
                         depth + 1,
@@ -247,25 +192,48 @@ impl App {
         add_children(None, 0, Vec::new(), &children_map, &mut self.tree_nodes);
     }
 
-    pub fn toggle_view_mode(&mut self) {
-        self.view_mode = match self.view_mode {
-            ViewMode::List => ViewMode::Tree,
-            ViewMode::Tree => ViewMode::List,
-        };
-        self.selected_index = 0;
-        self.list_state.select(if self.display_count() > 0 {
-            Some(0)
-        } else {
-            None
-        });
-    }
-
     /// Returns the number of items in the current view
     pub fn display_count(&self) -> usize {
-        match self.view_mode {
-            ViewMode::List => self.filtered_peas.len(),
-            ViewMode::Tree => self.tree_nodes.len(),
+        self.tree_nodes.len()
+    }
+
+    /// Returns the current page number (0-indexed)
+    pub fn current_page(&self) -> usize {
+        if self.page_height == 0 {
+            0
+        } else {
+            self.selected_index / self.page_height
         }
+    }
+
+    /// Returns the total number of pages
+    pub fn total_pages(&self) -> usize {
+        if self.page_height == 0 {
+            1
+        } else {
+            (self.display_count() + self.page_height - 1) / self.page_height
+        }
+    }
+
+    /// Returns the index within the current page (0-indexed)
+    pub fn index_in_page(&self) -> usize {
+        if self.page_height == 0 {
+            0
+        } else {
+            self.selected_index % self.page_height
+        }
+    }
+
+    /// Returns the start index of the current page
+    pub fn page_start(&self) -> usize {
+        self.current_page() * self.page_height
+    }
+
+    /// Returns the items for the current page
+    pub fn current_page_items(&self) -> &[TreeNode] {
+        let start = self.page_start();
+        let end = (start + self.page_height).min(self.tree_nodes.len());
+        &self.tree_nodes[start..end]
     }
 
     pub fn apply_filter(&mut self) {
@@ -273,26 +241,15 @@ impl App {
             .all_peas
             .iter()
             .filter(|p| {
-                let matches_filter = match self.filter {
-                    FilterType::All => true,
-                    FilterType::Open => p.is_open(),
-                    FilterType::InProgress => p.status == PeaStatus::InProgress,
-                    FilterType::Completed => p.status == PeaStatus::Completed,
-                    FilterType::Milestones => p.pea_type == PeaType::Milestone,
-                    FilterType::Epics => p.pea_type == PeaType::Epic,
-                    FilterType::Tasks => p.pea_type == PeaType::Task,
-                };
-
-                let matches_search = if self.search_query.is_empty() {
+                // Search filter only (filter tabs removed)
+                if self.search_query.is_empty() {
                     true
                 } else {
                     let query = self.search_query.to_lowercase();
                     p.title.to_lowercase().contains(&query)
                         || p.id.to_lowercase().contains(&query)
                         || p.body.to_lowercase().contains(&query)
-                };
-
-                matches_filter && matches_search
+                }
             })
             .cloned()
             .collect();
@@ -316,10 +273,7 @@ impl App {
     }
 
     pub fn selected_pea(&self) -> Option<&Pea> {
-        match self.view_mode {
-            ViewMode::List => self.filtered_peas.get(self.selected_index),
-            ViewMode::Tree => self.tree_nodes.get(self.selected_index).map(|n| &n.pea),
-        }
+        self.tree_nodes.get(self.selected_index).map(|n| &n.pea)
     }
 
     pub fn selected_pea_file_path(&self) -> Option<PathBuf> {
@@ -330,22 +284,69 @@ impl App {
     pub fn next(&mut self) {
         let count = self.display_count();
         if count > 0 {
-            self.selected_index = (self.selected_index + 1) % count;
-            self.list_state.select(Some(self.selected_index));
-            self.detail_scroll = 0; // Reset scroll when changing selection
+            if self.selected_index + 1 < count {
+                self.selected_index += 1;
+            }
+            // list_state selection is relative to the current page
+            self.list_state.select(Some(self.index_in_page()));
+            self.detail_scroll = 0;
         }
     }
 
     pub fn previous(&mut self) {
+        if self.display_count() > 0 && self.selected_index > 0 {
+            self.selected_index -= 1;
+            self.list_state.select(Some(self.index_in_page()));
+            self.detail_scroll = 0;
+        }
+    }
+
+    /// Jump to next page
+    pub fn next_page(&mut self) {
+        let count = self.display_count();
+        if count > 0 && self.page_height > 0 {
+            let next_page_start = (self.current_page() + 1) * self.page_height;
+            if next_page_start < count {
+                self.selected_index = next_page_start;
+            } else {
+                // Go to last item if no more pages
+                self.selected_index = count - 1;
+            }
+            self.list_state.select(Some(self.index_in_page()));
+            self.detail_scroll = 0;
+        }
+    }
+
+    /// Jump to previous page
+    pub fn previous_page(&mut self) {
+        if self.display_count() > 0 && self.page_height > 0 {
+            let current_page = self.current_page();
+            if current_page > 0 {
+                self.selected_index = (current_page - 1) * self.page_height;
+            } else {
+                self.selected_index = 0;
+            }
+            self.list_state.select(Some(self.index_in_page()));
+            self.detail_scroll = 0;
+        }
+    }
+
+    /// Jump to first item
+    pub fn first(&mut self) {
+        if self.display_count() > 0 {
+            self.selected_index = 0;
+            self.list_state.select(Some(0));
+            self.detail_scroll = 0;
+        }
+    }
+
+    /// Jump to last item
+    pub fn last(&mut self) {
         let count = self.display_count();
         if count > 0 {
-            self.selected_index = if self.selected_index == 0 {
-                count - 1
-            } else {
-                self.selected_index - 1
-            };
-            self.list_state.select(Some(self.selected_index));
-            self.detail_scroll = 0; // Reset scroll when changing selection
+            self.selected_index = count - 1;
+            self.list_state.select(Some(self.index_in_page()));
+            self.detail_scroll = 0;
         }
     }
 
@@ -355,16 +356,6 @@ impl App {
 
     pub fn scroll_detail_up(&mut self) {
         self.detail_scroll = self.detail_scroll.saturating_sub(1);
-    }
-
-    pub fn next_filter(&mut self) {
-        self.filter = self.filter.next();
-        self.apply_filter();
-    }
-
-    pub fn prev_filter(&mut self) {
-        self.filter = self.filter.prev();
-        self.apply_filter();
     }
 
     pub fn toggle_status(&mut self) -> Result<()> {
@@ -769,18 +760,12 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Down | KeyCode::Char('j') => app.next(),
                     KeyCode::Up | KeyCode::Char('k') => app.previous(),
-                    KeyCode::Tab => app.next_filter(),
-                    KeyCode::BackTab => app.prev_filter(),
+                    KeyCode::Right | KeyCode::PageDown | KeyCode::Char('J') => app.next_page(),
+                    KeyCode::Left | KeyCode::PageUp | KeyCode::Char('K') => app.previous_page(),
+                    KeyCode::Home | KeyCode::Char('g') => app.first(),
+                    KeyCode::End | KeyCode::Char('G') => app.last(),
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::Filter;
-                    }
-                    KeyCode::Char('v') => {
-                        app.toggle_view_mode();
-                        let mode_name = match app.view_mode {
-                            ViewMode::List => "List",
-                            ViewMode::Tree => "Tree",
-                        };
-                        app.message = Some(format!("{} view", mode_name));
                     }
                     KeyCode::Enter => {
                         // Open full-screen detail view
@@ -870,18 +855,6 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                                     app.message = Some(format!("Failed to open editor: {}", e));
                                 }
                             }
-                        }
-                    }
-                    KeyCode::Char('J') => app.scroll_detail_down(),
-                    KeyCode::Char('K') => app.scroll_detail_up(),
-                    KeyCode::PageDown => {
-                        for _ in 0..5 {
-                            app.scroll_detail_down();
-                        }
-                    }
-                    KeyCode::PageUp => {
-                        for _ in 0..5 {
-                            app.scroll_detail_up();
                         }
                     }
                     _ => {}

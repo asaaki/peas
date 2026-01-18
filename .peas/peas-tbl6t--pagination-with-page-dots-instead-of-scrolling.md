@@ -2,11 +2,11 @@
 id = "peas-tbl6t"
 title = "Pagination with page dots instead of scrolling"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-7z7f5"
 created = "2026-01-18T19:30:03.886585200Z"
-updated = "2026-01-18T19:30:03.886585200Z"
+updated = "2026-01-18T21:31:16.316004100Z"
 +++
 
 Replace scrolling list with pagination and page indicator dots.

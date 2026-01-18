@@ -1,4 +1,4 @@
-use super::app::{App, FilterType, InputMode, ViewMode};
+use super::app::{App, InputMode};
 use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
     Frame,
@@ -6,13 +6,13 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols::border,
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Wrap},
 };
 
 /// Returns priority indicator and color for a pea
 fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
     match pea.priority {
-        PeaPriority::Critical => Some(("!!".to_string(), Color::Red)),
+        PeaPriority::Critical => Some(("‼".to_string(), Color::Red)), // U+203C double exclamation
         PeaPriority::High => Some(("!".to_string(), Color::LightRed)),
         PeaPriority::Normal => None, // No indicator for normal
         PeaPriority::Low => Some(("↓".to_string(), Color::DarkGray)),
@@ -20,28 +20,14 @@ fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
     }
 }
 
-/// Returns type indicator character and color
-fn type_indicator(pea_type: &PeaType) -> (&'static str, Color) {
-    match pea_type {
-        PeaType::Milestone => ("M", Color::Magenta),
-        PeaType::Epic => ("E", Color::Blue),
-        PeaType::Story => ("S", Color::Cyan),
-        PeaType::Feature => ("F", Color::Cyan),
-        PeaType::Bug => ("B", Color::Red),
-        PeaType::Chore => ("C", Color::Yellow),
-        PeaType::Research => ("R", Color::LightMagenta),
-        PeaType::Task => ("T", Color::White),
-    }
-}
-
 /// Returns status icon and color
 fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
     match status {
         PeaStatus::Draft => ("○", Color::DarkGray),
-        PeaStatus::Todo => ("○", Color::White),
+        PeaStatus::Todo => ("○", Color::Green), // Green for open work
         PeaStatus::InProgress => ("◐", Color::Yellow),
-        PeaStatus::Completed => ("●", Color::Green),
-        PeaStatus::Scrapped => ("✗", Color::Red),
+        PeaStatus::Completed => ("●", Color::DarkGray), // Gray for completed (de-emphasized)
+        PeaStatus::Scrapped => ("✗", Color::DarkGray),
     }
 }
 
@@ -231,30 +217,26 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(2), // Header
                 Constraint::Min(0),    // Full detail
-                Constraint::Length(2), // Footer (keybindings only)
+                Constraint::Length(1), // Footer (keybindings only)
             ])
             .split(f.area());
 
-        draw_header(f, app, chunks[0]);
-        draw_detail_fullscreen(f, app, chunks[1], app.detail_scroll);
-        draw_footer(f, app, chunks[2]);
+        draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll);
+        draw_footer(f, app, chunks[1]);
         return;
     }
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(2), // Header (smaller now)
-            Constraint::Min(0),    // Main content
-            Constraint::Length(4), // Footer (2 rows: filters + keybindings)
+            Constraint::Min(0),    // Main content (tree view)
+            Constraint::Length(1), // Footer (keybindings only)
         ])
         .split(f.area());
 
-    draw_header(f, app, chunks[0]);
-    draw_main(f, app, chunks[1]);
-    draw_footer(f, app, chunks[2]);
+    draw_tree(f, app, chunks[0]);
+    draw_footer(f, app, chunks[1]);
 
     if app.show_help {
         draw_help_popup(f);
@@ -273,230 +255,193 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     }
 }
 
-fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let mut header_spans = vec![Span::styled(
-        " peas ",
-        Style::default()
-            .fg(Color::Green)
-            .add_modifier(Modifier::BOLD),
-    )];
-
-    // Show view mode indicator
-    let view_mode_label = match app.view_mode {
-        ViewMode::List => "List",
-        ViewMode::Tree => "Tree",
-    };
-    header_spans.push(Span::raw(" | "));
-    header_spans.push(Span::styled(
-        format!(" {} ", view_mode_label),
-        Style::default().fg(Color::Cyan),
-    ));
-
-    if !app.search_query.is_empty() {
-        header_spans.push(Span::raw(" | "));
-        header_spans.push(Span::styled(
-            format!("/{}", app.search_query),
-            Style::default().fg(Color::Yellow),
-        ));
-    }
-
-    let header =
-        Paragraph::new(Line::from(header_spans)).block(Block::default().borders(Borders::BOTTOM));
-
-    f.render_widget(header, area);
-}
-
-fn draw_main(f: &mut Frame, app: &mut App, area: Rect) {
-    // Full-width single pane view (beans-style)
-    match app.view_mode {
-        ViewMode::List => draw_list(f, app, area),
-        ViewMode::Tree => draw_tree(f, app, area),
-    }
-}
-
-fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
-    // Calculate available width for title (area width minus borders and prefix)
-    // Prefix is: "▌○ [T] !! peas-xxxxx " = ~23 chars (with priority and selection bar)
-    let prefix_len = 23;
-    let available_width = area.width.saturating_sub(2 + prefix_len) as usize; // 2 for borders
-    let selected_idx = app.list_state.selected().unwrap_or(usize::MAX);
-
-    let items: Vec<ListItem> = app
-        .filtered_peas
-        .iter()
-        .enumerate()
-        .map(|(idx, pea)| {
-            let is_selected = idx == selected_idx;
-            let (status_icon, status_color) = status_indicator(&pea.status);
-            let (type_ind, type_color) = type_indicator(&pea.pea_type);
-
-            // Selection indicator: bar for selected, space otherwise
-            let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(Color::Cyan))
-            } else {
-                Span::raw(" ")
-            };
-
-            // Truncate title with ellipsis if too long
-            let title = if pea.title.len() > available_width && available_width > 3 {
-                format!("{}...", &pea.title[..available_width - 3])
-            } else {
-                pea.title.clone()
-            };
-
-            let mut spans = vec![
-                selection_indicator,
-                Span::styled(
-                    format!("{} ", status_icon),
-                    Style::default().fg(status_color),
-                ),
-                Span::styled(format!("[{}]", type_ind), Style::default().fg(type_color)),
-            ];
-
-            // Add priority indicator if not normal
-            if let Some((pri_ind, pri_color)) = priority_indicator(pea) {
-                spans.push(Span::styled(
-                    format!("{}", pri_ind),
-                    Style::default().fg(pri_color),
-                ));
-            }
-
-            spans.push(Span::raw(" "));
-            spans.push(Span::styled(&pea.id, Style::default().fg(Color::Cyan)));
-            spans.push(Span::raw(" "));
-
-            // Make selected row bold
-            if is_selected {
-                spans.push(Span::styled(
-                    title,
-                    Style::default().add_modifier(Modifier::BOLD),
-                ));
-            } else {
-                spans.push(Span::raw(title));
-            }
-
-            ListItem::new(Line::from(spans))
-        })
-        .collect();
-
-    let title = format!(" Peas ({}) ", app.filtered_peas.len());
-    let list = List::new(items).block(
-        Block::default()
-            .title(title)
-            .borders(Borders::ALL)
-            .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Cyan)),
-    );
-
-    f.render_stateful_widget(list, area, &mut app.list_state);
-}
-
 fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
-    let selected_idx = app.list_state.selected().unwrap_or(usize::MAX);
+    // First pass: calculate page height without page dots to determine if we need them
+    let base_page_height = area.height.saturating_sub(2) as usize;
+    let item_count = app.tree_nodes.len();
+    let needs_page_dots = item_count > base_page_height;
 
-    // Column widths for beans-style layout
-    // Format: ▌prefix+id        type        status        priority+title
-    let id_col_width = 18; // peas-xxxxx with some tree prefix space
-    let type_col_width = 12;
-    let status_col_width = 14;
+    // If we need page dots, reduce available height by 2 (empty line + dots line)
+    let page_height = if needs_page_dots {
+        area.height.saturating_sub(4) as usize
+    } else {
+        base_page_height
+    };
+    app.page_height = page_height.max(1);
 
-    let items: Vec<ListItem> = app
-        .tree_nodes
+    // Get the index within the current page for highlighting
+    let index_in_page = app.index_in_page();
+
+    // Only render items for the current page
+    let page_items = app.current_page_items();
+    let rows: Vec<Row> = page_items
         .iter()
         .enumerate()
         .map(|(idx, node)| {
             let pea = &node.pea;
-            let is_selected = idx == selected_idx;
-            let (_, status_color) = status_indicator(&pea.status);
+            let is_selected = idx == index_in_page;
+            let (status_icon, status_color) = status_indicator(&pea.status);
+            let pea_type_color = type_color(&pea.pea_type);
 
-            // Selection indicator: bar for selected, space otherwise
-            let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(Color::Cyan))
-            } else {
-                Span::raw(" ")
-            };
-
-            // Build the tree prefix with ASCII art
+            // Build the tree prefix with rounded corners
             let mut prefix = String::new();
             for &has_line in &node.parent_lines {
                 if has_line {
-                    prefix.push_str("│ ");
+                    prefix.push_str("│  ");
                 } else {
-                    prefix.push_str("  ");
+                    prefix.push_str("   ");
                 }
             }
-
-            // Add the branch connector for this node
             if node.depth > 0 {
                 if node.is_last {
-                    prefix.push_str("└─");
+                    prefix.push_str("╰─ ");
                 } else {
-                    prefix.push_str("├─");
+                    prefix.push_str("├─ ");
                 }
             }
 
-            // Column 1: tree prefix + ID (padded to fixed width)
-            let prefix_and_id = format!("{}{}", prefix, pea.id);
-            let col1 = format!("{:<width$}", prefix_and_id, width = id_col_width);
-
-            // Column 2: type (padded)
-            let type_str = format!("{}", pea.pea_type);
-            let col2 = format!("{:<width$}", type_str, width = type_col_width);
-
-            // Column 3: status (padded)
-            let status_str = format!("{}", pea.status);
-            let col3 = format!("{:<width$}", status_str, width = status_col_width);
-
-            // Calculate available width for title
-            let fixed_cols = id_col_width + type_col_width + status_col_width + 5; // 5 for spacing and borders
-            let available_width = area.width.saturating_sub(fixed_cols as u16) as usize;
-
-            let title = if pea.title.len() > available_width && available_width > 3 {
-                format!("{}...", &pea.title[..available_width - 3])
+            // Selection indicator (green, blinking)
+            let sel = if is_selected { "▌" } else { " " };
+            let sel_style = if is_selected {
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::SLOW_BLINK)
             } else {
-                pea.title.clone()
+                Style::default()
             };
 
-            // Build spans with columnar layout
-            let mut spans = vec![
-                selection_indicator,
-                Span::styled(col1, Style::default().fg(Color::Cyan)),
-                Span::styled(col2, Style::default().fg(type_color(&pea.pea_type))),
-                Span::styled(col3, Style::default().fg(status_color)),
-            ];
-
-            // Add priority indicator if not normal
-            if let Some((pri_ind, pri_color)) = priority_indicator(pea) {
-                spans.push(Span::styled(
-                    format!("{} ", pri_ind),
-                    Style::default().fg(pri_color),
-                ));
-            }
-
-            // Make selected row bold
-            if is_selected {
-                spans.push(Span::styled(
-                    title,
-                    Style::default().add_modifier(Modifier::BOLD),
-                ));
+            // Priority indicator
+            let pri = if let Some((ind, _)) = priority_indicator(pea) {
+                ind
             } else {
-                spans.push(Span::raw(title));
-            }
+                String::new()
+            };
+            let pri_color = priority_indicator(pea)
+                .map(|(_, c)| c)
+                .unwrap_or(Color::Reset);
 
-            ListItem::new(Line::from(spans))
+            // Title style
+            let title_style = if is_selected {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            // Tree + ID combined in one cell (so tree connects to ID visually)
+            // ID is bold and bright green when selected
+            let id_style = if is_selected {
+                Style::default()
+                    .fg(Color::LightGreen)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Green)
+            };
+            let tree_and_id = Line::from(vec![
+                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(pea.id.clone(), id_style),
+            ]);
+
+            // Type and status styles (bold when selected)
+            let type_style = if is_selected {
+                Style::default()
+                    .fg(pea_type_color)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(pea_type_color)
+            };
+            let status_style = if is_selected {
+                Style::default()
+                    .fg(status_color)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(status_color)
+            };
+
+            // Build cells for each column
+            Row::new(vec![
+                Cell::from(sel).style(sel_style),
+                Cell::from(tree_and_id),
+                Cell::from(format!("{}", pea.pea_type)).style(type_style),
+                Cell::from(format!("{} {}", status_icon, pea.status)).style(status_style),
+                Cell::from(pri).style(Style::default().fg(pri_color)),
+                Cell::from(pea.title.clone()).style(title_style),
+            ])
         })
         .collect();
 
-    let title = format!(" Tree ({}) ", app.tree_nodes.len());
-    let list = List::new(items).block(
-        Block::default()
-            .title(title)
-            .borders(Borders::ALL)
-            .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Cyan)),
-    );
+    // Title shows count only
+    let title = format!(" peas ({}) ", app.tree_nodes.len());
 
-    f.render_stateful_widget(list, area, &mut app.list_state);
+    // Page dots for bottom of panel (recalculate after page_height is set)
+    let total_pages = app.total_pages();
+    let current_page = app.current_page();
+
+    // Define column widths:
+    // sel(1), tree+id(32), type(12), status(14), priority(1), title(fill)
+    let widths = [
+        Constraint::Length(1),  // Selection indicator
+        Constraint::Length(20), // Tree prefix + ID combined
+        Constraint::Length(12), // Type
+        Constraint::Length(14), // Status (icon + text)
+        Constraint::Length(1),  // Priority (single char)
+        Constraint::Fill(1),    // Title (fills remaining space)
+    ];
+
+    // Render the outer block first and get inner area
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(Color::Gray));
+    let inner_area = block.inner(area);
+    f.render_widget(block, area);
+
+    // Split inner area if we need page dots (with empty line above)
+    let (table_area, page_dots_area) = if needs_page_dots {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),    // Table rows
+                Constraint::Length(2), // Empty line + page dots line
+            ])
+            .split(inner_area);
+        // Offset the dots area by 1 to leave empty line, and 1 space padding on left
+        let dots_area = Rect {
+            x: chunks[1].x + 1,
+            y: chunks[1].y + 1,
+            width: chunks[1].width.saturating_sub(1),
+            height: 1,
+        };
+        (chunks[0], Some(dots_area))
+    } else {
+        (inner_area, None)
+    };
+
+    // Table without its own block (we already rendered the outer block)
+    let table = Table::new(rows, widths)
+        .column_spacing(1)
+        .row_highlight_style(Style::default());
+
+    // Use a fresh table state for page-local selection
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(index_in_page));
+    f.render_stateful_widget(table, table_area, &mut table_state);
+
+    // Render page dots inside panel if needed
+    if let Some(dots_area) = page_dots_area {
+        let dots: Vec<Span> = (0..total_pages)
+            .map(|i| {
+                if i == current_page {
+                    Span::styled("•", Style::default().fg(Color::White))
+                } else {
+                    Span::styled("•", Style::default().fg(Color::DarkGray))
+                }
+            })
+            .collect();
+        let dots_line = Line::from(dots);
+        let dots_paragraph = Paragraph::new(dots_line);
+        f.render_widget(dots_paragraph, dots_area);
+    }
 }
 
 /// Get color for type (without the indicator character)
@@ -725,54 +670,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
-    let footer_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1), // Filter tabs
-            Constraint::Length(1), // Separator
-            Constraint::Length(1), // Keybindings
-        ])
-        .split(area);
-
-    // Draw filter tabs
-    let filter_spans: Vec<Span> = [
-        FilterType::All,
-        FilterType::Open,
-        FilterType::InProgress,
-        FilterType::Completed,
-        FilterType::Milestones,
-        FilterType::Epics,
-        FilterType::Tasks,
-    ]
-    .iter()
-    .map(|ft| {
-        let style = if *ft == app.filter {
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        Span::styled(format!(" {} ", ft.label()), style)
-    })
-    .collect();
-
-    let mut filter_line = vec![Span::styled(
-        " Filter: ",
-        Style::default().fg(Color::DarkGray),
-    )];
-    filter_line.extend(filter_spans);
-
-    let filter_bar = Paragraph::new(Line::from(filter_line));
-    f.render_widget(filter_bar, footer_chunks[0]);
-
-    // Draw separator
-    let separator = Paragraph::new(Line::from("─".repeat(area.width as usize)))
-        .style(Style::default().fg(Color::DarkGray));
-    f.render_widget(separator, footer_chunks[1]);
-
-    // Draw keybindings row
+    // Mode indicator
     let mode_indicator = match app.input_mode {
         InputMode::Normal => Span::styled(
             " NORMAL ",
@@ -817,7 +715,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " j/k:nav  /:search  v:view  s:status  t:type  P:priority  d:delete  e:edit  y:copy  ?:help  q:quit "
+            " ↑↓:nav  ←→:page  g/G:first/last  /:search  c:create  s:status  e:edit  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
         InputMode::StatusModal
@@ -848,7 +746,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     ));
 
     let keybindings = Paragraph::new(Line::from(footer_spans));
-    f.render_widget(keybindings, footer_chunks[2]);
+    f.render_widget(keybindings, area);
 }
 
 /// Get color for priority
@@ -1284,61 +1182,87 @@ fn draw_help_popup(f: &mut Frame) {
             Style::default().add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
+        Line::from(Span::styled(
+            "Navigation",
+            Style::default().add_modifier(Modifier::UNDERLINED),
+        )),
         Line::from(vec![
-            Span::styled("j/↓     ", Style::default().fg(Color::Cyan)),
-            Span::raw("Move down"),
+            Span::styled("↑/↓     ", Style::default().fg(Color::Cyan)),
+            Span::raw("Move up/down"),
         ]),
         Line::from(vec![
-            Span::styled("k/↑     ", Style::default().fg(Color::Cyan)),
-            Span::raw("Move up"),
+            Span::styled("←/→     ", Style::default().fg(Color::Cyan)),
+            Span::raw("Prev/next page"),
         ]),
         Line::from(vec![
-            Span::styled("J       ", Style::default().fg(Color::Cyan)),
-            Span::raw("Scroll details down"),
+            Span::styled("g/G     ", Style::default().fg(Color::Cyan)),
+            Span::raw("First/last item"),
         ]),
         Line::from(vec![
-            Span::styled("K       ", Style::default().fg(Color::Cyan)),
-            Span::raw("Scroll details up"),
-        ]),
-        Line::from(vec![
-            Span::styled("Tab     ", Style::default().fg(Color::Cyan)),
-            Span::raw("Next filter"),
-        ]),
-        Line::from(vec![
-            Span::styled("S-Tab   ", Style::default().fg(Color::Cyan)),
-            Span::raw("Previous filter"),
+            Span::styled("Enter   ", Style::default().fg(Color::Cyan)),
+            Span::raw("Open detail view"),
         ]),
         Line::from(vec![
             Span::styled("/       ", Style::default().fg(Color::Cyan)),
             Span::raw("Search"),
         ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Actions",
+            Style::default().add_modifier(Modifier::UNDERLINED),
+        )),
         Line::from(vec![
-            Span::styled("t/l     ", Style::default().fg(Color::Cyan)),
-            Span::raw("Toggle tree/list view"),
-        ]),
-        Line::from(vec![
-            Span::styled("Space   ", Style::default().fg(Color::Cyan)),
-            Span::raw("Toggle status (todo -> in-progress -> completed)"),
+            Span::styled("c       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Create new ticket"),
         ]),
         Line::from(vec![
             Span::styled("s       ", Style::default().fg(Color::Cyan)),
-            Span::raw("Start (set to in-progress)"),
+            Span::raw("Change status"),
+        ]),
+        Line::from(vec![
+            Span::styled("t       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Change type"),
+        ]),
+        Line::from(vec![
+            Span::styled("P       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Change priority"),
+        ]),
+        Line::from(vec![
+            Span::styled("p       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Set parent"),
+        ]),
+        Line::from(vec![
+            Span::styled("b       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Set blocking tickets"),
+        ]),
+        Line::from(vec![
+            Span::styled("Space   ", Style::default().fg(Color::Cyan)),
+            Span::raw("Quick toggle status"),
+        ]),
+        Line::from(vec![
+            Span::styled("e       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Edit in $EDITOR"),
         ]),
         Line::from(vec![
             Span::styled("d       ", Style::default().fg(Color::Cyan)),
-            Span::raw("Done (set to completed)"),
+            Span::raw("Delete ticket"),
+        ]),
+        Line::from(vec![
+            Span::styled("y       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Copy ID to clipboard"),
         ]),
         Line::from(vec![
             Span::styled("r       ", Style::default().fg(Color::Cyan)),
             Span::raw("Refresh list"),
         ]),
+        Line::from(""),
         Line::from(vec![
             Span::styled("?       ", Style::default().fg(Color::Cyan)),
             Span::raw("Toggle help"),
         ]),
         Line::from(vec![
             Span::styled("Esc     ", Style::default().fg(Color::Cyan)),
-            Span::raw("Clear search / Close help"),
+            Span::raw("Close / Cancel"),
         ]),
         Line::from(vec![
             Span::styled("q       ", Style::default().fg(Color::Cyan)),
