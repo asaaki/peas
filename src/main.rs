@@ -190,22 +190,34 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Commands::Archive { id } => {
+        Commands::Archive { id, json } => {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
+            let pea = repo.get(&id)?;
             let path = repo.archive(&id)?;
             let filename = path
                 .file_name()
                 .map(|f| f.to_string_lossy())
                 .unwrap_or_default();
-            println!("{} {} -> {}", "Archived".yellow(), id.cyan(), filename);
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "action": "archived",
+                        "id": id,
+                        "pea": pea
+                    }))?
+                );
+            } else {
+                println!("{} {} -> {}", "Archived".yellow(), id.cyan(), filename);
+            }
             Ok(())
         }
-        Commands::Delete { id, force } => {
+        Commands::Delete { id, force, json } => {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
 
-            if !force {
+            if !force && !json {
                 print!("Delete {} permanently? [y/N] ", id.cyan());
                 io::stdout().flush()?;
                 let mut input = String::new();
@@ -217,7 +229,17 @@ fn main() -> Result<()> {
             }
 
             repo.delete(&id)?;
-            println!("{} {}", "Deleted".red(), id.cyan());
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "action": "deleted",
+                        "id": id
+                    }))?
+                );
+            } else {
+                println!("{} {}", "Deleted".red(), id.cyan());
+            }
             Ok(())
         }
         Commands::Search { query, json } => {
@@ -243,34 +265,42 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Commands::Start { id } => {
+        Commands::Start { id, json } => {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
             pea.status = PeaStatus::InProgress;
             pea.touch();
             repo.update(&pea)?;
-            println!(
-                "{} {} is now {}",
-                "Started".green(),
-                pea.id.cyan(),
-                "in-progress".yellow()
-            );
+            if json {
+                println!("{}", serde_json::to_string_pretty(&pea)?);
+            } else {
+                println!(
+                    "{} {} is now {}",
+                    "Started".green(),
+                    pea.id.cyan(),
+                    "in-progress".yellow()
+                );
+            }
             Ok(())
         }
-        Commands::Done { id } => {
+        Commands::Done { id, json } => {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
             pea.status = PeaStatus::Completed;
             pea.touch();
             repo.update(&pea)?;
-            println!(
-                "{} {} is now {}",
-                "Done".green(),
-                pea.id.cyan(),
-                "completed".green()
-            );
+            if json {
+                println!("{}", serde_json::to_string_pretty(&pea)?);
+            } else {
+                println!(
+                    "{} {} is now {}",
+                    "Done".green(),
+                    pea.id.cyan(),
+                    "completed".green()
+                );
+            }
             Ok(())
         }
         Commands::Prime => {
@@ -283,6 +313,12 @@ fn main() -> Result<()> {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             print_context(&repo)?;
+            Ok(())
+        }
+        Commands::Suggest { json } => {
+            let (config, root) = load()?;
+            let repo = PeaRepository::new(&config, &root);
+            suggest_next(&repo, json)?;
             Ok(())
         }
         Commands::Roadmap => {
@@ -411,87 +447,154 @@ fn main() -> Result<()> {
             let repo = PeaRepository::new(&config, &root);
 
             match action {
-                BulkAction::Status { status, ids } => {
+                BulkAction::Status { status, ids, json } => {
                     let new_status: PeaStatus = status.into();
-                    let mut updated = 0;
-                    let mut errors = 0;
+                    let mut updated_peas = Vec::new();
+                    let mut errors_list: Vec<serde_json::Value> = Vec::new();
                     for id in &ids {
                         match repo.get(id) {
                             Ok(mut pea) => {
                                 pea.status = new_status;
                                 pea.touch();
                                 if let Err(e) = repo.update(&pea) {
-                                    eprintln!("{} {}: {}", "Error".red(), id, e);
-                                    errors += 1;
-                                } else {
-                                    println!(
-                                        "{} {} -> {}",
-                                        "Updated".green(),
-                                        id.cyan(),
-                                        new_status
+                                    if !json {
+                                        eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    }
+                                    errors_list.push(
+                                        serde_json::json!({"id": id, "error": e.to_string()}),
                                     );
-                                    updated += 1;
+                                } else {
+                                    if !json {
+                                        println!(
+                                            "{} {} -> {}",
+                                            "Updated".green(),
+                                            id.cyan(),
+                                            new_status
+                                        );
+                                    }
+                                    updated_peas.push(pea);
                                 }
                             }
                             Err(e) => {
-                                eprintln!("{} {}: {}", "Error".red(), id, e);
-                                errors += 1;
+                                if !json {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                }
+                                errors_list
+                                    .push(serde_json::json!({"id": id, "error": e.to_string()}));
                             }
                         }
                     }
-                    println!("\nUpdated {} peas, {} errors", updated, errors);
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({"updated": updated_peas, "errors": errors_list})
+                            )?
+                        );
+                    } else {
+                        println!(
+                            "\nUpdated {} peas, {} errors",
+                            updated_peas.len(),
+                            errors_list.len()
+                        );
+                    }
                 }
-                BulkAction::Start { ids } => {
-                    let mut updated = 0;
-                    let mut errors = 0;
+                BulkAction::Start { ids, json } => {
+                    let mut updated_peas = Vec::new();
+                    let mut errors_list: Vec<serde_json::Value> = Vec::new();
                     for id in &ids {
                         match repo.get(id) {
                             Ok(mut pea) => {
                                 pea.status = PeaStatus::InProgress;
                                 pea.touch();
                                 if let Err(e) = repo.update(&pea) {
-                                    eprintln!("{} {}: {}", "Error".red(), id, e);
-                                    errors += 1;
+                                    if !json {
+                                        eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    }
+                                    errors_list.push(
+                                        serde_json::json!({"id": id, "error": e.to_string()}),
+                                    );
                                 } else {
-                                    println!("{} {}", "Started".green(), id.cyan());
-                                    updated += 1;
+                                    if !json {
+                                        println!("{} {}", "Started".green(), id.cyan());
+                                    }
+                                    updated_peas.push(pea);
                                 }
                             }
                             Err(e) => {
-                                eprintln!("{} {}: {}", "Error".red(), id, e);
-                                errors += 1;
+                                if !json {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                }
+                                errors_list
+                                    .push(serde_json::json!({"id": id, "error": e.to_string()}));
                             }
                         }
                     }
-                    println!("\nStarted {} peas, {} errors", updated, errors);
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({"updated": updated_peas, "errors": errors_list})
+                            )?
+                        );
+                    } else {
+                        println!(
+                            "\nStarted {} peas, {} errors",
+                            updated_peas.len(),
+                            errors_list.len()
+                        );
+                    }
                 }
-                BulkAction::Done { ids } => {
-                    let mut updated = 0;
-                    let mut errors = 0;
+                BulkAction::Done { ids, json } => {
+                    let mut updated_peas = Vec::new();
+                    let mut errors_list: Vec<serde_json::Value> = Vec::new();
                     for id in &ids {
                         match repo.get(id) {
                             Ok(mut pea) => {
                                 pea.status = PeaStatus::Completed;
                                 pea.touch();
                                 if let Err(e) = repo.update(&pea) {
-                                    eprintln!("{} {}: {}", "Error".red(), id, e);
-                                    errors += 1;
+                                    if !json {
+                                        eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    }
+                                    errors_list.push(
+                                        serde_json::json!({"id": id, "error": e.to_string()}),
+                                    );
                                 } else {
-                                    println!("{} {}", "Completed".green(), id.cyan());
-                                    updated += 1;
+                                    if !json {
+                                        println!("{} {}", "Completed".green(), id.cyan());
+                                    }
+                                    updated_peas.push(pea);
                                 }
                             }
                             Err(e) => {
-                                eprintln!("{} {}: {}", "Error".red(), id, e);
-                                errors += 1;
+                                if !json {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                }
+                                errors_list
+                                    .push(serde_json::json!({"id": id, "error": e.to_string()}));
                             }
                         }
                     }
-                    println!("\nCompleted {} peas, {} errors", updated, errors);
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({"updated": updated_peas, "errors": errors_list})
+                            )?
+                        );
+                    } else {
+                        println!(
+                            "\nCompleted {} peas, {} errors",
+                            updated_peas.len(),
+                            errors_list.len()
+                        );
+                    }
                 }
-                BulkAction::Tag { tag, ids } => {
-                    let mut updated = 0;
-                    let mut errors = 0;
+                BulkAction::Tag { tag, ids, json } => {
+                    let mut updated_peas = Vec::new();
+                    let mut errors_list: Vec<serde_json::Value> = Vec::new();
+                    let mut skipped = 0;
                     for id in &ids {
                         match repo.get(id) {
                             Ok(mut pea) => {
@@ -499,61 +602,109 @@ fn main() -> Result<()> {
                                     pea.tags.push(tag.clone());
                                     pea.touch();
                                     if let Err(e) = repo.update(&pea) {
-                                        eprintln!("{} {}: {}", "Error".red(), id, e);
-                                        errors += 1;
-                                    } else {
-                                        println!(
-                                            "{} {} +{}",
-                                            "Tagged".green(),
-                                            id.cyan(),
-                                            tag.magenta()
+                                        if !json {
+                                            eprintln!("{} {}: {}", "Error".red(), id, e);
+                                        }
+                                        errors_list.push(
+                                            serde_json::json!({"id": id, "error": e.to_string()}),
                                         );
-                                        updated += 1;
+                                    } else {
+                                        if !json {
+                                            println!(
+                                                "{} {} +{}",
+                                                "Tagged".green(),
+                                                id.cyan(),
+                                                tag.magenta()
+                                            );
+                                        }
+                                        updated_peas.push(pea);
                                     }
                                 } else {
-                                    println!(
-                                        "{} {} (already has tag)",
-                                        "Skipped".yellow(),
-                                        id.cyan()
-                                    );
+                                    if !json {
+                                        println!(
+                                            "{} {} (already has tag)",
+                                            "Skipped".yellow(),
+                                            id.cyan()
+                                        );
+                                    }
+                                    skipped += 1;
                                 }
                             }
                             Err(e) => {
-                                eprintln!("{} {}: {}", "Error".red(), id, e);
-                                errors += 1;
+                                if !json {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                }
+                                errors_list
+                                    .push(serde_json::json!({"id": id, "error": e.to_string()}));
                             }
                         }
                     }
-                    println!("\nTagged {} peas, {} errors", updated, errors);
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({"updated": updated_peas, "skipped": skipped, "errors": errors_list})
+                            )?
+                        );
+                    } else {
+                        println!(
+                            "\nTagged {} peas, {} skipped, {} errors",
+                            updated_peas.len(),
+                            skipped,
+                            errors_list.len()
+                        );
+                    }
                 }
-                BulkAction::Parent { parent, ids } => {
-                    let mut updated = 0;
-                    let mut errors = 0;
+                BulkAction::Parent { parent, ids, json } => {
+                    let mut updated_peas = Vec::new();
+                    let mut errors_list: Vec<serde_json::Value> = Vec::new();
                     for id in &ids {
                         match repo.get(id) {
                             Ok(mut pea) => {
                                 pea.parent = Some(parent.clone());
                                 pea.touch();
                                 if let Err(e) = repo.update(&pea) {
-                                    eprintln!("{} {}: {}", "Error".red(), id, e);
-                                    errors += 1;
-                                } else {
-                                    println!(
-                                        "{} {} -> parent: {}",
-                                        "Updated".green(),
-                                        id.cyan(),
-                                        parent.cyan()
+                                    if !json {
+                                        eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    }
+                                    errors_list.push(
+                                        serde_json::json!({"id": id, "error": e.to_string()}),
                                     );
-                                    updated += 1;
+                                } else {
+                                    if !json {
+                                        println!(
+                                            "{} {} -> parent: {}",
+                                            "Updated".green(),
+                                            id.cyan(),
+                                            parent.cyan()
+                                        );
+                                    }
+                                    updated_peas.push(pea);
                                 }
                             }
                             Err(e) => {
-                                eprintln!("{} {}: {}", "Error".red(), id, e);
-                                errors += 1;
+                                if !json {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                }
+                                errors_list
+                                    .push(serde_json::json!({"id": id, "error": e.to_string()}));
                             }
                         }
                     }
-                    println!("\nUpdated {} peas, {} errors", updated, errors);
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({"updated": updated_peas, "errors": errors_list})
+                            )?
+                        );
+                    } else {
+                        println!(
+                            "\nUpdated {} peas, {} errors",
+                            updated_peas.len(),
+                            errors_list.len()
+                        );
+                    }
                 }
             }
             Ok(())
@@ -815,6 +966,98 @@ fn print_context(repo: &PeaRepository) -> Result<()> {
     });
 
     println!("{}", serde_json::to_string_pretty(&context)?);
+    Ok(())
+}
+
+fn suggest_next(repo: &PeaRepository, json: bool) -> Result<()> {
+    use peas::model::{PeaPriority, PeaType};
+
+    let peas = repo.list()?;
+
+    // Filter to open, actionable items (not milestones/epics which are containers)
+    let mut candidates: Vec<_> = peas
+        .iter()
+        .filter(|p| p.is_open() && !matches!(p.pea_type, PeaType::Milestone | PeaType::Epic))
+        .collect();
+
+    if candidates.is_empty() {
+        if json {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "suggestion": null,
+                    "reason": "No open actionable tickets found"
+                }))?
+            );
+        } else {
+            println!("No open actionable tickets found.");
+        }
+        return Ok(());
+    }
+
+    // Sort by: in-progress first, then priority (critical > high > normal > low > deferred), then by type
+    candidates.sort_by(|a, b| {
+        // In-progress items first
+        let a_in_progress = a.status == PeaStatus::InProgress;
+        let b_in_progress = b.status == PeaStatus::InProgress;
+        if a_in_progress != b_in_progress {
+            return b_in_progress.cmp(&a_in_progress);
+        }
+
+        // Then by priority
+        let priority_order = |p: &PeaPriority| match p {
+            PeaPriority::Critical => 0,
+            PeaPriority::High => 1,
+            PeaPriority::Normal => 2,
+            PeaPriority::Low => 3,
+            PeaPriority::Deferred => 4,
+        };
+        let a_pri = priority_order(&a.priority);
+        let b_pri = priority_order(&b.priority);
+        if a_pri != b_pri {
+            return a_pri.cmp(&b_pri);
+        }
+
+        // Then by type (bugs before features before tasks)
+        let type_order = |t: &PeaType| match t {
+            PeaType::Bug => 0,
+            PeaType::Feature => 1,
+            PeaType::Story => 2,
+            PeaType::Chore => 3,
+            PeaType::Research => 4,
+            PeaType::Task => 5,
+            _ => 6,
+        };
+        type_order(&a.pea_type).cmp(&type_order(&b.pea_type))
+    });
+
+    let suggestion = candidates[0];
+    let reason = if suggestion.status == PeaStatus::InProgress {
+        "Currently in progress"
+    } else if suggestion.priority == PeaPriority::Critical {
+        "Critical priority"
+    } else if suggestion.priority == PeaPriority::High {
+        "High priority"
+    } else if suggestion.pea_type == PeaType::Bug {
+        "Bug fix"
+    } else {
+        "Next in queue"
+    };
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "suggestion": suggestion,
+                "reason": reason
+            }))?
+        );
+    } else {
+        println!("{}: {}", "Suggested".green().bold(), reason);
+        println!();
+        print_pea(suggestion);
+    }
+
     Ok(())
 }
 

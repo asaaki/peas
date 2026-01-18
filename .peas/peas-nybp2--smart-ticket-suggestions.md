@@ -2,11 +2,11 @@
 id = "peas-nybp2"
 title = "Smart ticket suggestions"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-up8r0"
 created = "2026-01-18T17:55:42.912945500Z"
-updated = "2026-01-18T17:57:38.865056300Z"
+updated = "2026-01-18T18:23:39.853078300Z"
 +++
 
 Add 'peas suggest' command that recommends the next ticket to work on.

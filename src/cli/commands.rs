@@ -166,6 +166,10 @@ pub enum Commands {
     Archive {
         /// Pea ID
         id: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Delete a pea permanently
@@ -176,6 +180,10 @@ pub enum Commands {
         /// Skip confirmation
         #[arg(short, long)]
         force: bool,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Search peas by text
@@ -192,12 +200,20 @@ pub enum Commands {
     Start {
         /// Pea ID
         id: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Mark a pea as completed
     Done {
         /// Pea ID
         id: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Execute a GraphQL query
@@ -232,6 +248,13 @@ pub enum Commands {
 
     /// Output project context for LLMs
     Context,
+
+    /// Suggest the next ticket to work on
+    Suggest {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Generate a Markdown roadmap from milestones and epics
     Roadmap,
@@ -277,6 +300,10 @@ pub enum BulkAction {
         /// Pea IDs to update
         #[arg(required = true)]
         ids: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Start multiple peas (set to in-progress)
@@ -284,6 +311,10 @@ pub enum BulkAction {
         /// Pea IDs to start
         #[arg(required = true)]
         ids: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Complete multiple peas (set to completed)
@@ -291,6 +322,10 @@ pub enum BulkAction {
         /// Pea IDs to complete
         #[arg(required = true)]
         ids: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Add a tag to multiple peas
@@ -301,6 +336,10 @@ pub enum BulkAction {
         /// Pea IDs to tag
         #[arg(required = true)]
         ids: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 
     /// Set parent of multiple peas
@@ -311,6 +350,10 @@ pub enum BulkAction {
         /// Pea IDs to update
         #[arg(required = true)]
         ids: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 }
 
