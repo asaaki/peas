@@ -11,11 +11,14 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::ListState};
 use std::{
     collections::HashSet,
     io,
     path::{Path, PathBuf},
+    sync::mpsc,
+    time::Duration,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -770,7 +773,21 @@ pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new(&config, &project_root)?;
-    let res = run_app(&mut terminal, &mut app);
+
+    // Set up file watcher for .peas directory
+    let (fs_tx, fs_rx) = mpsc::channel();
+    let peas_dir = project_root.join(&config.peas.path);
+
+    // Create debounced watcher (300ms debounce)
+    let mut debouncer = new_debouncer(Duration::from_millis(300), fs_tx)?;
+    debouncer
+        .watcher()
+        .watch(&peas_dir, RecursiveMode::Recursive)?;
+
+    let res = run_app(&mut terminal, &mut app, fs_rx);
+
+    // Stop watching (debouncer dropped automatically)
+    drop(debouncer);
 
     disable_raw_mode()?;
     execute!(
@@ -787,9 +804,31 @@ pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> io::Result<()> {
+fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+    fs_rx: mpsc::Receiver<
+        std::result::Result<
+            Vec<notify_debouncer_mini::DebouncedEvent>,
+            notify_debouncer_mini::notify::Error,
+        >,
+    >,
+) -> io::Result<()> {
     loop {
         terminal.draw(|f| ui::draw(f, app))?;
+
+        // Check for file system events (non-blocking)
+        if let Ok(Ok(_events)) = fs_rx.try_recv() {
+            // Files changed - refresh the list
+            let _ = app.refresh();
+            app.message = Some("Files changed - refreshed".to_string());
+            continue;
+        }
+
+        // Poll for keyboard events with a short timeout
+        if !event::poll(Duration::from_millis(100))? {
+            continue;
+        }
 
         if let Event::Key(key) = event::read()? {
             if key.kind != KeyEventKind::Press {

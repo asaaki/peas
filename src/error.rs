@@ -29,6 +29,9 @@ pub enum PeasError {
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
+    #[error("File watcher error: {0}")]
+    Notify(#[from] notify::Error),
+
     #[error("Project not initialized. Run 'peas init' first.")]
     NotInitialized,
 

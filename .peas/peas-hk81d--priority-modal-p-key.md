@@ -6,7 +6,7 @@ status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:42.889680600Z"
-updated = "2026-01-18T19:45:37.299864400Z"
+updated = "2026-01-18T23:03:29.428485600Z"
 +++
 
 Add 'P' (shift+p) hotkey to open a priority selection modal.
