@@ -8,25 +8,6 @@ use ratatui::{
     text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Wrap},
 };
-use termimad::{Area, MadSkin, MadView};
-
-/// Info for rendering markdown body with termimad after ratatui frame
-pub struct MarkdownRenderInfo {
-    pub area: Area,
-    pub content: String,
-    pub scroll: u16,
-}
-
-/// Render markdown content using termimad in the specified area
-pub fn render_markdown(info: &MarkdownRenderInfo) {
-    let skin = MadSkin::default();
-    let mut view = MadView::from(info.content.clone(), info.area.clone(), skin);
-    // Scroll down by the scroll amount
-    for _ in 0..info.scroll {
-        view.try_scroll_lines(1);
-    }
-    let _ = view.write();
-}
 
 /// Returns priority indicator and color for a pea
 fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
@@ -50,7 +31,7 @@ fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
     }
 }
 
-pub fn draw(f: &mut Frame, app: &mut App) -> Option<MarkdownRenderInfo> {
+pub fn draw(f: &mut Frame, app: &mut App) {
     // Full-screen detail view when in DetailView mode
     if app.input_mode == InputMode::DetailView {
         let chunks = Layout::default()
@@ -61,9 +42,9 @@ pub fn draw(f: &mut Frame, app: &mut App) -> Option<MarkdownRenderInfo> {
             ])
             .split(f.area());
 
-        let md_info = draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll);
+        draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll);
         draw_footer(f, app, chunks[1]);
-        return md_info;
+        return;
     }
 
     let chunks = Layout::default()
@@ -92,8 +73,6 @@ pub fn draw(f: &mut Frame, app: &mut App) -> Option<MarkdownRenderInfo> {
         InputMode::CreateModal => draw_create_modal(f, app),
         _ => {}
     }
-
-    None
 }
 
 fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
@@ -315,12 +294,7 @@ fn type_color(pea_type: &PeaType) -> Color {
     }
 }
 
-fn draw_detail_fullscreen(
-    f: &mut Frame,
-    app: &App,
-    area: Rect,
-    detail_scroll: u16,
-) -> Option<MarkdownRenderInfo> {
+fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
     let detail_block = Block::default()
         .title(" Details ")
         .borders(Borders::ALL)
@@ -523,7 +497,7 @@ fn draw_detail_fullscreen(
 
         f.render_widget(detail, metadata_area);
 
-        // Render body section placeholder and return info for termimad
+        // Render body section with tui-markdown
         if let Some(body_rect) = body_area {
             let body_block = Block::default()
                 .title(" Description ")
@@ -534,21 +508,18 @@ fn draw_detail_fullscreen(
             let inner = body_block.inner(body_rect);
             f.render_widget(body_block, body_rect);
 
-            // Return markdown render info for termimad to handle
-            return Some(MarkdownRenderInfo {
-                area: Area::new(inner.x, inner.y, inner.width, inner.height),
-                content: body_content,
-                scroll: detail_scroll,
-            });
+            // Render markdown using tui-markdown
+            let md_text = tui_markdown::from_str(&body_content);
+            let md_paragraph = Paragraph::new(md_text)
+                .wrap(Wrap { trim: false })
+                .scroll((detail_scroll, 0));
+            f.render_widget(md_paragraph, inner);
         }
-
-        None
     } else {
         let empty = Paragraph::new("No pea selected")
             .block(detail_block)
             .style(Style::default().fg(Color::DarkGray));
         f.render_widget(empty, area);
-        None
     }
 }
 
