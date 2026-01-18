@@ -45,6 +45,186 @@ fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
     }
 }
 
+/// Render a markdown line with basic formatting
+fn render_markdown_line(line: &str) -> Line<'static> {
+    let trimmed = line.trim_start();
+
+    // Headers
+    if trimmed.starts_with("### ") {
+        return Line::from(Span::styled(
+            trimmed[4..].to_string(),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+    if trimmed.starts_with("## ") {
+        return Line::from(Span::styled(
+            trimmed[3..].to_string(),
+            Style::default()
+                .fg(Color::Blue)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+    if trimmed.starts_with("# ") {
+        return Line::from(Span::styled(
+            trimmed[2..].to_string(),
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+
+    // Checkbox items
+    if trimmed.starts_with("- [x] ") || trimmed.starts_with("- [X] ") {
+        let indent = line.len() - trimmed.len();
+        return Line::from(vec![
+            Span::raw(" ".repeat(indent)),
+            Span::styled("✓ ", Style::default().fg(Color::Green)),
+            Span::raw(trimmed[6..].to_string()),
+        ]);
+    }
+    if trimmed.starts_with("- [ ] ") {
+        let indent = line.len() - trimmed.len();
+        return Line::from(vec![
+            Span::raw(" ".repeat(indent)),
+            Span::styled("○ ", Style::default().fg(Color::DarkGray)),
+            Span::raw(trimmed[6..].to_string()),
+        ]);
+    }
+
+    // Bullet points
+    if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
+        let indent = line.len() - trimmed.len();
+        return Line::from(vec![
+            Span::raw(" ".repeat(indent)),
+            Span::styled("• ", Style::default().fg(Color::Cyan)),
+            Span::raw(trimmed[2..].to_string()),
+        ]);
+    }
+
+    // Numbered lists
+    if let Some(rest) = trimmed
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .len()
+        .checked_sub(0)
+    {
+        if rest > 0 && trimmed.chars().nth(rest) == Some('.') {
+            let indent = line.len() - trimmed.len();
+            let num_end = rest + 1; // include the dot
+            if trimmed.len() > num_end && trimmed.chars().nth(num_end) == Some(' ') {
+                return Line::from(vec![
+                    Span::raw(" ".repeat(indent)),
+                    Span::styled(
+                        trimmed[..num_end].to_string(),
+                        Style::default().fg(Color::Yellow),
+                    ),
+                    Span::raw(trimmed[num_end..].to_string()),
+                ]);
+            }
+        }
+    }
+
+    // Code blocks (indented by 4+ spaces or starting with ```)
+    if trimmed.starts_with("```") {
+        return Line::from(Span::styled(
+            line.to_string(),
+            Style::default().fg(Color::DarkGray),
+        ));
+    }
+    if line.starts_with("    ") || line.starts_with("\t") {
+        return Line::from(Span::styled(
+            line.to_string(),
+            Style::default().fg(Color::Yellow),
+        ));
+    }
+
+    // Blockquotes
+    if trimmed.starts_with("> ") {
+        let indent = line.len() - trimmed.len();
+        return Line::from(vec![
+            Span::raw(" ".repeat(indent)),
+            Span::styled("│ ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                trimmed[2..].to_string(),
+                Style::default()
+                    .fg(Color::Gray)
+                    .add_modifier(Modifier::ITALIC),
+            ),
+        ]);
+    }
+
+    // Default: render inline formatting
+    render_inline_markdown(line)
+}
+
+/// Render inline markdown formatting (bold, italic, code)
+fn render_inline_markdown(line: &str) -> Line<'static> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    let chars: Vec<char> = line.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        // Inline code
+        if chars[i] == '`' {
+            if let Some(end) = chars[i + 1..].iter().position(|&c| c == '`') {
+                let code: String = chars[i + 1..i + 1 + end].iter().collect();
+                spans.push(Span::styled(code, Style::default().fg(Color::Yellow)));
+                i += end + 2;
+                continue;
+            }
+        }
+
+        // Bold (**text**)
+        if i + 1 < chars.len() && chars[i] == '*' && chars[i + 1] == '*' {
+            if let Some(end) = find_closing(&chars[i + 2..], "**") {
+                let text: String = chars[i + 2..i + 2 + end].iter().collect();
+                spans.push(Span::styled(
+                    text,
+                    Style::default().add_modifier(Modifier::BOLD),
+                ));
+                i += end + 4;
+                continue;
+            }
+        }
+
+        // Italic (*text* or _text_)
+        if chars[i] == '*' || chars[i] == '_' {
+            let marker = chars[i];
+            if let Some(end) = chars[i + 1..].iter().position(|&c| c == marker) {
+                if end > 0 {
+                    let text: String = chars[i + 1..i + 1 + end].iter().collect();
+                    spans.push(Span::styled(
+                        text,
+                        Style::default().add_modifier(Modifier::ITALIC),
+                    ));
+                    i += end + 2;
+                    continue;
+                }
+            }
+        }
+
+        // Regular character
+        spans.push(Span::raw(chars[i].to_string()));
+        i += 1;
+    }
+
+    Line::from(spans)
+}
+
+/// Find closing marker in a char slice
+fn find_closing(chars: &[char], marker: &str) -> Option<usize> {
+    let marker_chars: Vec<char> = marker.chars().collect();
+    for i in 0..chars.len().saturating_sub(marker_chars.len() - 1) {
+        if chars[i..].starts_with(&marker_chars) {
+            return Some(i);
+        }
+    }
+    None
+}
+
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -400,8 +580,9 @@ fn draw_detail(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
                 "Description:",
                 Style::default().add_modifier(Modifier::UNDERLINED),
             )));
+            // Render markdown with basic formatting
             for line in pea.body.lines() {
-                lines.push(Line::from(line.to_string()));
+                lines.push(render_markdown_line(line));
             }
         }
 
