@@ -249,6 +249,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::PriorityModal => draw_priority_modal(f, app),
         InputMode::TypeModal => draw_type_modal(f, app),
         InputMode::DeleteConfirm => draw_delete_confirm(f, app),
+        InputMode::ParentModal => draw_parent_modal(f, app),
         _ => {}
     }
 }
@@ -755,6 +756,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         InputMode::DeleteConfirm => {
             Span::styled(" DELETE ", Style::default().bg(Color::Red).fg(Color::White))
         }
+        InputMode::ParentModal => Span::styled(
+            " PARENT ",
+            Style::default().bg(Color::Blue).fg(Color::White),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -762,9 +767,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " j/k:nav  /:search  v:view  s:status  t:type  P:priority  d:delete  e:edit  y:copy  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
-        InputMode::StatusModal | InputMode::PriorityModal | InputMode::TypeModal => {
-            " j/k:nav  Enter:select  Esc:cancel "
-        }
+        InputMode::StatusModal
+        | InputMode::PriorityModal
+        | InputMode::TypeModal
+        | InputMode::ParentModal => " j/k:nav  Enter:select  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
     };
 
@@ -931,6 +937,77 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
 
     f.render_widget(Clear, area);
     f.render_widget(paragraph, area);
+}
+
+fn draw_parent_modal(f: &mut Frame, app: &App) {
+    // Use a larger area for parent modal since it can have many options
+    let area = centered_rect(60, 50, f.area());
+
+    // Build items: first is "(none)", then all candidates
+    let mut items: Vec<ListItem> = Vec::new();
+
+    // "(none)" option
+    let is_none_selected = app.modal_selection == 0;
+    let none_indicator = if is_none_selected {
+        Span::styled("▌", Style::default().fg(Color::Cyan))
+    } else {
+        Span::raw(" ")
+    };
+    let none_style = if is_none_selected {
+        Style::default().add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+    };
+    items.push(ListItem::new(Line::from(vec![
+        none_indicator,
+        Span::styled("(none)", none_style.fg(Color::DarkGray)),
+    ])));
+
+    // Candidate options
+    for (idx, pea) in app.parent_candidates.iter().enumerate() {
+        let is_selected = app.modal_selection == idx + 1;
+        let selection_indicator = if is_selected {
+            Span::styled("▌", Style::default().fg(Color::Cyan))
+        } else {
+            Span::raw(" ")
+        };
+
+        let style = if is_selected {
+            Style::default().add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+
+        let type_col = type_color(&pea.pea_type);
+
+        // Truncate title if too long
+        let max_title_len = 35;
+        let title = if pea.title.len() > max_title_len {
+            format!("{}...", &pea.title[..max_title_len - 3])
+        } else {
+            pea.title.clone()
+        };
+
+        items.push(ListItem::new(Line::from(vec![
+            selection_indicator,
+            Span::styled(&pea.id, Style::default().fg(Color::Cyan)),
+            Span::raw(" "),
+            Span::styled(format!("[{}]", pea.pea_type), Style::default().fg(type_col)),
+            Span::raw(" "),
+            Span::styled(title, style),
+        ])));
+    }
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(" Select Parent ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(list, area);
 }
 
 fn draw_type_modal(f: &mut Frame, app: &App) {

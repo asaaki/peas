@@ -2,11 +2,11 @@
 id = "peas-m4msh"
 title = "Remove/reassign 'd' hotkey"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:21:12.385782300Z"
-updated = "2026-01-18T19:21:12.385782300Z"
+updated = "2026-01-18T19:48:28.549460800Z"
 +++
 
 Current 'd' hotkey marks ticket as done/completed.

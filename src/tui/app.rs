@@ -25,6 +25,7 @@ pub enum InputMode {
     PriorityModal,
     TypeModal,
     DeleteConfirm,
+    ParentModal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -106,7 +107,8 @@ pub struct App {
     pub search_query: String,
     pub show_help: bool,
     pub message: Option<String>,
-    pub modal_selection: usize, // Current selection in modal dialogs
+    pub modal_selection: usize,      // Current selection in modal dialogs
+    pub parent_candidates: Vec<Pea>, // Candidates for parent selection modal
 }
 
 impl App {
@@ -135,6 +137,7 @@ impl App {
             show_help: false,
             message: None,
             modal_selection: 0,
+            parent_candidates: Vec::new(),
         };
         app.build_tree();
         Ok(app)
@@ -502,6 +505,90 @@ impl App {
         self.input_mode = InputMode::Normal;
         Ok(())
     }
+
+    /// Open the parent selection modal
+    /// Shows only tickets that can be valid parents (milestones, epics, stories, features)
+    pub fn open_parent_modal(&mut self) {
+        let current_info = self
+            .selected_pea()
+            .map(|p| (p.id.clone(), p.parent.clone()));
+
+        if let Some((current_id, current_parent)) = current_info {
+            // Build list of potential parents:
+            // - Milestones, Epics, Stories, Features can be parents
+            // - Can't be self or descendants of current
+            // - First option is "(none)" to clear parent
+            self.parent_candidates = self
+                .all_peas
+                .iter()
+                .filter(|p| {
+                    // Can't be self
+                    if p.id == current_id {
+                        return false;
+                    }
+                    // Only container types can be parents
+                    matches!(
+                        p.pea_type,
+                        PeaType::Milestone | PeaType::Epic | PeaType::Story | PeaType::Feature
+                    )
+                })
+                .cloned()
+                .collect();
+
+            // Sort by type hierarchy, then title
+            self.parent_candidates.sort_by(|a, b| {
+                fn type_order(t: &PeaType) -> u8 {
+                    match t {
+                        PeaType::Milestone => 0,
+                        PeaType::Epic => 1,
+                        PeaType::Story => 2,
+                        PeaType::Feature => 3,
+                        _ => 4,
+                    }
+                }
+                type_order(&a.pea_type)
+                    .cmp(&type_order(&b.pea_type))
+                    .then_with(|| a.title.cmp(&b.title))
+            });
+
+            // Find current parent's position, or default to 0 (which will be "none")
+            self.modal_selection = if let Some(ref parent_id) = current_parent {
+                self.parent_candidates
+                    .iter()
+                    .position(|p| p.id == *parent_id)
+                    .map(|i| i + 1) // +1 because index 0 is "(none)"
+                    .unwrap_or(0)
+            } else {
+                0 // No parent = "(none)" selected
+            };
+
+            self.input_mode = InputMode::ParentModal;
+        }
+    }
+
+    /// Apply the selected parent from the modal
+    pub fn apply_modal_parent(&mut self) -> Result<()> {
+        let new_parent = if self.modal_selection == 0 {
+            None // "(none)" selected
+        } else {
+            self.parent_candidates
+                .get(self.modal_selection - 1)
+                .map(|p| p.id.clone())
+        };
+
+        if let Some(pea) = self.selected_pea().cloned() {
+            let mut updated = pea.clone();
+            updated.parent = new_parent.clone();
+            updated.touch();
+            self.repo.update(&updated)?;
+
+            let parent_display = new_parent.unwrap_or_else(|| "(none)".to_string());
+            self.message = Some(format!("{} parent -> {}", pea.id, parent_display));
+            self.refresh()?;
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -576,6 +663,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Char('t') => {
                         app.open_type_modal();
+                    }
+                    KeyCode::Char('p') => {
+                        app.open_parent_modal();
                     }
                     KeyCode::Char('d') => {
                         app.open_delete_confirm();
@@ -736,6 +826,27 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
                         let _ = app.delete_selected();
+                    }
+                    _ => {}
+                },
+                InputMode::ParentModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.apply_modal_parent();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let count = app.parent_candidates.len() + 1; // +1 for "(none)"
+                        app.modal_selection = (app.modal_selection + 1) % count;
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        let count = app.parent_candidates.len() + 1; // +1 for "(none)"
+                        app.modal_selection = if app.modal_selection == 0 {
+                            count - 1
+                        } else {
+                            app.modal_selection - 1
+                        };
                     }
                     _ => {}
                 },
