@@ -2,11 +2,11 @@
 id = "peas-b7ok5"
 title = "Create ticket modal (c key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:25.595594300Z"
-updated = "2026-01-18T19:20:25.595594300Z"
+updated = "2026-01-18T19:57:28.944314100Z"
 +++
 
 Add 'c' hotkey to open a create ticket modal.
