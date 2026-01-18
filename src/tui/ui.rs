@@ -242,6 +242,12 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     if app.show_help {
         draw_help_popup(f);
     }
+
+    // Draw modal if active
+    match app.input_mode {
+        InputMode::StatusModal => draw_status_modal(f, app),
+        _ => {}
+    }
 }
 
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
@@ -731,13 +737,28 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " SEARCH ",
             Style::default().bg(Color::Yellow).fg(Color::Black),
         ),
+        InputMode::StatusModal => Span::styled(
+            " STATUS ",
+            Style::default().bg(Color::Green).fg(Color::Black),
+        ),
+        InputMode::PriorityModal => Span::styled(
+            " PRIORITY ",
+            Style::default().bg(Color::Red).fg(Color::White),
+        ),
+        InputMode::TypeModal => Span::styled(
+            " TYPE ",
+            Style::default().bg(Color::Magenta).fg(Color::White),
+        ),
     };
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " j/k:nav  /:search  v:view  s:start  d:done  e:edit  y:copy  ?:help  q:quit "
+            " j/k:nav  /:search  v:view  s:status  d:done  e:edit  y:copy  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
+        InputMode::StatusModal | InputMode::PriorityModal | InputMode::TypeModal => {
+            " j/k:nav  Enter:select  Esc:cancel "
+        }
     };
 
     let mut footer_spans = vec![mode_indicator];
@@ -759,6 +780,49 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let keybindings = Paragraph::new(Line::from(footer_spans));
     f.render_widget(keybindings, footer_chunks[2]);
+}
+
+fn draw_status_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(30, 30, f.area());
+
+    let options = App::status_options();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(idx, status)| {
+            let is_selected = idx == app.modal_selection;
+            let (icon, color) = status_indicator(status);
+
+            let selection_indicator = if is_selected {
+                Span::styled("▌", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw(" ")
+            };
+
+            let style = if is_selected {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(Line::from(vec![
+                selection_indicator,
+                Span::styled(format!("{} ", icon), Style::default().fg(color)),
+                Span::styled(format!("{}", status), style),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(" Status ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(list, area);
 }
 
 fn draw_help_popup(f: &mut Frame) {

@@ -21,6 +21,9 @@ use std::{
 pub enum InputMode {
     Normal,
     Filter,
+    StatusModal,
+    PriorityModal,
+    TypeModal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -102,6 +105,7 @@ pub struct App {
     pub search_query: String,
     pub show_help: bool,
     pub message: Option<String>,
+    pub modal_selection: usize, // Current selection in modal dialogs
 }
 
 impl App {
@@ -129,6 +133,7 @@ impl App {
             search_query: String::new(),
             show_help: false,
             message: None,
+            modal_selection: 0,
         };
         app.build_tree();
         Ok(app)
@@ -388,6 +393,43 @@ impl App {
         }
         Ok(())
     }
+
+    /// Returns the list of available statuses for the modal
+    pub fn status_options() -> &'static [PeaStatus] {
+        &[
+            PeaStatus::Draft,
+            PeaStatus::Todo,
+            PeaStatus::InProgress,
+            PeaStatus::Completed,
+            PeaStatus::Scrapped,
+        ]
+    }
+
+    /// Open the status modal with the current pea's status preselected
+    pub fn open_status_modal(&mut self) {
+        if let Some(pea) = self.selected_pea() {
+            let options = Self::status_options();
+            self.modal_selection = options.iter().position(|s| *s == pea.status).unwrap_or(0);
+            self.input_mode = InputMode::StatusModal;
+        }
+    }
+
+    /// Apply the selected status from the modal
+    pub fn apply_modal_status(&mut self) -> Result<()> {
+        let options = Self::status_options();
+        if let Some(&new_status) = options.get(self.modal_selection) {
+            if let Some(pea) = self.selected_pea().cloned() {
+                let mut updated = pea.clone();
+                updated.status = new_status;
+                updated.touch();
+                self.repo.update(&updated)?;
+                self.message = Some(format!("{} -> {}", pea.id, new_status));
+                self.refresh()?;
+            }
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -455,7 +497,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                         let _ = app.toggle_status();
                     }
                     KeyCode::Char('s') => {
-                        let _ = app.start_selected();
+                        app.open_status_modal();
                     }
                     KeyCode::Char('d') => {
                         let _ = app.complete_selected();
@@ -547,6 +589,33 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     _ => {}
                 },
+                InputMode::StatusModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.apply_modal_status();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let count = App::status_options().len();
+                        app.modal_selection = (app.modal_selection + 1) % count;
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        let count = App::status_options().len();
+                        app.modal_selection = if app.modal_selection == 0 {
+                            count - 1
+                        } else {
+                            app.modal_selection - 1
+                        };
+                    }
+                    _ => {}
+                },
+                InputMode::PriorityModal | InputMode::TypeModal => {
+                    // Placeholder for future modals
+                    if key.code == KeyCode::Esc {
+                        app.input_mode = InputMode::Normal;
+                    }
+                }
             }
 
             // Clear message after any key press
