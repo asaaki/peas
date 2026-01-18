@@ -501,7 +501,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " j/k:nav  J/K:scroll  Tab:filter  /:search  t:tree  s:start  d:done  ?:help  q:quit "
+            " j/k:nav  J/K:scroll  Tab:filter  /:search  t/l:view  s:start  d:done  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
     };
@@ -565,7 +565,7 @@ fn draw_help_popup(f: &mut Frame) {
             Span::raw("Search"),
         ]),
         Line::from(vec![
-            Span::styled("t       ", Style::default().fg(Color::Cyan)),
+            Span::styled("t/l     ", Style::default().fg(Color::Cyan)),
             Span::raw("Toggle tree/list view"),
         ]),
         Line::from(vec![

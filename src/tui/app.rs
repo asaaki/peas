@@ -24,8 +24,8 @@ pub enum InputMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ViewMode {
-    #[default]
     List,
+    #[default]
     Tree,
 }
 
@@ -437,7 +437,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::Filter;
                     }
-                    KeyCode::Char('t') => {
+                    KeyCode::Char('t') | KeyCode::Char('l') => {
                         app.toggle_view_mode();
                         let mode_name = match app.view_mode {
                             ViewMode::List => "List",
