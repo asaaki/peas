@@ -1,10 +1,11 @@
 ---
 # peas-s4nn
 title: 'E3.2: Agent Integration'
-status: todo
+status: completed
 type: epic
+priority: normal
 created_at: 2026-01-18T14:00:49Z
-updated_at: 2026-01-18T14:00:49Z
+updated_at: 2026-01-18T14:26:45Z
 parent: peas-9txx
 ---
 

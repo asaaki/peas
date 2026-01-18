@@ -302,7 +302,8 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Tui => {
-            eprintln!("TUI will be implemented in Milestone 3");
+            let (config, root) = load_config()?;
+            peas::tui::run_tui(config, root)?;
             Ok(())
         }
     }
@@ -433,43 +434,77 @@ fn format_priority(priority: peas::model::PeaPriority) -> colored::ColoredString
 fn print_prime_instructions(config: &PeasConfig, repo: &PeaRepository) -> Result<()> {
     let peas = repo.list()?;
     let open_peas: Vec<_> = peas.iter().filter(|p| p.is_open()).collect();
+    let in_progress: Vec<_> = peas
+        .iter()
+        .filter(|p| p.status == PeaStatus::InProgress)
+        .collect();
 
     println!(
         r#"# Peas - Issue Tracker
 
 This project uses **peas** for issue tracking. Issues are stored as markdown files in the `{}` directory.
 
-## Available Commands
+## CLI Commands
 
-- `peas list` - List all peas
-- `peas show <id>` - Show pea details
-- `peas create "<title>" -t <type>` - Create a new pea
-- `peas update <id> -s <status>` - Update pea status
-- `peas start <id>` - Mark pea as in-progress
-- `peas done <id>` - Mark pea as completed
-- `peas search "<query>"` - Search peas
+```bash
+peas list                          # List all peas
+peas list -t epic                  # List by type
+peas list -s in-progress           # List by status
+peas show <id>                     # Show pea details
+peas create "<title>" -t <type>    # Create a new pea
+peas update <id> -s <status>       # Update pea status
+peas start <id>                    # Mark as in-progress
+peas done <id>                     # Mark as completed
+peas search "<query>"              # Search peas
+peas roadmap                       # Show project roadmap
+```
+
+## GraphQL Interface
+
+For complex queries, use the GraphQL interface:
+
+```bash
+# Get project stats
+peas graphql '{{ stats {{ total byStatus {{ todo inProgress completed }} }} }}'
+
+# List all open peas
+peas graphql '{{ peas(filter: {{ isOpen: true }}) {{ nodes {{ id title peaType status }} }} }}'
+
+# Create a pea
+peas graphql 'mutation {{ createPea(input: {{ title: "New Task", peaType: TASK }}) {{ id }} }}'
+
+# Update status
+peas graphql 'mutation {{ setStatus(id: "<id>", status: IN_PROGRESS) {{ id status }} }}'
+```
 
 ## Pea Types
-- milestone, epic, feature, bug, task
+milestone, epic, feature, bug, task
 
 ## Pea Statuses
-- draft, todo, in-progress, completed, scrapped
-
-## Current Open Peas ({})
+draft, todo, in-progress, completed, scrapped
 "#,
-        config.peas.path,
-        open_peas.len()
+        config.peas.path
     );
 
-    for pea in open_peas.iter().take(20) {
+    if !in_progress.is_empty() {
+        println!("## Currently In Progress ({})", in_progress.len());
+        for pea in &in_progress {
+            println!("- [{}] {} - {}", pea.id, pea.pea_type, pea.title);
+        }
+        println!();
+    }
+
+    println!("## Open Peas ({} total)", open_peas.len());
+    for pea in open_peas.iter().take(15) {
         println!("- [{}] {} - {}", pea.id, pea.pea_type, pea.title);
     }
 
-    if open_peas.len() > 20 {
-        println!("... and {} more", open_peas.len() - 20);
+    if open_peas.len() > 15 {
+        println!(
+            "... and {} more (use `peas list` for full list)",
+            open_peas.len() - 15
+        );
     }
-
-    println!("\nUse `peas list` for the full list or `peas show <id>` for details.");
 
     Ok(())
 }

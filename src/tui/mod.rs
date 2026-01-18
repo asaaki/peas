@@ -1,1 +1,4 @@
-// Terminal UI will be implemented in Milestone 3
+mod app;
+mod ui;
+
+pub use app::run_tui;

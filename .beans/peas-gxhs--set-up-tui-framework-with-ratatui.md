@@ -1,10 +1,11 @@
 ---
 # peas-gxhs
 title: Set up TUI framework with ratatui
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-18T14:03:06Z
-updated_at: 2026-01-18T14:03:06Z
+updated_at: 2026-01-18T14:28:40Z
 parent: peas-vmk5
 ---
 
