@@ -355,6 +355,33 @@ pub enum BulkAction {
         #[arg(long)]
         json: bool,
     },
+
+    /// Create multiple peas at once (reads titles from stdin, one per line)
+    Create {
+        /// Type for all created peas
+        #[arg(short = 't', long, value_enum, default_value = "task")]
+        r#type: PeaTypeArg,
+
+        /// Parent ID for all created peas
+        #[arg(long)]
+        parent: Option<String>,
+
+        /// Tags to add to all created peas
+        #[arg(long)]
+        tag: Vec<String>,
+
+        /// Priority for all created peas
+        #[arg(short, long, value_enum)]
+        priority: Option<PeaPriorityArg>,
+
+        /// Initial status for all created peas
+        #[arg(short, long, value_enum)]
+        status: Option<PeaStatusArg>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]

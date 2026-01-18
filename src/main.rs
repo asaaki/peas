@@ -706,6 +706,108 @@ fn main() -> Result<()> {
                         );
                     }
                 }
+                BulkAction::Create {
+                    r#type,
+                    parent,
+                    tag,
+                    priority,
+                    status,
+                    json,
+                } => {
+                    // Read titles from stdin, one per line
+                    let mut input = String::new();
+                    io::stdin().read_to_string(&mut input)?;
+
+                    let titles: Vec<_> = input
+                        .lines()
+                        .map(|l| l.trim())
+                        .filter(|l| !l.is_empty())
+                        .collect();
+
+                    if titles.is_empty() {
+                        if json {
+                            println!(
+                                "{}",
+                                serde_json::to_string_pretty(&serde_json::json!({
+                                    "created": [],
+                                    "errors": [],
+                                    "message": "No titles provided on stdin"
+                                }))?
+                            );
+                        } else {
+                            println!("No titles provided. Provide one title per line on stdin.");
+                        }
+                        return Ok(());
+                    }
+
+                    let pea_type = r#type.into();
+                    let pea_status: Option<PeaStatus> = status.map(|s| s.into());
+                    let pea_priority: Option<peas::model::PeaPriority> = priority.map(|p| p.into());
+
+                    let mut created_peas = Vec::new();
+                    let mut errors_list: Vec<serde_json::Value> = Vec::new();
+
+                    for title in titles {
+                        let id = repo.generate_id();
+                        let mut pea = Pea::new(id, title.to_string(), pea_type);
+
+                        if let Some(ref p) = parent {
+                            pea = pea.with_parent(Some(p.clone()));
+                        }
+                        if !tag.is_empty() {
+                            pea = pea.with_tags(tag.clone());
+                        }
+                        if let Some(s) = pea_status {
+                            pea = pea.with_status(s);
+                        }
+                        if let Some(p) = pea_priority {
+                            pea = pea.with_priority(p);
+                        }
+
+                        match repo.create(&pea) {
+                            Ok(path) => {
+                                let filename = path
+                                    .file_name()
+                                    .map(|f| f.to_string_lossy())
+                                    .unwrap_or_default();
+                                if !json {
+                                    println!(
+                                        "{} {} {}",
+                                        "Created".green(),
+                                        pea.id.cyan(),
+                                        filename
+                                    );
+                                }
+                                created_peas.push(pea);
+                            }
+                            Err(e) => {
+                                if !json {
+                                    eprintln!("{} '{}': {}", "Error".red(), title, e);
+                                }
+                                errors_list.push(serde_json::json!({
+                                    "title": title,
+                                    "error": e.to_string()
+                                }));
+                            }
+                        }
+                    }
+
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "created": created_peas,
+                                "errors": errors_list
+                            }))?
+                        );
+                    } else {
+                        println!(
+                            "\nCreated {} peas, {} errors",
+                            created_peas.len(),
+                            errors_list.len()
+                        );
+                    }
+                }
             }
             Ok(())
         }
