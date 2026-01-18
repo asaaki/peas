@@ -2,11 +2,11 @@
 id = "peas-67m2p"
 title = "Template support for common patterns"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-up8r0"
 created = "2026-01-18T17:55:10.621104900Z"
-updated = "2026-01-18T17:55:10.621104900Z"
+updated = "2026-01-18T18:33:53.675161500Z"
 +++
 
 Pre-defined templates for ticket creation.

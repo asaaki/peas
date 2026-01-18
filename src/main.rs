@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use peas::{
-    cli::{BulkAction, Cli, Commands},
+    cli::{BulkAction, Cli, Commands, TemplateArg},
     config::{PeasConfig, PeasSettings},
     graphql::build_schema,
     model::{Pea, PeaStatus},
@@ -33,6 +33,7 @@ fn main() -> Result<()> {
             parent,
             blocking,
             tag,
+            template,
             json,
             dry_run,
         } => {
@@ -40,28 +41,61 @@ fn main() -> Result<()> {
             let repo = PeaRepository::new(&config, &root);
 
             let body_content = resolve_body(body, body_file)?;
-            let pea_type = r#type.into();
             let id = repo.generate_id();
+
+            // Apply template settings if specified, then allow CLI args to override
+            let (pea_type, default_priority, default_status, default_tags, body_template) =
+                if let Some(tmpl) = template {
+                    let settings = tmpl.settings();
+                    (
+                        settings.pea_type,
+                        settings.priority,
+                        settings.status,
+                        settings.tags,
+                        settings.body_template,
+                    )
+                } else {
+                    (r#type.into(), None, None, vec![], None)
+                };
 
             let mut pea = Pea::new(id, title, pea_type);
 
+            // Apply template defaults first, then override with explicit CLI args
             if let Some(s) = status {
                 pea = pea.with_status(s.into());
+            } else if let Some(s) = default_status {
+                pea = pea.with_status(s);
             }
+
             if let Some(p) = priority {
                 pea = pea.with_priority(p.into());
+            } else if let Some(p) = default_priority {
+                pea = pea.with_priority(p);
             }
-            if !tag.is_empty() {
-                pea = pea.with_tags(tag);
+
+            // Merge template tags with CLI tags (CLI tags take precedence/add to)
+            let mut all_tags = default_tags;
+            for t in tag {
+                if !all_tags.contains(&t) {
+                    all_tags.push(t);
+                }
             }
+            if !all_tags.is_empty() {
+                pea = pea.with_tags(all_tags);
+            }
+
             if parent.is_some() {
                 pea = pea.with_parent(parent);
             }
             if !blocking.is_empty() {
                 pea = pea.with_blocking(blocking);
             }
+
+            // Body: CLI body overrides template, template is fallback
             if let Some(b) = body_content {
                 pea = pea.with_body(b);
+            } else if let Some(bt) = body_template {
+                pea = pea.with_body(bt.to_string());
             }
 
             if dry_run {

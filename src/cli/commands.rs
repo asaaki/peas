@@ -73,6 +73,10 @@ pub enum Commands {
         #[arg(long)]
         tag: Vec<String>,
 
+        /// Use a template (bug, feature, epic, milestone, chore, research)
+        #[arg(long, value_enum)]
+        template: Option<TemplateArg>,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -461,6 +465,88 @@ impl From<PeaPriorityArg> for crate::model::PeaPriority {
             PeaPriorityArg::Normal => crate::model::PeaPriority::Normal,
             PeaPriorityArg::Low => crate::model::PeaPriority::Low,
             PeaPriorityArg::Deferred => crate::model::PeaPriority::Deferred,
+        }
+    }
+}
+
+/// Built-in templates for common ticket patterns
+#[derive(Clone, Copy, ValueEnum)]
+pub enum TemplateArg {
+    /// Bug report with high priority
+    Bug,
+    /// Feature request with normal priority
+    Feature,
+    /// Epic for grouping related features
+    Epic,
+    /// Milestone for major releases
+    Milestone,
+    /// Chore/maintenance task
+    Chore,
+    /// Research/investigation task
+    Research,
+}
+
+/// Template settings applied during creation
+pub struct TemplateSettings {
+    pub pea_type: crate::model::PeaType,
+    pub priority: Option<crate::model::PeaPriority>,
+    pub status: Option<crate::model::PeaStatus>,
+    pub tags: Vec<String>,
+    pub body_template: Option<&'static str>,
+}
+
+impl TemplateArg {
+    pub fn settings(&self) -> TemplateSettings {
+        use crate::model::{PeaPriority, PeaStatus, PeaType};
+        match self {
+            TemplateArg::Bug => TemplateSettings {
+                pea_type: PeaType::Bug,
+                priority: Some(PeaPriority::High),
+                status: None,
+                tags: vec!["bug".to_string()],
+                body_template: Some(
+                    "## Description\n\n## Steps to Reproduce\n1. \n2. \n3. \n\n## Expected Behavior\n\n## Actual Behavior\n",
+                ),
+            },
+            TemplateArg::Feature => TemplateSettings {
+                pea_type: PeaType::Feature,
+                priority: Some(PeaPriority::Normal),
+                status: None,
+                tags: vec!["feature".to_string()],
+                body_template: Some(
+                    "## Description\n\n## Acceptance Criteria\n- [ ] \n- [ ] \n\n## Notes\n",
+                ),
+            },
+            TemplateArg::Epic => TemplateSettings {
+                pea_type: PeaType::Epic,
+                priority: Some(PeaPriority::Normal),
+                status: Some(PeaStatus::Draft),
+                tags: vec![],
+                body_template: Some("## Overview\n\n## Goals\n- \n\n## Success Metrics\n"),
+            },
+            TemplateArg::Milestone => TemplateSettings {
+                pea_type: PeaType::Milestone,
+                priority: Some(PeaPriority::Normal),
+                status: Some(PeaStatus::Draft),
+                tags: vec![],
+                body_template: Some(
+                    "## Description\n\n## Target Date\n\n## Key Deliverables\n- \n",
+                ),
+            },
+            TemplateArg::Chore => TemplateSettings {
+                pea_type: PeaType::Chore,
+                priority: Some(PeaPriority::Low),
+                status: None,
+                tags: vec!["chore".to_string()],
+                body_template: None,
+            },
+            TemplateArg::Research => TemplateSettings {
+                pea_type: PeaType::Research,
+                priority: Some(PeaPriority::Normal),
+                status: None,
+                tags: vec!["research".to_string()],
+                body_template: Some("## Question\n\n## Background\n\n## Findings\n"),
+            },
         }
     }
 }
