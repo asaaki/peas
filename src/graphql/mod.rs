@@ -1,1 +1,5 @@
-// GraphQL schema and resolvers will be implemented in Milestone 2
+mod schema;
+mod types;
+
+pub use schema::{PeasSchema, build_schema};
+pub use types::*;

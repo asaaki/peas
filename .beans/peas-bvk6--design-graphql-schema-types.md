@@ -1,10 +1,11 @@
 ---
 # peas-bvk6
 title: Design GraphQL schema types
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-18T14:02:08Z
-updated_at: 2026-01-18T14:02:08Z
+updated_at: 2026-01-18T14:25:22Z
 parent: peas-siqk
 ---
 

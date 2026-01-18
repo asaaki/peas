@@ -7,6 +7,7 @@ use colored::Colorize;
 
 use peas::cli::{Cli, Commands};
 use peas::config::{PeasConfig, PeasSettings};
+use peas::graphql::build_schema;
 use peas::model::{Pea, PeaStatus};
 use peas::storage::PeaRepository;
 
@@ -275,13 +276,29 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Graphql { query, variables } => {
-            eprintln!("GraphQL support will be implemented in Milestone 2");
-            let _ = (query, variables);
+            let (config, root) = load_config()?;
+            let schema = build_schema(config, root);
+
+            let vars: async_graphql::Variables = if let Some(v) = variables {
+                serde_json::from_str(&v)?
+            } else {
+                async_graphql::Variables::default()
+            };
+
+            let request = async_graphql::Request::new(&query).variables(vars);
+            let response = tokio::runtime::Runtime::new()?.block_on(schema.execute(request));
+
+            println!("{}", serde_json::to_string_pretty(&response)?);
             Ok(())
         }
         Commands::Serve { port } => {
-            eprintln!("GraphQL server will be implemented in Milestone 2");
-            let _ = port;
+            let (config, root) = load_config()?;
+            let schema = build_schema(config, root);
+
+            println!("Starting GraphQL server on http://localhost:{}", port);
+            println!("GraphQL Playground: http://localhost:{}", port);
+
+            tokio::runtime::Runtime::new()?.block_on(async { run_server(schema, port).await })?;
             Ok(())
         }
         Commands::Tui => {
@@ -534,6 +551,37 @@ fn print_roadmap(repo: &PeaRepository) -> Result<()> {
             println!();
         }
     }
+
+    Ok(())
+}
+
+async fn run_server(schema: peas::graphql::PeasSchema, port: u16) -> Result<()> {
+    use async_graphql::http::GraphiQLSource;
+    use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
+    use axum::{
+        Router,
+        extract::Extension,
+        response::{Html, IntoResponse},
+        routing::get,
+    };
+
+    async fn graphql_handler(
+        Extension(schema): Extension<peas::graphql::PeasSchema>,
+        req: GraphQLRequest,
+    ) -> GraphQLResponse {
+        schema.execute(req.into_inner()).await.into()
+    }
+
+    async fn graphiql() -> impl IntoResponse {
+        Html(GraphiQLSource::build().endpoint("/").finish())
+    }
+
+    let app = Router::new()
+        .route("/", get(graphiql).post(graphql_handler))
+        .layer(Extension(schema));
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
