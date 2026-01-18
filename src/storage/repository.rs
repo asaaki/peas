@@ -1,4 +1,6 @@
-use super::markdown::{parse_markdown, render_markdown};
+use super::markdown::{
+    FrontmatterFormat, detect_format, parse_markdown, render_markdown_with_format,
+};
 use crate::{
     config::PeasConfig,
     error::{PeasError, Result},
@@ -12,6 +14,7 @@ pub struct PeaRepository {
     data_path: PathBuf,
     archive_path: PathBuf,
     prefix: String,
+    frontmatter_format: FrontmatterFormat,
 }
 
 impl PeaRepository {
@@ -20,6 +23,7 @@ impl PeaRepository {
             data_path: config.data_path(project_root),
             archive_path: config.archive_path(project_root),
             prefix: config.peas.prefix.clone(),
+            frontmatter_format: config.peas.frontmatter_format(),
         }
     }
 
@@ -64,7 +68,7 @@ impl PeaRepository {
             )));
         }
 
-        let content = render_markdown(pea)?;
+        let content = render_markdown_with_format(pea, self.frontmatter_format)?;
         std::fs::write(&file_path, content)?;
 
         Ok(file_path)
@@ -88,7 +92,10 @@ impl PeaRepository {
         let new_filename = self.generate_filename(&pea.id, &pea.title);
         let new_path = self.data_path.join(&new_filename);
 
-        let content = render_markdown(pea)?;
+        // Preserve original frontmatter format
+        let original_content = std::fs::read_to_string(&old_path)?;
+        let format = detect_format(&original_content).unwrap_or(self.frontmatter_format);
+        let content = render_markdown_with_format(pea, format)?;
 
         if old_path != new_path {
             std::fs::remove_file(&old_path)?;

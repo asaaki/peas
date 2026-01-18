@@ -363,6 +363,7 @@ fn cmd_init(prefix: String, id_length: usize, peas_path: Option<String>) -> Resu
             id_length,
             default_status: "todo".to_string(),
             default_type: "task".to_string(),
+            frontmatter: "toml".to_string(),
         },
     };
 

@@ -1,4 +1,5 @@
 use crate::error::{PeasError, Result};
+use crate::storage::FrontmatterFormat;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -24,6 +25,9 @@ pub struct PeasSettings {
 
     #[serde(default = "default_type")]
     pub default_type: String,
+
+    #[serde(default = "default_frontmatter")]
+    pub frontmatter: String,
 }
 
 fn default_path() -> String {
@@ -46,6 +50,10 @@ fn default_type() -> String {
     "task".to_string()
 }
 
+fn default_frontmatter() -> String {
+    "toml".to_string()
+}
+
 impl Default for PeasSettings {
     fn default() -> Self {
         Self {
@@ -54,6 +62,16 @@ impl Default for PeasSettings {
             id_length: default_id_length(),
             default_status: default_status(),
             default_type: default_type(),
+            frontmatter: default_frontmatter(),
+        }
+    }
+}
+
+impl PeasSettings {
+    pub fn frontmatter_format(&self) -> FrontmatterFormat {
+        match self.frontmatter.as_str() {
+            "toml" => FrontmatterFormat::Toml,
+            _ => FrontmatterFormat::Yaml,
         }
     }
 }

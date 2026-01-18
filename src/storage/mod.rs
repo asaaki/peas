@@ -28,5 +28,8 @@
 mod markdown;
 mod repository;
 
-pub use markdown::{parse_markdown, render_markdown};
+pub use markdown::{
+    FrontmatterFormat, detect_format, parse_markdown, parse_markdown_with_format, render_markdown,
+    render_markdown_with_format,
+};
 pub use repository::PeaRepository;
