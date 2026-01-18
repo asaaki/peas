@@ -1674,6 +1674,7 @@ dependencies = [
  "nanoid",
  "predicates",
  "ratatui",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",
