@@ -2,11 +2,11 @@
 id = "peas-hk81d"
 title = "Priority modal (P key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:42.889680600Z"
-updated = "2026-01-18T19:20:42.889680600Z"
+updated = "2026-01-18T19:45:37.299864400Z"
 +++
 
 Add 'P' (shift+p) hotkey to open a priority selection modal.

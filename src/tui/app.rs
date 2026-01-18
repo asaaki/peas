@@ -467,6 +467,46 @@ impl App {
         self.input_mode = InputMode::Normal;
         Ok(())
     }
+
+    /// Returns the list of available types for the modal
+    pub fn type_options() -> &'static [PeaType] {
+        &[
+            PeaType::Milestone,
+            PeaType::Epic,
+            PeaType::Story,
+            PeaType::Feature,
+            PeaType::Bug,
+            PeaType::Chore,
+            PeaType::Research,
+            PeaType::Task,
+        ]
+    }
+
+    /// Open the type modal with the current pea's type preselected
+    pub fn open_type_modal(&mut self) {
+        if let Some(pea) = self.selected_pea() {
+            let options = Self::type_options();
+            self.modal_selection = options.iter().position(|t| *t == pea.pea_type).unwrap_or(0);
+            self.input_mode = InputMode::TypeModal;
+        }
+    }
+
+    /// Apply the selected type from the modal
+    pub fn apply_modal_type(&mut self) -> Result<()> {
+        let options = Self::type_options();
+        if let Some(&new_type) = options.get(self.modal_selection) {
+            if let Some(pea) = self.selected_pea().cloned() {
+                let mut updated = pea.clone();
+                updated.pea_type = new_type;
+                updated.touch();
+                self.repo.update(&updated)?;
+                self.message = Some(format!("{} -> {}", pea.id, new_type));
+                self.refresh()?;
+            }
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -538,6 +578,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Char('P') => {
                         app.open_priority_modal();
+                    }
+                    KeyCode::Char('t') => {
+                        app.open_type_modal();
                     }
                     KeyCode::Char('d') => {
                         let _ = app.complete_selected();
@@ -671,12 +714,27 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     _ => {}
                 },
-                InputMode::TypeModal => {
-                    // Placeholder for future modal
-                    if key.code == KeyCode::Esc {
+                InputMode::TypeModal => match key.code {
+                    KeyCode::Esc => {
                         app.input_mode = InputMode::Normal;
                     }
-                }
+                    KeyCode::Enter => {
+                        let _ = app.apply_modal_type();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let count = App::type_options().len();
+                        app.modal_selection = (app.modal_selection + 1) % count;
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        let count = App::type_options().len();
+                        app.modal_selection = if app.modal_selection == 0 {
+                            count - 1
+                        } else {
+                            app.modal_selection - 1
+                        };
+                    }
+                    _ => {}
+                },
             }
 
             // Clear message after any key press

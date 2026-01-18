@@ -247,6 +247,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     match app.input_mode {
         InputMode::StatusModal => draw_status_modal(f, app),
         InputMode::PriorityModal => draw_priority_modal(f, app),
+        InputMode::TypeModal => draw_type_modal(f, app),
         _ => {}
     }
 }
@@ -870,6 +871,48 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
     let list = List::new(items).block(
         Block::default()
             .title(" Priority ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(list, area);
+}
+
+fn draw_type_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(30, 35, f.area());
+
+    let options = App::type_options();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(idx, pea_type)| {
+            let is_selected = idx == app.modal_selection;
+            let color = type_color(pea_type);
+
+            let selection_indicator = if is_selected {
+                Span::styled("▌", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw(" ")
+            };
+
+            let style = if is_selected {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(Line::from(vec![
+                selection_indicator,
+                Span::styled(format!("{}", pea_type), style.fg(color)),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(" Type ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(Style::default().fg(Color::Yellow)),
