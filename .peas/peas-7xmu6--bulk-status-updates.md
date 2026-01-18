@@ -2,11 +2,11 @@
 id = "peas-7xmu6"
 title = "Bulk status updates"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-up8r0"
 created = "2026-01-18T17:55:04.256738900Z"
-updated = "2026-01-18T17:55:04.256738900Z"
+updated = "2026-01-18T18:13:17.753356900Z"
 +++
 
 Support updating multiple tickets at once.

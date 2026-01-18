@@ -258,6 +258,60 @@ pub enum Commands {
         #[arg(default_value = ".beans-export")]
         output: String,
     },
+
+    /// Bulk update multiple peas at once
+    Bulk {
+        #[command(subcommand)]
+        action: BulkAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum BulkAction {
+    /// Set status of multiple peas
+    Status {
+        /// New status to set
+        #[arg(value_enum)]
+        status: PeaStatusArg,
+
+        /// Pea IDs to update
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+
+    /// Start multiple peas (set to in-progress)
+    Start {
+        /// Pea IDs to start
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+
+    /// Complete multiple peas (set to completed)
+    Done {
+        /// Pea IDs to complete
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+
+    /// Add a tag to multiple peas
+    Tag {
+        /// Tag to add
+        tag: String,
+
+        /// Pea IDs to tag
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+
+    /// Set parent of multiple peas
+    Parent {
+        /// Parent ID to set
+        parent: String,
+
+        /// Pea IDs to update
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]

@@ -1,20 +1,57 @@
-use super::app::{App, FilterType, InputMode};
-use crate::model::{PeaPriority, PeaStatus, PeaType};
+use super::app::{App, FilterType, InputMode, ViewMode};
+use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
+    symbols::border,
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
 };
 
-pub fn draw(f: &mut Frame, app: &App) {
+/// Returns priority indicator and color for a pea
+fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
+    match pea.priority {
+        PeaPriority::Critical => Some(("!!".to_string(), Color::Red)),
+        PeaPriority::High => Some(("!".to_string(), Color::LightRed)),
+        PeaPriority::Normal => None, // No indicator for normal
+        PeaPriority::Low => Some(("↓".to_string(), Color::DarkGray)),
+        PeaPriority::Deferred => Some(("⏸".to_string(), Color::DarkGray)),
+    }
+}
+
+/// Returns type indicator character and color
+fn type_indicator(pea_type: &PeaType) -> (&'static str, Color) {
+    match pea_type {
+        PeaType::Milestone => ("M", Color::Magenta),
+        PeaType::Epic => ("E", Color::Blue),
+        PeaType::Story => ("S", Color::Cyan),
+        PeaType::Feature => ("F", Color::Cyan),
+        PeaType::Bug => ("B", Color::Red),
+        PeaType::Chore => ("C", Color::Yellow),
+        PeaType::Research => ("R", Color::LightMagenta),
+        PeaType::Task => ("T", Color::White),
+    }
+}
+
+/// Returns status icon and color
+fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
+    match status {
+        PeaStatus::Draft => ("○", Color::DarkGray),
+        PeaStatus::Todo => ("○", Color::White),
+        PeaStatus::InProgress => ("◐", Color::Yellow),
+        PeaStatus::Completed => ("●", Color::Green),
+        PeaStatus::Scrapped => ("✗", Color::Red),
+    }
+}
+
+pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Header
+            Constraint::Length(2), // Header (smaller now)
             Constraint::Min(0),    // Main content
-            Constraint::Length(3), // Footer
+            Constraint::Length(4), // Footer (2 rows: filters + keybindings)
         ])
         .split(f.area());
 
@@ -28,37 +65,23 @@ pub fn draw(f: &mut Frame, app: &App) {
 }
 
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let filter_spans: Vec<Span> = [
-        FilterType::All,
-        FilterType::Open,
-        FilterType::InProgress,
-        FilterType::Completed,
-        FilterType::Milestones,
-        FilterType::Epics,
-        FilterType::Tasks,
-    ]
-    .iter()
-    .map(|ft| {
-        let style = if *ft == app.filter {
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        Span::styled(format!(" {} ", ft.label()), style)
-    })
-    .collect();
-
     let mut header_spans = vec![Span::styled(
         " peas ",
         Style::default()
             .fg(Color::Green)
             .add_modifier(Modifier::BOLD),
     )];
+
+    // Show view mode indicator
+    let view_mode_label = match app.view_mode {
+        ViewMode::List => "List",
+        ViewMode::Tree => "Tree",
+    };
     header_spans.push(Span::raw(" | "));
-    header_spans.extend(filter_spans);
+    header_spans.push(Span::styled(
+        format!(" {} ", view_mode_label),
+        Style::default().fg(Color::Cyan),
+    ));
 
     if !app.search_query.is_empty() {
         header_spans.push(Span::raw(" | "));
@@ -74,101 +97,170 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(header, area);
 }
 
-fn draw_main(f: &mut Frame, app: &App, area: Rect) {
+fn draw_main(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
 
-    draw_list(f, app, chunks[0]);
-    draw_detail(f, app, chunks[1]);
+    match app.view_mode {
+        ViewMode::List => draw_list(f, app, chunks[0]),
+        ViewMode::Tree => draw_tree(f, app, chunks[0]),
+    }
+    draw_detail(f, app, chunks[1], app.detail_scroll);
 }
 
-fn draw_list(f: &mut Frame, app: &App, area: Rect) {
+fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
+    // Calculate available width for title (area width minus borders and prefix)
+    // Prefix is: "○ [T] !! peas-xxxxx " = ~22 chars (with priority)
+    let prefix_len = 22;
+    let available_width = area.width.saturating_sub(2 + prefix_len) as usize; // 2 for borders
+
     let items: Vec<ListItem> = app
         .filtered_peas
         .iter()
-        .enumerate()
-        .map(|(i, pea)| {
-            let status_icon = match pea.status {
-                PeaStatus::Draft => "○",
-                PeaStatus::Todo => "○",
-                PeaStatus::InProgress => "◐",
-                PeaStatus::Completed => "●",
-                PeaStatus::Scrapped => "✗",
-            };
+        .map(|pea| {
+            let (status_icon, status_color) = status_indicator(&pea.status);
+            let (type_ind, type_color) = type_indicator(&pea.pea_type);
 
-            let status_color = match pea.status {
-                PeaStatus::Draft => Color::DarkGray,
-                PeaStatus::Todo => Color::White,
-                PeaStatus::InProgress => Color::Yellow,
-                PeaStatus::Completed => Color::Green,
-                PeaStatus::Scrapped => Color::Red,
-            };
-
-            let type_indicator = match pea.pea_type {
-                PeaType::Milestone => "M",
-                PeaType::Epic => "E",
-                PeaType::Story => "S",
-                PeaType::Feature => "F",
-                PeaType::Bug => "B",
-                PeaType::Chore => "C",
-                PeaType::Research => "R",
-                PeaType::Task => "T",
-            };
-
-            let type_color = match pea.pea_type {
-                PeaType::Milestone => Color::Magenta,
-                PeaType::Epic => Color::Blue,
-                PeaType::Story => Color::Cyan,
-                PeaType::Feature => Color::Cyan,
-                PeaType::Bug => Color::Red,
-                PeaType::Chore => Color::Yellow,
-                PeaType::Research => Color::LightMagenta,
-                PeaType::Task => Color::White,
-            };
-
-            let style = if i == app.selected_index {
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD)
+            // Truncate title with ellipsis if too long
+            let title = if pea.title.len() > available_width && available_width > 3 {
+                format!("{}...", &pea.title[..available_width - 3])
             } else {
-                Style::default()
+                pea.title.clone()
             };
 
-            let content = Line::from(vec![
+            let mut spans = vec![
                 Span::styled(
                     format!("{} ", status_icon),
                     Style::default().fg(status_color),
                 ),
-                Span::styled(
-                    format!("[{}] ", type_indicator),
-                    Style::default().fg(type_color),
-                ),
-                Span::styled(&pea.id, Style::default().fg(Color::Cyan)),
-                Span::raw(" "),
-                Span::raw(&pea.title),
-            ]);
+                Span::styled(format!("[{}]", type_ind), Style::default().fg(type_color)),
+            ];
 
-            ListItem::new(content).style(style)
+            // Add priority indicator if not normal
+            if let Some((pri_ind, pri_color)) = priority_indicator(pea) {
+                spans.push(Span::styled(
+                    format!("{}", pri_ind),
+                    Style::default().fg(pri_color),
+                ));
+            }
+
+            spans.push(Span::raw(" "));
+            spans.push(Span::styled(&pea.id, Style::default().fg(Color::Cyan)));
+            spans.push(Span::raw(" "));
+            spans.push(Span::raw(title));
+
+            ListItem::new(Line::from(spans))
         })
         .collect();
 
     let title = format!(" Peas ({}) ", app.filtered_peas.len());
-    let list = List::new(items).block(
-        Block::default()
-            .title(title)
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan)),
-    );
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title(title)
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        );
 
-    f.render_widget(list, area);
+    f.render_stateful_widget(list, area, &mut app.list_state);
 }
 
-fn draw_detail(f: &mut Frame, app: &App, area: Rect) {
+fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
+    let items: Vec<ListItem> = app
+        .tree_nodes
+        .iter()
+        .map(|node| {
+            let pea = &node.pea;
+            let (status_icon, status_color) = status_indicator(&pea.status);
+            let (type_ind, type_color) = type_indicator(&pea.pea_type);
+
+            // Build the tree prefix with ASCII art
+            let mut prefix = String::new();
+            for &has_line in &node.parent_lines {
+                if has_line {
+                    prefix.push_str("│ ");
+                } else {
+                    prefix.push_str("  ");
+                }
+            }
+
+            // Add the branch connector for this node
+            if node.depth > 0 {
+                if node.is_last {
+                    prefix.push_str("└─");
+                } else {
+                    prefix.push_str("├─");
+                }
+            }
+
+            // Calculate available width for title
+            let prefix_chars = prefix.chars().count();
+            let fixed_chars = 14; // " ○ [T]!! " + some buffer (with priority)
+            let available_width =
+                area.width
+                    .saturating_sub(2 + prefix_chars as u16 + fixed_chars) as usize;
+
+            let title = if pea.title.len() > available_width && available_width > 3 {
+                format!("{}...", &pea.title[..available_width - 3])
+            } else {
+                pea.title.clone()
+            };
+
+            let mut spans = vec![
+                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    format!("{} ", status_icon),
+                    Style::default().fg(status_color),
+                ),
+                Span::styled(format!("[{}]", type_ind), Style::default().fg(type_color)),
+            ];
+
+            // Add priority indicator if not normal
+            if let Some((pri_ind, pri_color)) = priority_indicator(pea) {
+                spans.push(Span::styled(
+                    format!("{}", pri_ind),
+                    Style::default().fg(pri_color),
+                ));
+            }
+
+            spans.push(Span::raw(" "));
+            spans.push(Span::raw(title));
+
+            ListItem::new(Line::from(spans))
+        })
+        .collect();
+
+    let title = format!(" Tree ({}) ", app.tree_nodes.len());
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title(title)
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        );
+
+    f.render_stateful_widget(list, area, &mut app.list_state);
+}
+
+fn draw_detail(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
     let detail_block = Block::default()
         .title(" Details ")
         .borders(Borders::ALL)
+        .border_set(border::ROUNDED)
         .border_style(Style::default().fg(Color::Green));
 
     if let Some(pea) = app.selected_pea() {
@@ -221,9 +313,34 @@ fn draw_detail(f: &mut Frame, app: &App, area: Rect) {
         ];
 
         if let Some(ref parent) = pea.parent {
+            // Find parent title
+            let parent_title = app
+                .all_peas
+                .iter()
+                .find(|p| p.id == *parent)
+                .map(|p| p.title.as_str())
+                .unwrap_or("");
             lines.push(Line::from(vec![
                 Span::raw("Parent:   "),
                 Span::styled(parent, Style::default().fg(Color::Cyan)),
+                Span::raw(" "),
+                Span::styled(parent_title, Style::default().fg(Color::DarkGray)),
+            ]));
+        }
+
+        // Find children
+        let children: Vec<_> = app
+            .all_peas
+            .iter()
+            .filter(|p| p.parent.as_ref() == Some(&pea.id))
+            .collect();
+        if !children.is_empty() {
+            lines.push(Line::from(vec![
+                Span::raw("Children: "),
+                Span::styled(
+                    format!("{} items", children.len()),
+                    Style::default().fg(Color::DarkGray),
+                ),
             ]));
         }
 
@@ -250,20 +367,68 @@ fn draw_detail(f: &mut Frame, app: &App, area: Rect) {
             ),
         ]));
 
+        // List children if any
+        if !children.is_empty() {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "Children:",
+                Style::default().add_modifier(Modifier::UNDERLINED),
+            )));
+            for child in children.iter().take(10) {
+                let (status_icon, status_color) = status_indicator(&child.status);
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        format!("  {} ", status_icon),
+                        Style::default().fg(status_color),
+                    ),
+                    Span::styled(&child.id, Style::default().fg(Color::Cyan)),
+                    Span::raw(" "),
+                    Span::raw(&child.title),
+                ]));
+            }
+            if children.len() > 10 {
+                lines.push(Line::from(Span::styled(
+                    format!("  ... and {} more", children.len() - 10),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+        }
+
         if !pea.body.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled(
                 "Description:",
                 Style::default().add_modifier(Modifier::UNDERLINED),
             )));
-            for line in pea.body.lines().take(15) {
+            for line in pea.body.lines() {
                 lines.push(Line::from(line.to_string()));
             }
         }
 
+        // Add scroll hint if content is scrollable
+        let content_height = lines.len() as u16;
+        let visible_height = area.height.saturating_sub(2); // account for borders
+        let scroll_hint = if content_height > visible_height {
+            format!(
+                " [↑↓ scroll: {}/{}] ",
+                detail_scroll + 1,
+                content_height.saturating_sub(visible_height) + 1
+            )
+        } else {
+            String::new()
+        };
+
+        let detail_block = Block::default()
+            .title(" Details ")
+            .title_bottom(Line::from(scroll_hint).right_aligned())
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Green));
+
         let detail = Paragraph::new(Text::from(lines))
             .block(detail_block)
-            .wrap(Wrap { trim: true });
+            .wrap(Wrap { trim: true })
+            .scroll((detail_scroll, 0));
 
         f.render_widget(detail, area);
     } else {
@@ -275,6 +440,54 @@ fn draw_detail(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
+    let footer_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Filter tabs
+            Constraint::Length(1), // Separator
+            Constraint::Length(1), // Keybindings
+        ])
+        .split(area);
+
+    // Draw filter tabs
+    let filter_spans: Vec<Span> = [
+        FilterType::All,
+        FilterType::Open,
+        FilterType::InProgress,
+        FilterType::Completed,
+        FilterType::Milestones,
+        FilterType::Epics,
+        FilterType::Tasks,
+    ]
+    .iter()
+    .map(|ft| {
+        let style = if *ft == app.filter {
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        Span::styled(format!(" {} ", ft.label()), style)
+    })
+    .collect();
+
+    let mut filter_line = vec![Span::styled(
+        " Filter: ",
+        Style::default().fg(Color::DarkGray),
+    )];
+    filter_line.extend(filter_spans);
+
+    let filter_bar = Paragraph::new(Line::from(filter_line));
+    f.render_widget(filter_bar, footer_chunks[0]);
+
+    // Draw separator
+    let separator = Paragraph::new(Line::from("─".repeat(area.width as usize)))
+        .style(Style::default().fg(Color::DarkGray));
+    f.render_widget(separator, footer_chunks[1]);
+
+    // Draw keybindings row
     let mode_indicator = match app.input_mode {
         InputMode::Normal => Span::styled(
             " NORMAL ",
@@ -288,7 +501,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " j/k:nav  Tab:filter  /:search  s:start  d:done  Space:toggle  ?:help  q:quit "
+            " j/k:nav  J/K:scroll  Tab:filter  /:search  t:tree  s:start  d:done  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
     };
@@ -310,10 +523,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         Style::default().fg(Color::DarkGray),
     ));
 
-    let footer =
-        Paragraph::new(Line::from(footer_spans)).block(Block::default().borders(Borders::TOP));
-
-    f.render_widget(footer, area);
+    let keybindings = Paragraph::new(Line::from(footer_spans));
+    f.render_widget(keybindings, footer_chunks[2]);
 }
 
 fn draw_help_popup(f: &mut Frame) {
@@ -334,6 +545,14 @@ fn draw_help_popup(f: &mut Frame) {
             Span::raw("Move up"),
         ]),
         Line::from(vec![
+            Span::styled("J       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Scroll details down"),
+        ]),
+        Line::from(vec![
+            Span::styled("K       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Scroll details up"),
+        ]),
+        Line::from(vec![
             Span::styled("Tab     ", Style::default().fg(Color::Cyan)),
             Span::raw("Next filter"),
         ]),
@@ -344,6 +563,10 @@ fn draw_help_popup(f: &mut Frame) {
         Line::from(vec![
             Span::styled("/       ", Style::default().fg(Color::Cyan)),
             Span::raw("Search"),
+        ]),
+        Line::from(vec![
+            Span::styled("t       ", Style::default().fg(Color::Cyan)),
+            Span::raw("Toggle tree/list view"),
         ]),
         Line::from(vec![
             Span::styled("Space   ", Style::default().fg(Color::Cyan)),
@@ -380,6 +603,7 @@ fn draw_help_popup(f: &mut Frame) {
             Block::default()
                 .title(" Help ")
                 .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
                 .border_style(Style::default().fg(Color::Yellow)),
         )
         .wrap(Wrap { trim: true });

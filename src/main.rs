@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use peas::{
-    cli::{Cli, Commands},
+    cli::{BulkAction, Cli, Commands},
     config::{PeasConfig, PeasSettings},
     graphql::build_schema,
     model::{Pea, PeaStatus},
@@ -404,6 +404,158 @@ fn main() -> Result<()> {
             }
 
             println!("Exported {} peas to {}", exported, output);
+            Ok(())
+        }
+        Commands::Bulk { action } => {
+            let (config, root) = load()?;
+            let repo = PeaRepository::new(&config, &root);
+
+            match action {
+                BulkAction::Status { status, ids } => {
+                    let new_status: PeaStatus = status.into();
+                    let mut updated = 0;
+                    let mut errors = 0;
+                    for id in &ids {
+                        match repo.get(id) {
+                            Ok(mut pea) => {
+                                pea.status = new_status;
+                                pea.touch();
+                                if let Err(e) = repo.update(&pea) {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    errors += 1;
+                                } else {
+                                    println!(
+                                        "{} {} -> {}",
+                                        "Updated".green(),
+                                        id.cyan(),
+                                        new_status
+                                    );
+                                    updated += 1;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("{} {}: {}", "Error".red(), id, e);
+                                errors += 1;
+                            }
+                        }
+                    }
+                    println!("\nUpdated {} peas, {} errors", updated, errors);
+                }
+                BulkAction::Start { ids } => {
+                    let mut updated = 0;
+                    let mut errors = 0;
+                    for id in &ids {
+                        match repo.get(id) {
+                            Ok(mut pea) => {
+                                pea.status = PeaStatus::InProgress;
+                                pea.touch();
+                                if let Err(e) = repo.update(&pea) {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    errors += 1;
+                                } else {
+                                    println!("{} {}", "Started".green(), id.cyan());
+                                    updated += 1;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("{} {}: {}", "Error".red(), id, e);
+                                errors += 1;
+                            }
+                        }
+                    }
+                    println!("\nStarted {} peas, {} errors", updated, errors);
+                }
+                BulkAction::Done { ids } => {
+                    let mut updated = 0;
+                    let mut errors = 0;
+                    for id in &ids {
+                        match repo.get(id) {
+                            Ok(mut pea) => {
+                                pea.status = PeaStatus::Completed;
+                                pea.touch();
+                                if let Err(e) = repo.update(&pea) {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    errors += 1;
+                                } else {
+                                    println!("{} {}", "Completed".green(), id.cyan());
+                                    updated += 1;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("{} {}: {}", "Error".red(), id, e);
+                                errors += 1;
+                            }
+                        }
+                    }
+                    println!("\nCompleted {} peas, {} errors", updated, errors);
+                }
+                BulkAction::Tag { tag, ids } => {
+                    let mut updated = 0;
+                    let mut errors = 0;
+                    for id in &ids {
+                        match repo.get(id) {
+                            Ok(mut pea) => {
+                                if !pea.tags.contains(&tag) {
+                                    pea.tags.push(tag.clone());
+                                    pea.touch();
+                                    if let Err(e) = repo.update(&pea) {
+                                        eprintln!("{} {}: {}", "Error".red(), id, e);
+                                        errors += 1;
+                                    } else {
+                                        println!(
+                                            "{} {} +{}",
+                                            "Tagged".green(),
+                                            id.cyan(),
+                                            tag.magenta()
+                                        );
+                                        updated += 1;
+                                    }
+                                } else {
+                                    println!(
+                                        "{} {} (already has tag)",
+                                        "Skipped".yellow(),
+                                        id.cyan()
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("{} {}: {}", "Error".red(), id, e);
+                                errors += 1;
+                            }
+                        }
+                    }
+                    println!("\nTagged {} peas, {} errors", updated, errors);
+                }
+                BulkAction::Parent { parent, ids } => {
+                    let mut updated = 0;
+                    let mut errors = 0;
+                    for id in &ids {
+                        match repo.get(id) {
+                            Ok(mut pea) => {
+                                pea.parent = Some(parent.clone());
+                                pea.touch();
+                                if let Err(e) = repo.update(&pea) {
+                                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                                    errors += 1;
+                                } else {
+                                    println!(
+                                        "{} {} -> parent: {}",
+                                        "Updated".green(),
+                                        id.cyan(),
+                                        parent.cyan()
+                                    );
+                                    updated += 1;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("{} {}: {}", "Error".red(), id, e);
+                                errors += 1;
+                            }
+                        }
+                    }
+                    println!("\nUpdated {} peas, {} errors", updated, errors);
+                }
+            }
             Ok(())
         }
     }
