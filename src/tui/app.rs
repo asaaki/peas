@@ -5,6 +5,7 @@ use crate::{
     model::{Pea, PeaStatus, PeaType},
     storage::PeaRepository,
 };
+use cli_clipboard::ClipboardProvider;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
@@ -457,6 +458,20 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     KeyCode::Char('r') => {
                         let _ = app.refresh();
                         app.message = Some("Refreshed".to_string());
+                    }
+                    KeyCode::Char('y') => {
+                        if let Some(pea) = app.selected_pea() {
+                            let id = pea.id.clone();
+                            if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
+                                if ctx.set_contents(id.clone()).is_ok() {
+                                    app.message = Some(format!("Copied: {}", id));
+                                } else {
+                                    app.message = Some("Failed to copy to clipboard".to_string());
+                                }
+                            } else {
+                                app.message = Some("Clipboard not available".to_string());
+                            }
+                        }
                     }
                     KeyCode::Char('J') => app.scroll_detail_down(),
                     KeyCode::Char('K') => app.scroll_detail_up(),

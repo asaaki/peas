@@ -735,7 +735,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " j/k:nav  J/K:scroll  Tab:filter  /:search  v:view  s:start  d:done  ?:help  q:quit "
+            " j/k:nav  J/K:scroll  Tab:filter  /:search  v:view  s:start  d:done  y:copy  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
     };
