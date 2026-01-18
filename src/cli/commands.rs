@@ -76,6 +76,10 @@ pub enum Commands {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+
+        /// Preview what would be created without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Show a pea's contents
@@ -160,6 +164,10 @@ pub enum Commands {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+
+        /// Preview what would be changed without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Archive a pea (move to archive folder)
@@ -381,6 +389,10 @@ pub enum BulkAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+
+        /// Preview what would be created without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 

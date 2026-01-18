@@ -34,6 +34,7 @@ fn main() -> Result<()> {
             blocking,
             tag,
             json,
+            dry_run,
         } => {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
@@ -61,6 +62,27 @@ fn main() -> Result<()> {
             }
             if let Some(b) = body_content {
                 pea = pea.with_body(b);
+            }
+
+            if dry_run {
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&serde_json::json!({
+                            "dry_run": true,
+                            "would_create": pea
+                        }))?
+                    );
+                } else {
+                    println!(
+                        "{} {} [{}] {}",
+                        "Would create:".yellow(),
+                        pea.id.cyan(),
+                        format!("{}", pea.pea_type).blue(),
+                        pea.title
+                    );
+                }
+                return Ok(());
             }
 
             let path = repo.create(&pea)?;
@@ -144,10 +166,12 @@ fn main() -> Result<()> {
             add_tag,
             remove_tag,
             json,
+            dry_run,
         } => {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
-            let mut pea = repo.get(&id)?;
+            let original = repo.get(&id)?;
+            let mut pea = original.clone();
 
             if let Some(t) = title {
                 pea.title = t;
@@ -174,6 +198,58 @@ fn main() -> Result<()> {
             }
             for t in remove_tag {
                 pea.tags.retain(|x| x != &t);
+            }
+
+            if dry_run {
+                // Build a list of changes
+                let mut changes = Vec::new();
+                if pea.title != original.title {
+                    changes.push(format!("title: '{}' -> '{}'", original.title, pea.title));
+                }
+                if pea.pea_type != original.pea_type {
+                    changes.push(format!("type: {} -> {}", original.pea_type, pea.pea_type));
+                }
+                if pea.status != original.status {
+                    changes.push(format!("status: {} -> {}", original.status, pea.status));
+                }
+                if pea.priority != original.priority {
+                    changes.push(format!(
+                        "priority: {} -> {}",
+                        original.priority, pea.priority
+                    ));
+                }
+                if pea.parent != original.parent {
+                    changes.push(format!("parent: {:?} -> {:?}", original.parent, pea.parent));
+                }
+                if pea.tags != original.tags {
+                    changes.push(format!("tags: {:?} -> {:?}", original.tags, pea.tags));
+                }
+                if pea.body != original.body {
+                    changes.push("body: [changed]".to_string());
+                }
+
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&serde_json::json!({
+                            "dry_run": true,
+                            "id": id,
+                            "changes": changes,
+                            "before": original,
+                            "after": pea
+                        }))?
+                    );
+                } else {
+                    if changes.is_empty() {
+                        println!("{} {} (no changes)", "Would update:".yellow(), id.cyan());
+                    } else {
+                        println!("{} {}", "Would update:".yellow(), id.cyan());
+                        for change in changes {
+                            println!("  {}", change);
+                        }
+                    }
+                }
+                return Ok(());
             }
 
             pea.touch();
@@ -713,6 +789,7 @@ fn main() -> Result<()> {
                     priority,
                     status,
                     json,
+                    dry_run,
                 } => {
                     // Read titles from stdin, one per line
                     let mut input = String::new();
@@ -743,6 +820,52 @@ fn main() -> Result<()> {
                     let pea_type = r#type.into();
                     let pea_status: Option<PeaStatus> = status.map(|s| s.into());
                     let pea_priority: Option<peas::model::PeaPriority> = priority.map(|p| p.into());
+
+                    // Dry-run mode: just show what would be created
+                    if dry_run {
+                        let mut would_create = Vec::new();
+                        for title in &titles {
+                            let id = repo.generate_id();
+                            let mut pea = Pea::new(id, title.to_string(), pea_type);
+
+                            if let Some(ref p) = parent {
+                                pea = pea.with_parent(Some(p.clone()));
+                            }
+                            if !tag.is_empty() {
+                                pea = pea.with_tags(tag.clone());
+                            }
+                            if let Some(s) = pea_status {
+                                pea = pea.with_status(s);
+                            }
+                            if let Some(p) = pea_priority {
+                                pea = pea.with_priority(p);
+                            }
+
+                            if !json {
+                                println!(
+                                    "{} {} [{}] {}",
+                                    "Would create:".yellow(),
+                                    pea.id.cyan(),
+                                    format!("{}", pea.pea_type).blue(),
+                                    pea.title
+                                );
+                            }
+                            would_create.push(pea);
+                        }
+
+                        if json {
+                            println!(
+                                "{}",
+                                serde_json::to_string_pretty(&serde_json::json!({
+                                    "dry_run": true,
+                                    "would_create": would_create
+                                }))?
+                            );
+                        } else {
+                            println!("\n{} {} peas", "Would create:".yellow(), would_create.len());
+                        }
+                        return Ok(());
+                    }
 
                     let mut created_peas = Vec::new();
                     let mut errors_list: Vec<serde_json::Value> = Vec::new();

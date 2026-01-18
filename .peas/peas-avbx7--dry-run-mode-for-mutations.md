@@ -2,11 +2,11 @@
 id = "peas-avbx7"
 title = "Dry-run mode for mutations"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-up8r0"
 created = "2026-01-18T17:55:16.594331600Z"
-updated = "2026-01-18T17:55:16.594331600Z"
+updated = "2026-01-18T18:29:30.735397Z"
 +++
 
 Add --dry-run flag to create, update, batch commands to preview changes without applying them.
