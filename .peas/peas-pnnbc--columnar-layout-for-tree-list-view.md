@@ -2,11 +2,11 @@
 id = "peas-pnnbc"
 title = "Columnar layout for tree/list view"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-7z7f5"
 created = "2026-01-18T19:30:13.842670300Z"
-updated = "2026-01-18T19:30:13.842670300Z"
+updated = "2026-01-18T19:35:48.595185300Z"
 +++
 
 Align tree/list items in columns like beans does.

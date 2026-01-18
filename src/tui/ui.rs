@@ -370,6 +370,12 @@ fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
 fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     let selected_idx = app.list_state.selected().unwrap_or(usize::MAX);
 
+    // Column widths for beans-style layout
+    // Format: ▌prefix+id        type        status        priority+title
+    let id_col_width = 18; // peas-xxxxx with some tree prefix space
+    let type_col_width = 12;
+    let status_col_width = 14;
+
     let items: Vec<ListItem> = app
         .tree_nodes
         .iter()
@@ -377,8 +383,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         .map(|(idx, node)| {
             let pea = &node.pea;
             let is_selected = idx == selected_idx;
-            let (status_icon, status_color) = status_indicator(&pea.status);
-            let (type_ind, type_color) = type_indicator(&pea.pea_type);
+            let (_, status_color) = status_indicator(&pea.status);
 
             // Selection indicator: bar for selected, space otherwise
             let selection_indicator = if is_selected {
@@ -406,12 +411,21 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 }
             }
 
+            // Column 1: tree prefix + ID (padded to fixed width)
+            let prefix_and_id = format!("{}{}", prefix, pea.id);
+            let col1 = format!("{:<width$}", prefix_and_id, width = id_col_width);
+
+            // Column 2: type (padded)
+            let type_str = format!("{}", pea.pea_type);
+            let col2 = format!("{:<width$}", type_str, width = type_col_width);
+
+            // Column 3: status (padded)
+            let status_str = format!("{}", pea.status);
+            let col3 = format!("{:<width$}", status_str, width = status_col_width);
+
             // Calculate available width for title
-            let prefix_chars = prefix.chars().count();
-            let fixed_chars = 15; // "▌ ○ [T]!! " + some buffer (with priority)
-            let available_width =
-                area.width
-                    .saturating_sub(2 + prefix_chars as u16 + fixed_chars) as usize;
+            let fixed_cols = id_col_width + type_col_width + status_col_width + 5; // 5 for spacing and borders
+            let available_width = area.width.saturating_sub(fixed_cols as u16) as usize;
 
             let title = if pea.title.len() > available_width && available_width > 3 {
                 format!("{}...", &pea.title[..available_width - 3])
@@ -419,25 +433,21 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 pea.title.clone()
             };
 
+            // Build spans with columnar layout
             let mut spans = vec![
                 selection_indicator,
-                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
-                Span::styled(
-                    format!("{} ", status_icon),
-                    Style::default().fg(status_color),
-                ),
-                Span::styled(format!("[{}]", type_ind), Style::default().fg(type_color)),
+                Span::styled(col1, Style::default().fg(Color::Cyan)),
+                Span::styled(col2, Style::default().fg(type_color(&pea.pea_type))),
+                Span::styled(col3, Style::default().fg(status_color)),
             ];
 
             // Add priority indicator if not normal
             if let Some((pri_ind, pri_color)) = priority_indicator(pea) {
                 spans.push(Span::styled(
-                    format!("{}", pri_ind),
+                    format!("{} ", pri_ind),
                     Style::default().fg(pri_color),
                 ));
             }
-
-            spans.push(Span::raw(" "));
 
             // Make selected row bold
             if is_selected {
@@ -463,6 +473,20 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     );
 
     f.render_stateful_widget(list, area, &mut app.list_state);
+}
+
+/// Get color for type (without the indicator character)
+fn type_color(pea_type: &PeaType) -> Color {
+    match pea_type {
+        PeaType::Milestone => Color::Magenta,
+        PeaType::Epic => Color::Blue,
+        PeaType::Story => Color::Cyan,
+        PeaType::Feature => Color::Cyan,
+        PeaType::Bug => Color::Red,
+        PeaType::Chore => Color::Yellow,
+        PeaType::Research => Color::LightMagenta,
+        PeaType::Task => Color::White,
+    }
 }
 
 fn draw_detail(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
