@@ -13,6 +13,7 @@ use crossterm::{
 };
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::ListState};
 use std::{
+    collections::HashSet,
     io,
     path::{Path, PathBuf},
 };
@@ -59,6 +60,7 @@ pub struct App {
     pub blocking_selected: Vec<bool>, // Which candidates are selected (multi-select)
     pub create_title: String,        // Title input for create modal
     pub create_type: PeaType,        // Type selection for create modal
+    pub multi_selected: HashSet<String>, // IDs of multi-selected tickets
 }
 
 impl App {
@@ -91,6 +93,7 @@ impl App {
             blocking_selected: Vec::new(),
             create_title: String::new(),
             create_type: PeaType::Task,
+            multi_selected: HashSet::new(),
         };
         app.build_tree();
         Ok(app)
@@ -276,6 +279,44 @@ impl App {
         self.tree_nodes.get(self.selected_index).map(|n| &n.pea)
     }
 
+    /// Check if a ticket is multi-selected
+    pub fn is_multi_selected(&self, id: &str) -> bool {
+        self.multi_selected.contains(id)
+    }
+
+    /// Toggle multi-selection for the current ticket
+    pub fn toggle_multi_select(&mut self) {
+        if let Some(pea) = self.selected_pea() {
+            let id = pea.id.clone();
+            if self.multi_selected.contains(&id) {
+                self.multi_selected.remove(&id);
+            } else {
+                self.multi_selected.insert(id);
+            }
+        }
+    }
+
+    /// Clear all multi-selections
+    pub fn clear_multi_select(&mut self) {
+        self.multi_selected.clear();
+    }
+
+    /// Get the IDs to operate on: multi-selected if any, otherwise current selection
+    pub fn target_ids(&self) -> Vec<String> {
+        if self.multi_selected.is_empty() {
+            self.selected_pea()
+                .map(|p| vec![p.id.clone()])
+                .unwrap_or_default()
+        } else {
+            self.multi_selected.iter().cloned().collect()
+        }
+    }
+
+    /// Get count of multi-selected items
+    pub fn multi_select_count(&self) -> usize {
+        self.multi_selected.len()
+    }
+
     pub fn selected_pea_file_path(&self) -> Option<PathBuf> {
         self.selected_pea()
             .and_then(|pea| self.repo.find_file_by_id(&pea.id).ok())
@@ -358,24 +399,6 @@ impl App {
         self.detail_scroll = self.detail_scroll.saturating_sub(1);
     }
 
-    pub fn toggle_status(&mut self) -> Result<()> {
-        if let Some(pea) = self.selected_pea().cloned() {
-            let mut updated = pea.clone();
-            updated.status = match pea.status {
-                PeaStatus::Todo => PeaStatus::InProgress,
-                PeaStatus::InProgress => PeaStatus::Completed,
-                PeaStatus::Completed => PeaStatus::Todo,
-                PeaStatus::Draft => PeaStatus::Todo,
-                PeaStatus::Scrapped => PeaStatus::Todo,
-            };
-            updated.touch();
-            self.repo.update(&updated)?;
-            self.message = Some(format!("{} -> {}", pea.id, updated.status));
-            self.refresh()?;
-        }
-        Ok(())
-    }
-
     /// Returns the list of available statuses for the modal
     pub fn status_options() -> &'static [PeaStatus] {
         &[
@@ -396,18 +419,27 @@ impl App {
         }
     }
 
-    /// Apply the selected status from the modal
+    /// Apply the selected status from the modal (to all selected tickets)
     pub fn apply_modal_status(&mut self) -> Result<()> {
         let options = Self::status_options();
         if let Some(&new_status) = options.get(self.modal_selection) {
-            if let Some(pea) = self.selected_pea().cloned() {
-                let mut updated = pea.clone();
-                updated.status = new_status;
-                updated.touch();
-                self.repo.update(&updated)?;
-                self.message = Some(format!("{} -> {}", pea.id, new_status));
-                self.refresh()?;
+            let target_ids = self.target_ids();
+            let count = target_ids.len();
+            for id in target_ids {
+                if let Some(pea) = self.all_peas.iter().find(|p| p.id == id).cloned() {
+                    let mut updated = pea;
+                    updated.status = new_status;
+                    updated.touch();
+                    self.repo.update(&updated)?;
+                }
             }
+            if count > 1 {
+                self.message = Some(format!("{} tickets -> {}", count, new_status));
+            } else if count == 1 {
+                self.message = Some(format!("-> {}", new_status));
+            }
+            self.clear_multi_select();
+            self.refresh()?;
         }
         self.input_mode = InputMode::Normal;
         Ok(())
@@ -433,18 +465,27 @@ impl App {
         }
     }
 
-    /// Apply the selected priority from the modal
+    /// Apply the selected priority from the modal (to all selected tickets)
     pub fn apply_modal_priority(&mut self) -> Result<()> {
         let options = Self::priority_options();
         if let Some(&new_priority) = options.get(self.modal_selection) {
-            if let Some(pea) = self.selected_pea().cloned() {
-                let mut updated = pea.clone();
-                updated.priority = new_priority;
-                updated.touch();
-                self.repo.update(&updated)?;
-                self.message = Some(format!("{} -> {}", pea.id, new_priority));
-                self.refresh()?;
+            let target_ids = self.target_ids();
+            let count = target_ids.len();
+            for id in target_ids {
+                if let Some(pea) = self.all_peas.iter().find(|p| p.id == id).cloned() {
+                    let mut updated = pea;
+                    updated.priority = new_priority;
+                    updated.touch();
+                    self.repo.update(&updated)?;
+                }
             }
+            if count > 1 {
+                self.message = Some(format!("{} tickets -> {}", count, new_priority));
+            } else if count == 1 {
+                self.message = Some(format!("-> {}", new_priority));
+            }
+            self.clear_multi_select();
+            self.refresh()?;
         }
         self.input_mode = InputMode::Normal;
         Ok(())
@@ -473,18 +514,27 @@ impl App {
         }
     }
 
-    /// Apply the selected type from the modal
+    /// Apply the selected type from the modal (to all selected tickets)
     pub fn apply_modal_type(&mut self) -> Result<()> {
         let options = Self::type_options();
         if let Some(&new_type) = options.get(self.modal_selection) {
-            if let Some(pea) = self.selected_pea().cloned() {
-                let mut updated = pea.clone();
-                updated.pea_type = new_type;
-                updated.touch();
-                self.repo.update(&updated)?;
-                self.message = Some(format!("{} -> {}", pea.id, new_type));
-                self.refresh()?;
+            let target_ids = self.target_ids();
+            let count = target_ids.len();
+            for id in target_ids {
+                if let Some(pea) = self.all_peas.iter().find(|p| p.id == id).cloned() {
+                    let mut updated = pea;
+                    updated.pea_type = new_type;
+                    updated.touch();
+                    self.repo.update(&updated)?;
+                }
             }
+            if count > 1 {
+                self.message = Some(format!("{} tickets -> {}", count, new_type));
+            } else if count == 1 {
+                self.message = Some(format!("-> {}", new_type));
+            }
+            self.clear_multi_select();
+            self.refresh()?;
         }
         self.input_mode = InputMode::Normal;
         Ok(())
@@ -753,6 +803,8 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     KeyCode::Esc => {
                         if app.show_help {
                             app.show_help = false;
+                        } else if !app.multi_selected.is_empty() {
+                            app.clear_multi_select();
                         } else if !app.search_query.is_empty() {
                             app.search_query.clear();
                             app.apply_filter();
@@ -775,7 +827,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                         }
                     }
                     KeyCode::Char(' ') => {
-                        let _ = app.toggle_status();
+                        app.toggle_multi_select();
                     }
                     KeyCode::Char('s') => {
                         app.open_status_modal();

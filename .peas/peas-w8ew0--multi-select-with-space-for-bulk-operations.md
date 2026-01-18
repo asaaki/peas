@@ -2,11 +2,11 @@
 id = "peas-w8ew0"
 title = "Multi-select with Space for bulk operations"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:07.624361800Z"
-updated = "2026-01-18T19:20:07.624361800Z"
+updated = "2026-01-18T23:01:16.551584Z"
 +++
 
 Implement Space key for multi-selecting tickets in the TUI.

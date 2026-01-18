@@ -280,6 +280,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         .map(|(idx, node)| {
             let pea = &node.pea;
             let is_selected = idx == index_in_page;
+            let is_multi_selected = app.is_multi_selected(&pea.id);
             let (status_icon, status_color) = status_indicator(&pea.status);
             let pea_type_color = type_color(&pea.pea_type);
 
@@ -309,6 +310,10 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 Style::default()
             };
+
+            // Multi-select checkbox
+            let checkbox = if is_multi_selected { "◆" } else { " " };
+            let checkbox_style = Style::default().fg(Color::Cyan);
 
             // Priority indicator
             let pri = if let Some((ind, _)) = priority_indicator(pea) {
@@ -360,6 +365,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             // Build cells for each column
             Row::new(vec![
                 Cell::from(sel).style(sel_style),
+                Cell::from(checkbox).style(checkbox_style),
                 Cell::from(tree_and_id),
                 Cell::from(format!("{}", pea.pea_type)).style(type_style),
                 Cell::from(format!("{} {}", status_icon, pea.status)).style(status_style),
@@ -369,17 +375,27 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         })
         .collect();
 
-    // Title shows count only
-    let title = format!(" peas ({}) ", app.tree_nodes.len());
+    // Title shows count and selection count if any
+    let selection_count = app.multi_select_count();
+    let title = if selection_count > 0 {
+        format!(
+            " peas ({}) [{} selected] ",
+            app.tree_nodes.len(),
+            selection_count
+        )
+    } else {
+        format!(" peas ({}) ", app.tree_nodes.len())
+    };
 
     // Page dots for bottom of panel (recalculate after page_height is set)
     let total_pages = app.total_pages();
     let current_page = app.current_page();
 
     // Define column widths:
-    // sel(1), tree+id(32), type(12), status(14), priority(1), title(fill)
+    // sel(1), checkbox(1), tree+id(20), type(12), status(14), priority(1), title(fill)
     let widths = [
         Constraint::Length(1),  // Selection indicator
+        Constraint::Length(1),  // Multi-select checkbox
         Constraint::Length(20), // Tree prefix + ID combined
         Constraint::Length(12), // Type
         Constraint::Length(14), // Status (icon + text)
@@ -715,7 +731,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let help_text = match app.input_mode {
         InputMode::Normal => {
-            " ↑↓:nav  ←→:page  g/G:first/last  /:search  c:create  s:status  e:edit  ?:help  q:quit "
+            " ↑↓:nav  ←→:page  Space:select  /:search  c:create  s:status  e:edit  ?:help  q:quit "
         }
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
         InputMode::StatusModal
@@ -1237,7 +1253,7 @@ fn draw_help_popup(f: &mut Frame) {
         ]),
         Line::from(vec![
             Span::styled("Space   ", Style::default().fg(Color::Cyan)),
-            Span::raw("Quick toggle status"),
+            Span::raw("Toggle selection (multi-select)"),
         ]),
         Line::from(vec![
             Span::styled("e       ", Style::default().fg(Color::Cyan)),
