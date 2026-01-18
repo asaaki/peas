@@ -2,11 +2,11 @@
 id = "peas-88hph"
 title = "Status modal (s key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:48.262063300Z"
-updated = "2026-01-18T19:20:48.262063300Z"
+updated = "2026-01-18T19:44:03.247367600Z"
 +++
 
 Change 's' hotkey from 'start' to open a status selection modal.

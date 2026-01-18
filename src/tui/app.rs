@@ -2,7 +2,7 @@ use super::ui;
 use crate::{
     config::PeasConfig,
     error::Result,
-    model::{Pea, PeaStatus, PeaType},
+    model::{Pea, PeaPriority, PeaStatus, PeaType},
     storage::PeaRepository,
 };
 use cli_clipboard::ClipboardProvider;
@@ -430,6 +430,43 @@ impl App {
         self.input_mode = InputMode::Normal;
         Ok(())
     }
+
+    /// Returns the list of available priorities for the modal
+    pub fn priority_options() -> &'static [PeaPriority] {
+        &[
+            PeaPriority::Critical,
+            PeaPriority::High,
+            PeaPriority::Normal,
+            PeaPriority::Low,
+            PeaPriority::Deferred,
+        ]
+    }
+
+    /// Open the priority modal with the current pea's priority preselected
+    pub fn open_priority_modal(&mut self) {
+        if let Some(pea) = self.selected_pea() {
+            let options = Self::priority_options();
+            self.modal_selection = options.iter().position(|p| *p == pea.priority).unwrap_or(0);
+            self.input_mode = InputMode::PriorityModal;
+        }
+    }
+
+    /// Apply the selected priority from the modal
+    pub fn apply_modal_priority(&mut self) -> Result<()> {
+        let options = Self::priority_options();
+        if let Some(&new_priority) = options.get(self.modal_selection) {
+            if let Some(pea) = self.selected_pea().cloned() {
+                let mut updated = pea.clone();
+                updated.priority = new_priority;
+                updated.touch();
+                self.repo.update(&updated)?;
+                self.message = Some(format!("{} -> {}", pea.id, new_priority));
+                self.refresh()?;
+            }
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -498,6 +535,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Char('s') => {
                         app.open_status_modal();
+                    }
+                    KeyCode::Char('P') => {
+                        app.open_priority_modal();
                     }
                     KeyCode::Char('d') => {
                         let _ = app.complete_selected();
@@ -610,8 +650,29 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     _ => {}
                 },
-                InputMode::PriorityModal | InputMode::TypeModal => {
-                    // Placeholder for future modals
+                InputMode::PriorityModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.apply_modal_priority();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let count = App::priority_options().len();
+                        app.modal_selection = (app.modal_selection + 1) % count;
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        let count = App::priority_options().len();
+                        app.modal_selection = if app.modal_selection == 0 {
+                            count - 1
+                        } else {
+                            app.modal_selection - 1
+                        };
+                    }
+                    _ => {}
+                },
+                InputMode::TypeModal => {
+                    // Placeholder for future modal
                     if key.code == KeyCode::Esc {
                         app.input_mode = InputMode::Normal;
                     }

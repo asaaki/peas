@@ -246,6 +246,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     // Draw modal if active
     match app.input_mode {
         InputMode::StatusModal => draw_status_modal(f, app),
+        InputMode::PriorityModal => draw_priority_modal(f, app),
         _ => {}
     }
 }
@@ -782,6 +783,17 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(keybindings, footer_chunks[2]);
 }
 
+/// Get color for priority
+fn priority_color(priority: &PeaPriority) -> Color {
+    match priority {
+        PeaPriority::Critical => Color::Red,
+        PeaPriority::High => Color::LightRed,
+        PeaPriority::Normal => Color::White,
+        PeaPriority::Low => Color::DarkGray,
+        PeaPriority::Deferred => Color::DarkGray,
+    }
+}
+
 fn draw_status_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(30, 30, f.area());
 
@@ -816,6 +828,48 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
     let list = List::new(items).block(
         Block::default()
             .title(" Status ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(list, area);
+}
+
+fn draw_priority_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(30, 30, f.area());
+
+    let options = App::priority_options();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(idx, priority)| {
+            let is_selected = idx == app.modal_selection;
+            let color = priority_color(priority);
+
+            let selection_indicator = if is_selected {
+                Span::styled("▌", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw(" ")
+            };
+
+            let style = if is_selected {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(Line::from(vec![
+                selection_indicator,
+                Span::styled(format!("{}", priority), style.fg(color)),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(" Priority ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(Style::default().fg(Color::Yellow)),
