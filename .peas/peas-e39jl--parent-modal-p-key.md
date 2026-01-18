@@ -2,11 +2,11 @@
 id = "peas-e39jl"
 title = "Parent modal (p key)"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-xacva"
 created = "2026-01-18T19:20:37.708638100Z"
-updated = "2026-01-18T19:20:37.708638100Z"
+updated = "2026-01-18T19:50:39.839707Z"
 +++
 
 Add 'p' hotkey to open a modal for setting the parent relationship.

@@ -250,6 +250,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::TypeModal => draw_type_modal(f, app),
         InputMode::DeleteConfirm => draw_delete_confirm(f, app),
         InputMode::ParentModal => draw_parent_modal(f, app),
+        InputMode::BlockingModal => draw_blocking_modal(f, app),
         _ => {}
     }
 }
@@ -760,6 +761,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " PARENT ",
             Style::default().bg(Color::Blue).fg(Color::White),
         ),
+        InputMode::BlockingModal => Span::styled(
+            " BLOCKING ",
+            Style::default().bg(Color::LightRed).fg(Color::Black),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -771,6 +776,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         | InputMode::PriorityModal
         | InputMode::TypeModal
         | InputMode::ParentModal => " j/k:nav  Enter:select  Esc:cancel ",
+        InputMode::BlockingModal => " j/k:nav  Space:toggle  Enter:apply  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
     };
 
@@ -937,6 +943,76 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
 
     f.render_widget(Clear, area);
     f.render_widget(paragraph, area);
+}
+
+fn draw_blocking_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 50, f.area());
+
+    let items: Vec<ListItem> = app
+        .blocking_candidates
+        .iter()
+        .zip(app.blocking_selected.iter())
+        .enumerate()
+        .map(|(idx, (pea, &is_checked))| {
+            let is_cursor = idx == app.modal_selection;
+
+            // Cursor indicator
+            let cursor = if is_cursor {
+                Span::styled("▌", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw(" ")
+            };
+
+            // Checkbox
+            let checkbox = if is_checked {
+                Span::styled("[x] ", Style::default().fg(Color::Green))
+            } else {
+                Span::styled("[ ] ", Style::default().fg(Color::DarkGray))
+            };
+
+            let (status_icon, status_color) = status_indicator(&pea.status);
+
+            let style = if is_cursor {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            // Truncate title if too long
+            let max_title_len = 30;
+            let title = if pea.title.len() > max_title_len {
+                format!("{}...", &pea.title[..max_title_len - 3])
+            } else {
+                pea.title.clone()
+            };
+
+            ListItem::new(Line::from(vec![
+                cursor,
+                checkbox,
+                Span::styled(
+                    format!("{} ", status_icon),
+                    Style::default().fg(status_color),
+                ),
+                Span::styled(&pea.id, Style::default().fg(Color::Cyan)),
+                Span::raw(" "),
+                Span::styled(title, style),
+            ]))
+        })
+        .collect();
+
+    let selected_count = app.blocking_selected.iter().filter(|&&s| s).count();
+    let title = format!(" Select Blocking Tickets ({} selected) ", selected_count);
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(list, area);
 }
 
 fn draw_parent_modal(f: &mut Frame, app: &App) {

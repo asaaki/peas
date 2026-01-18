@@ -26,6 +26,7 @@ pub enum InputMode {
     TypeModal,
     DeleteConfirm,
     ParentModal,
+    BlockingModal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -109,6 +110,8 @@ pub struct App {
     pub message: Option<String>,
     pub modal_selection: usize,      // Current selection in modal dialogs
     pub parent_candidates: Vec<Pea>, // Candidates for parent selection modal
+    pub blocking_candidates: Vec<Pea>, // Candidates for blocking selection modal
+    pub blocking_selected: Vec<bool>, // Which candidates are selected (multi-select)
 }
 
 impl App {
@@ -138,6 +141,8 @@ impl App {
             message: None,
             modal_selection: 0,
             parent_candidates: Vec::new(),
+            blocking_candidates: Vec::new(),
+            blocking_selected: Vec::new(),
         };
         app.build_tree();
         Ok(app)
@@ -589,6 +594,83 @@ impl App {
         self.input_mode = InputMode::Normal;
         Ok(())
     }
+
+    /// Open the blocking selection modal (multi-select)
+    pub fn open_blocking_modal(&mut self) {
+        let current_info = self
+            .selected_pea()
+            .map(|p| (p.id.clone(), p.blocking.clone()));
+
+        if let Some((current_id, current_blocking)) = current_info {
+            // Build list of all tickets that could be blockers (any ticket except self)
+            self.blocking_candidates = self
+                .all_peas
+                .iter()
+                .filter(|p| p.id != current_id)
+                .cloned()
+                .collect();
+
+            // Sort by status (open first), then type, then title
+            self.blocking_candidates.sort_by(|a, b| {
+                fn status_order(s: &PeaStatus) -> u8 {
+                    match s {
+                        PeaStatus::InProgress => 0,
+                        PeaStatus::Todo => 1,
+                        PeaStatus::Draft => 2,
+                        PeaStatus::Completed => 3,
+                        PeaStatus::Scrapped => 4,
+                    }
+                }
+                status_order(&a.status)
+                    .cmp(&status_order(&b.status))
+                    .then_with(|| a.title.cmp(&b.title))
+            });
+
+            // Initialize selection state based on current blocking list
+            self.blocking_selected = self
+                .blocking_candidates
+                .iter()
+                .map(|p| current_blocking.contains(&p.id))
+                .collect();
+
+            self.modal_selection = 0;
+            self.input_mode = InputMode::BlockingModal;
+        }
+    }
+
+    /// Toggle selection of current item in blocking modal
+    pub fn toggle_blocking_selection(&mut self) {
+        if let Some(selected) = self.blocking_selected.get_mut(self.modal_selection) {
+            *selected = !*selected;
+        }
+    }
+
+    /// Apply the selected blockers from the modal
+    pub fn apply_modal_blocking(&mut self) -> Result<()> {
+        let new_blocking: Vec<String> = self
+            .blocking_candidates
+            .iter()
+            .zip(self.blocking_selected.iter())
+            .filter_map(
+                |(pea, &selected)| {
+                    if selected { Some(pea.id.clone()) } else { None }
+                },
+            )
+            .collect();
+
+        if let Some(pea) = self.selected_pea().cloned() {
+            let mut updated = pea.clone();
+            updated.blocking = new_blocking.clone();
+            updated.touch();
+            self.repo.update(&updated)?;
+
+            let count = new_blocking.len();
+            self.message = Some(format!("{} blocking {} tickets", pea.id, count));
+            self.refresh()?;
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -666,6 +748,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
                     KeyCode::Char('p') => {
                         app.open_parent_modal();
+                    }
+                    KeyCode::Char('b') => {
+                        app.open_blocking_modal();
                     }
                     KeyCode::Char('d') => {
                         app.open_delete_confirm();
@@ -847,6 +932,34 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                         } else {
                             app.modal_selection - 1
                         };
+                    }
+                    _ => {}
+                },
+                InputMode::BlockingModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.apply_modal_blocking();
+                    }
+                    KeyCode::Char(' ') => {
+                        app.toggle_blocking_selection();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let count = app.blocking_candidates.len();
+                        if count > 0 {
+                            app.modal_selection = (app.modal_selection + 1) % count;
+                        }
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        let count = app.blocking_candidates.len();
+                        if count > 0 {
+                            app.modal_selection = if app.modal_selection == 0 {
+                                count - 1
+                            } else {
+                                app.modal_selection - 1
+                            };
+                        }
                     }
                     _ => {}
                 },
