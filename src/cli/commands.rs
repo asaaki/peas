@@ -238,14 +238,37 @@ pub enum Commands {
 
     /// Open the interactive TUI
     Tui,
+
+    /// Import from a beans project
+    #[command(name = "import-beans")]
+    ImportBeans {
+        /// Path to .beans directory
+        #[arg(default_value = ".beans")]
+        path: String,
+
+        /// Dry run - show what would be imported without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Export to beans format
+    #[command(name = "export-beans")]
+    ExportBeans {
+        /// Output directory
+        #[arg(default_value = ".beans-export")]
+        output: String,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
 pub enum PeaTypeArg {
     Milestone,
     Epic,
+    Story,
     Feature,
     Bug,
+    Chore,
+    Research,
     Task,
 }
 
@@ -254,8 +277,11 @@ impl From<PeaTypeArg> for crate::model::PeaType {
         match arg {
             PeaTypeArg::Milestone => crate::model::PeaType::Milestone,
             PeaTypeArg::Epic => crate::model::PeaType::Epic,
+            PeaTypeArg::Story => crate::model::PeaType::Story,
             PeaTypeArg::Feature => crate::model::PeaType::Feature,
             PeaTypeArg::Bug => crate::model::PeaType::Bug,
+            PeaTypeArg::Chore => crate::model::PeaType::Chore,
+            PeaTypeArg::Research => crate::model::PeaType::Research,
             PeaTypeArg::Task => crate::model::PeaType::Task,
         }
     }

@@ -2,7 +2,7 @@
 id = "peas-91oda"
 title = "Beans importer"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-macd2"
 created = "2026-01-18T16:27:11.388435700Z"

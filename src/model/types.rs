@@ -7,8 +7,11 @@ use std::{fmt, str::FromStr};
 pub enum PeaType {
     Milestone,
     Epic,
+    Story,
     Feature,
     Bug,
+    Chore,
+    Research,
     #[default]
     Task,
 }
@@ -18,8 +21,11 @@ impl fmt::Display for PeaType {
         match self {
             PeaType::Milestone => write!(f, "milestone"),
             PeaType::Epic => write!(f, "epic"),
+            PeaType::Story => write!(f, "story"),
             PeaType::Feature => write!(f, "feature"),
             PeaType::Bug => write!(f, "bug"),
+            PeaType::Chore => write!(f, "chore"),
+            PeaType::Research => write!(f, "research"),
             PeaType::Task => write!(f, "task"),
         }
     }
@@ -32,8 +38,11 @@ impl FromStr for PeaType {
         match s.to_lowercase().as_str() {
             "milestone" => Ok(PeaType::Milestone),
             "epic" => Ok(PeaType::Epic),
+            "story" => Ok(PeaType::Story),
             "feature" => Ok(PeaType::Feature),
             "bug" => Ok(PeaType::Bug),
+            "chore" => Ok(PeaType::Chore),
+            "research" | "spike" => Ok(PeaType::Research),
             "task" => Ok(PeaType::Task),
             _ => Err(PeasError::Parse(format!("Invalid pea type: {}", s))),
         }

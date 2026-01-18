@@ -343,6 +343,69 @@ fn main() -> Result<()> {
             peas::tui::run_tui(config, root)?;
             Ok(())
         }
+        Commands::ImportBeans { path, dry_run } => {
+            let (config, root) = load()?;
+            let repo = PeaRepository::new(&config, &root);
+            let beans_path = std::path::Path::new(&path);
+
+            let peas = peas::import_export::import_beans_directory(beans_path)?;
+
+            if peas.is_empty() {
+                println!("No beans files found to import in {}", path);
+                return Ok(());
+            }
+
+            println!("Found {} beans to import:", peas.len());
+            for pea in &peas {
+                println!("  {} [{}] {}", pea.id, pea.pea_type, pea.title);
+            }
+
+            if dry_run {
+                println!("\nDry run - no changes made.");
+            } else {
+                let mut imported = 0;
+                let mut skipped = 0;
+                for pea in peas {
+                    // Check if already exists
+                    if repo.find_file_by_id(&pea.id).is_ok() {
+                        println!("  Skipping {} (already exists)", pea.id);
+                        skipped += 1;
+                        continue;
+                    }
+                    match repo.create(&pea) {
+                        Ok(_) => imported += 1,
+                        Err(e) => eprintln!("  Failed to import {}: {}", pea.id, e),
+                    }
+                }
+                println!("\nImported {} peas, skipped {}", imported, skipped);
+            }
+            Ok(())
+        }
+        Commands::ExportBeans { output } => {
+            let (config, root) = load()?;
+            let repo = PeaRepository::new(&config, &root);
+            let output_path = std::path::Path::new(&output);
+
+            std::fs::create_dir_all(output_path)?;
+
+            let peas = repo.list()?;
+            if peas.is_empty() {
+                println!("No peas to export");
+                return Ok(());
+            }
+
+            let mut exported = 0;
+            for pea in &peas {
+                let content = peas::import_export::export_to_beans(pea)?;
+                let filename = peas::import_export::beans_filename(pea);
+                let file_path = output_path.join(&filename);
+                std::fs::write(&file_path, content)?;
+                exported += 1;
+            }
+
+            println!("Exported {} peas to {}", exported, output);
+            Ok(())
+        }
     }
 }
 

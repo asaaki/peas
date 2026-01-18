@@ -2,7 +2,7 @@
 id = "peas-40sw8"
 title = "CLI support for tags"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-macd2"
 created = "2026-01-18T16:27:02.811912900Z"

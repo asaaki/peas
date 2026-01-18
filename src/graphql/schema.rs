@@ -151,8 +151,11 @@ impl QueryRoot {
             by_type: TypeCounts {
                 milestone: peas.iter().filter(|p| p.pea_type == MT::Milestone).count(),
                 epic: peas.iter().filter(|p| p.pea_type == MT::Epic).count(),
+                story: peas.iter().filter(|p| p.pea_type == MT::Story).count(),
                 feature: peas.iter().filter(|p| p.pea_type == MT::Feature).count(),
                 bug: peas.iter().filter(|p| p.pea_type == MT::Bug).count(),
+                chore: peas.iter().filter(|p| p.pea_type == MT::Chore).count(),
+                research: peas.iter().filter(|p| p.pea_type == MT::Research).count(),
                 task: peas.iter().filter(|p| p.pea_type == MT::Task).count(),
             },
         })

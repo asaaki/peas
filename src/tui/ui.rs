@@ -1,11 +1,11 @@
 use super::app::{App, FilterType, InputMode};
 use crate::model::{PeaPriority, PeaStatus, PeaType};
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
-    Frame,
 };
 
 pub fn draw(f: &mut Frame, app: &App) {
@@ -109,16 +109,22 @@ fn draw_list(f: &mut Frame, app: &App, area: Rect) {
             let type_indicator = match pea.pea_type {
                 PeaType::Milestone => "M",
                 PeaType::Epic => "E",
+                PeaType::Story => "S",
                 PeaType::Feature => "F",
                 PeaType::Bug => "B",
+                PeaType::Chore => "C",
+                PeaType::Research => "R",
                 PeaType::Task => "T",
             };
 
             let type_color = match pea.pea_type {
                 PeaType::Milestone => Color::Magenta,
                 PeaType::Epic => Color::Blue,
+                PeaType::Story => Color::Cyan,
                 PeaType::Feature => Color::Cyan,
                 PeaType::Bug => Color::Red,
+                PeaType::Chore => Color::Yellow,
+                PeaType::Research => Color::LightMagenta,
                 PeaType::Task => Color::White,
             };
 

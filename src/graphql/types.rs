@@ -5,8 +5,11 @@ use async_graphql::{Enum, InputObject, SimpleObject};
 pub enum PeaType {
     Milestone,
     Epic,
+    Story,
     Feature,
     Bug,
+    Chore,
+    Research,
     Task,
 }
 
@@ -15,8 +18,11 @@ impl From<model::PeaType> for PeaType {
         match t {
             model::PeaType::Milestone => PeaType::Milestone,
             model::PeaType::Epic => PeaType::Epic,
+            model::PeaType::Story => PeaType::Story,
             model::PeaType::Feature => PeaType::Feature,
             model::PeaType::Bug => PeaType::Bug,
+            model::PeaType::Chore => PeaType::Chore,
+            model::PeaType::Research => PeaType::Research,
             model::PeaType::Task => PeaType::Task,
         }
     }
@@ -27,8 +33,11 @@ impl From<PeaType> for model::PeaType {
         match t {
             PeaType::Milestone => model::PeaType::Milestone,
             PeaType::Epic => model::PeaType::Epic,
+            PeaType::Story => model::PeaType::Story,
             PeaType::Feature => model::PeaType::Feature,
             PeaType::Bug => model::PeaType::Bug,
+            PeaType::Chore => model::PeaType::Chore,
+            PeaType::Research => model::PeaType::Research,
             PeaType::Task => model::PeaType::Task,
         }
     }
@@ -195,7 +204,10 @@ pub struct StatusCounts {
 pub struct TypeCounts {
     pub milestone: usize,
     pub epic: usize,
+    pub story: usize,
     pub feature: usize,
     pub bug: usize,
+    pub chore: usize,
+    pub research: usize,
     pub task: usize,
 }

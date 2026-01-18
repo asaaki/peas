@@ -2,7 +2,7 @@
 id = "peas-7dvdt"
 title = "Add ticket types: chore, story, research"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-macd2"
 created = "2026-01-18T16:27:07.265560Z"

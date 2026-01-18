@@ -77,3 +77,8 @@ pub mod tui;
 ///
 /// Validates titles, bodies, IDs, and tags to prevent invalid data.
 pub mod validation;
+
+/// Import and export functionality.
+///
+/// Supports importing from and exporting to beans format.
+pub mod import_export;

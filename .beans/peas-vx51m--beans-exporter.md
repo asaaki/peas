@@ -2,7 +2,7 @@
 id = "peas-vx51m"
 title = "Beans exporter"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-macd2"
 created = "2026-01-18T16:27:15.743402300Z"
