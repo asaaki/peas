@@ -21,6 +21,7 @@
 //! - `q`: Quit
 
 mod app;
+pub mod theme;
 mod ui;
 
 pub use app::run_tui;

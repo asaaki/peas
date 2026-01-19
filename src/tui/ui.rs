@@ -1,4 +1,5 @@
 use super::app::{App, DetailPane, InputMode};
+use super::theme::theme;
 use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
     Frame,
@@ -29,24 +30,14 @@ fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
 
 /// Returns priority indicator and color for a pea
 fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
-    match pea.priority {
-        PeaPriority::Critical => Some(("‼".to_string(), Color::Red)), // U+203C double exclamation
-        PeaPriority::High => Some(("!".to_string(), Color::LightRed)),
-        PeaPriority::Normal => None, // No indicator for normal
-        PeaPriority::Low => Some(("↓".to_string(), Color::DarkGray)),
-        PeaPriority::Deferred => Some(("⏸".to_string(), Color::DarkGray)),
-    }
+    theme()
+        .priority_indicator(&pea.priority)
+        .map(|(s, c)| (s.to_string(), c))
 }
 
 /// Returns status icon and color
 fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
-    match status {
-        PeaStatus::Draft => ("○", Color::DarkGray),
-        PeaStatus::Todo => ("○", Color::Green), // Green for open work
-        PeaStatus::InProgress => ("◐", Color::Yellow),
-        PeaStatus::Completed => ("●", Color::DarkGray), // Gray for completed (de-emphasized)
-        PeaStatus::Scrapped => ("✗", Color::DarkGray),
-    }
+    theme().status_indicator(status)
 }
 
 pub fn draw(f: &mut Frame, app: &mut App) {
@@ -142,16 +133,14 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             // Selection indicator (green, blinking)
             let sel = if is_selected { "▌" } else { " " };
             let sel_style = if is_selected {
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::SLOW_BLINK)
+                theme().selection_indicator_style()
             } else {
                 Style::default()
             };
 
             // Multi-select checkbox
             let checkbox = if is_multi_selected { "◆" } else { " " };
-            let checkbox_style = Style::default().fg(Color::Cyan);
+            let checkbox_style = Style::default().fg(theme().multi_select);
 
             // Priority indicator
             let pri = if let Some((ind, _)) = priority_indicator(pea) {
@@ -172,15 +161,9 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
             // Tree + ID combined in one cell (so tree connects to ID visually)
             // ID is bold and bright green when selected
-            let id_style = if is_selected {
-                Style::default()
-                    .fg(Color::LightGreen)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(Color::Green)
-            };
+            let id_style = theme().id_style(is_selected);
             let tree_and_id = Line::from(vec![
-                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(prefix, Style::default().fg(theme().tree_lines)),
                 Span::styled(pea.id.clone(), id_style),
             ]);
 
@@ -246,7 +229,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         .title(title)
         .borders(Borders::ALL)
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(Color::Gray));
+        .border_style(Style::default().fg(theme().border));
     let inner_area = block.inner(area);
     f.render_widget(block, area);
 
@@ -286,9 +269,9 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         let dots: Vec<Span> = (0..total_pages)
             .map(|i| {
                 if i == current_page {
-                    Span::styled("•", Style::default().fg(Color::White))
+                    Span::styled("•", Style::default().fg(theme().text_highlight))
                 } else {
-                    Span::styled("•", Style::default().fg(Color::DarkGray))
+                    Span::styled("•", Style::default().fg(theme().text_muted))
                 }
             })
             .collect();
@@ -300,16 +283,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
 /// Get color for type (without the indicator character)
 fn type_color(pea_type: &PeaType) -> Color {
-    match pea_type {
-        PeaType::Milestone => Color::Magenta,
-        PeaType::Epic => Color::Blue,
-        PeaType::Story => Color::Cyan,
-        PeaType::Feature => Color::Cyan,
-        PeaType::Bug => Color::Red,
-        PeaType::Chore => Color::Yellow,
-        PeaType::Research => Color::LightMagenta,
-        PeaType::Task => Color::White,
-    }
+    theme().type_color(pea_type)
 }
 
 fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scroll: u16) {
@@ -317,24 +291,11 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         .title(" Details ")
         .borders(Borders::ALL)
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(Color::Green));
+        .border_style(Style::default().fg(theme().border_focused));
 
     if let Some(pea) = app.selected_pea().cloned() {
-        let status_color = match pea.status {
-            PeaStatus::Draft => Color::DarkGray,
-            PeaStatus::Todo => Color::White,
-            PeaStatus::InProgress => Color::Yellow,
-            PeaStatus::Completed => Color::Green,
-            PeaStatus::Scrapped => Color::Red,
-        };
-
-        let priority_color = match pea.priority {
-            PeaPriority::Critical => Color::Red,
-            PeaPriority::High => Color::LightRed,
-            PeaPriority::Normal => Color::White,
-            PeaPriority::Low => Color::DarkGray,
-            PeaPriority::Deferred => Color::DarkGray,
-        };
+        let status_color = theme().status_color(&pea.status);
+        let pea_priority_color = priority_color(&pea.priority);
 
         // Check if we have body content
         let has_body = !pea.body.is_empty();
@@ -379,13 +340,12 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         };
 
         // Build metadata lines
+        let t = theme();
         let mut lines = vec![
             Line::from(vec![
                 Span::styled(
                     &pea.id,
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
+                    Style::default().fg(t.id).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" "),
                 Span::styled(&pea.title, Style::default().add_modifier(Modifier::BOLD)),
@@ -395,7 +355,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 Span::raw("Type:     "),
                 Span::styled(
                     format!("{}", pea.pea_type),
-                    Style::default().fg(Color::Blue),
+                    Style::default().fg(type_color(&pea.pea_type)),
                 ),
             ]),
             Line::from(vec![
@@ -406,7 +366,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 Span::raw("Priority: "),
                 Span::styled(
                     format!("{}", pea.priority),
-                    Style::default().fg(priority_color),
+                    Style::default().fg(pea_priority_color),
                 ),
             ]),
         ];
@@ -414,7 +374,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         if !pea.tags.is_empty() {
             lines.push(Line::from(vec![
                 Span::raw("Tags:     "),
-                Span::styled(pea.tags.join(", "), Style::default().fg(Color::Magenta)),
+                Span::styled(pea.tags.join(", "), Style::default().fg(theme().tags)),
             ]));
         }
 
@@ -423,14 +383,14 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             Span::raw("Created:  "),
             Span::styled(
                 pea.created.format("%Y-%m-%d %H:%M").to_string(),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme().timestamp),
             ),
         ]));
         lines.push(Line::from(vec![
             Span::raw("Updated:  "),
             Span::styled(
                 pea.updated.format("%Y-%m-%d %H:%M").to_string(),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme().timestamp),
             ),
         ]));
 
@@ -439,7 +399,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             .title(format!(" {} ", pea.id))
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Green));
+            .border_style(Style::default().fg(theme().border_focused));
 
         let metadata = Paragraph::new(Text::from(lines))
             .block(metadata_block)
@@ -455,11 +415,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 .title(format!(" Relationships ({}) ", rel_count))
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(if is_focused {
-                    Color::Green
-                } else {
-                    Color::DarkGray
-                }));
+                .border_style(theme().border_style(is_focused));
 
             let inner = relations_block.inner(rel_area);
             f.render_widget(relations_block, rel_area);
@@ -471,22 +427,12 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 .enumerate()
                 .map(|(i, (rel_type, id, title))| {
                     let is_selected = i == app.relations_selection;
-                    let prefix = match rel_type.as_str() {
-                        "Parent" => "↑",
-                        "Blocks" => "→",
-                        "Child" => "↓",
-                        _ => " ",
-                    };
-                    let type_color = match rel_type.as_str() {
-                        "Parent" => Color::Yellow,
-                        "Blocks" => Color::LightRed,
-                        "Child" => Color::Cyan,
-                        _ => Color::White,
-                    };
+                    let prefix = super::theme::Theme::relation_prefix(rel_type);
+                    let rel_color = theme().relation_color(rel_type);
 
                     let content = Line::from(vec![
-                        Span::styled(format!("{} ", prefix), Style::default().fg(type_color)),
-                        Span::styled(id, Style::default().fg(Color::Cyan)),
+                        Span::styled(format!("{} ", prefix), Style::default().fg(rel_color)),
+                        Span::styled(id, Style::default().fg(theme().id)),
                         Span::raw(" "),
                         Span::styled(
                             if title.len() > 30 {
@@ -494,14 +440,14 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                             } else {
                                 title.clone()
                             },
-                            Style::default().fg(Color::DarkGray),
+                            Style::default().fg(theme().text_muted),
                         ),
                     ]);
 
                     if is_selected {
                         ListItem::new(content).style(
                             Style::default()
-                                .bg(Color::DarkGray)
+                                .bg(theme().modal_highlight_bg)
                                 .add_modifier(Modifier::BOLD),
                         )
                     } else {
@@ -521,11 +467,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 .title(" Description ")
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(if body_focused {
-                    Color::Green
-                } else {
-                    Color::DarkGray
-                }));
+                .border_style(theme().border_style(body_focused));
 
             let inner = body_block.inner(body_rect);
             f.render_widget(body_block, body_rect);
@@ -550,52 +492,54 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
     } else {
         let empty = Paragraph::new("No pea selected")
             .block(detail_block)
-            .style(Style::default().fg(Color::DarkGray));
+            .style(Style::default().fg(theme().text_muted));
         f.render_widget(empty, area);
     }
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
-    // Mode indicator
+    // Mode indicator - use theme colors
+    let t = theme();
     let mode_indicator = match app.input_mode {
         InputMode::Normal => Span::styled(
             " NORMAL ",
-            Style::default().bg(Color::Blue).fg(Color::White),
+            Style::default().bg(t.mode_normal.0).fg(t.mode_normal.1),
         ),
         InputMode::Filter => Span::styled(
             " SEARCH ",
-            Style::default().bg(Color::Yellow).fg(Color::Black),
+            Style::default().bg(t.mode_search.0).fg(t.mode_search.1),
         ),
         InputMode::StatusModal => Span::styled(
             " STATUS ",
-            Style::default().bg(Color::Green).fg(Color::Black),
+            Style::default().bg(t.mode_status.0).fg(t.mode_status.1),
         ),
         InputMode::PriorityModal => Span::styled(
             " PRIORITY ",
-            Style::default().bg(Color::Red).fg(Color::White),
+            Style::default().bg(t.mode_priority.0).fg(t.mode_priority.1),
         ),
         InputMode::TypeModal => Span::styled(
             " TYPE ",
-            Style::default().bg(Color::Magenta).fg(Color::White),
+            Style::default().bg(t.mode_type.0).fg(t.mode_type.1),
         ),
-        InputMode::DeleteConfirm => {
-            Span::styled(" DELETE ", Style::default().bg(Color::Red).fg(Color::White))
-        }
+        InputMode::DeleteConfirm => Span::styled(
+            " DELETE ",
+            Style::default().bg(t.mode_delete.0).fg(t.mode_delete.1),
+        ),
         InputMode::ParentModal => Span::styled(
             " PARENT ",
-            Style::default().bg(Color::Blue).fg(Color::White),
+            Style::default().bg(t.mode_parent.0).fg(t.mode_parent.1),
         ),
         InputMode::BlockingModal => Span::styled(
             " BLOCKING ",
-            Style::default().bg(Color::LightRed).fg(Color::Black),
+            Style::default().bg(t.mode_blocking.0).fg(t.mode_blocking.1),
         ),
         InputMode::DetailView => Span::styled(
             " DETAIL ",
-            Style::default().bg(Color::Green).fg(Color::Black),
+            Style::default().bg(t.mode_detail.0).fg(t.mode_detail.1),
         ),
         InputMode::CreateModal => Span::styled(
             " CREATE ",
-            Style::default().bg(Color::Cyan).fg(Color::Black),
+            Style::default().bg(t.mode_create.0).fg(t.mode_create.1),
         ),
     };
 
@@ -620,16 +564,11 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         footer_spans.push(Span::raw(" "));
         footer_spans.push(Span::styled(
             msg,
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(t.message).add_modifier(Modifier::BOLD),
         ));
     }
 
-    footer_spans.push(Span::styled(
-        help_text,
-        Style::default().fg(Color::DarkGray),
-    ));
+    footer_spans.push(Span::styled(help_text, Style::default().fg(t.text_muted)));
 
     let keybindings = Paragraph::new(Line::from(footer_spans));
     f.render_widget(keybindings, area);
@@ -637,17 +576,12 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
 /// Get color for priority
 fn priority_color(priority: &PeaPriority) -> Color {
-    match priority {
-        PeaPriority::Critical => Color::Red,
-        PeaPriority::High => Color::LightRed,
-        PeaPriority::Normal => Color::White,
-        PeaPriority::Low => Color::DarkGray,
-        PeaPriority::Deferred => Color::DarkGray,
-    }
+    theme().priority_color(priority)
 }
 
 fn draw_status_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(30, 30, f.area());
+    let t = theme();
 
     let options = App::status_options();
     let items: Vec<ListItem> = options
@@ -658,7 +592,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
             let (icon, color) = status_indicator(status);
 
             let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(Color::Cyan))
+                Span::styled("▌", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -682,7 +616,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
             .title(" Status ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Yellow)),
+            .border_style(Style::default().fg(t.modal_border)),
     );
 
     f.render_widget(Clear, area);
@@ -691,6 +625,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
 
 fn draw_priority_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(30, 30, f.area());
+    let t = theme();
 
     let options = App::priority_options();
     let items: Vec<ListItem> = options
@@ -701,7 +636,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
             let color = priority_color(priority);
 
             let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(Color::Cyan))
+                Span::styled("▌", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -724,7 +659,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
             .title(" Priority ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Yellow)),
+            .border_style(Style::default().fg(t.modal_border)),
     );
 
     f.render_widget(Clear, area);
@@ -733,6 +668,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
 
 fn draw_delete_confirm(f: &mut Frame, app: &App) {
     let area = centered_rect(50, 20, f.area());
+    let t = theme();
 
     let pea_info = if let Some(pea) = app.selected_pea() {
         format!("{} - {}", pea.id, pea.title)
@@ -747,19 +683,21 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
             Style::default().add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(Span::styled(pea_info, Style::default().fg(Color::Cyan))),
+        Line::from(Span::styled(pea_info, Style::default().fg(t.id))),
         Line::from(""),
         Line::from(vec![
             Span::styled(
                 "y",
                 Style::default()
-                    .fg(Color::Green)
+                    .fg(t.checkbox_checked)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::raw("/Enter = Yes    "),
             Span::styled(
                 "n",
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(t.modal_border_delete)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::raw("/Esc = No"),
         ]),
@@ -771,7 +709,7 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
                 .title(" Delete Confirmation ")
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(Color::Red)),
+                .border_style(Style::default().fg(t.modal_border_delete)),
         )
         .alignment(ratatui::layout::Alignment::Center);
 
@@ -781,42 +719,43 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
 
 fn draw_create_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(50, 25, f.area());
+    let t = theme();
 
     let title_active = app.modal_selection == 0;
     let type_active = app.modal_selection == 1;
 
     // Build display text for title field
     let title_display = if app.create_title.is_empty() {
-        Span::styled("Enter title...", Style::default().fg(Color::DarkGray))
+        Span::styled("Enter title...", Style::default().fg(t.text_muted))
     } else {
         Span::raw(app.create_title.clone())
     };
 
     let title_style = if title_active {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(t.modal_cursor)
     } else {
-        Style::default().fg(Color::White)
+        Style::default().fg(t.text)
     };
 
     let type_style = if type_active {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(t.modal_cursor)
     } else {
-        Style::default().fg(Color::White)
+        Style::default().fg(t.text)
     };
 
-    let type_color = type_color(&app.create_type);
+    let pea_type_color = type_color(&app.create_type);
 
     let content = vec![
         Line::from(""),
         Line::from(vec![
             Span::styled(
                 if title_active { "▶ " } else { "  " },
-                Style::default().fg(Color::Cyan),
+                Style::default().fg(t.modal_cursor),
             ),
             Span::styled("Title: ", title_style.add_modifier(Modifier::BOLD)),
             title_display,
             if title_active {
-                Span::styled("_", Style::default().fg(Color::Cyan))
+                Span::styled("_", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw("")
             },
@@ -825,18 +764,18 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
         Line::from(vec![
             Span::styled(
                 if type_active { "▶ " } else { "  " },
-                Style::default().fg(Color::Cyan),
+                Style::default().fg(t.modal_cursor),
             ),
             Span::styled("Type:  ", type_style.add_modifier(Modifier::BOLD)),
             Span::styled(
                 format!("< {} >", app.create_type),
-                Style::default().fg(type_color),
+                Style::default().fg(pea_type_color),
             ),
         ]),
         Line::from(""),
         Line::from(Span::styled(
             "  (use ←/→ to change type)",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(t.text_muted),
         )),
     ];
 
@@ -860,7 +799,7 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
         all_content.push(Line::from(""));
         all_content.push(Line::from(Span::styled(
             info,
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(t.text_muted),
         )));
     }
 
@@ -869,7 +808,7 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
             .title(" Create Ticket ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Cyan)),
+            .border_style(Style::default().fg(t.modal_border_create)),
     );
 
     f.render_widget(Clear, area);
@@ -878,6 +817,7 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
 
 fn draw_blocking_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(60, 50, f.area());
+    let t = theme();
 
     let items: Vec<ListItem> = app
         .blocking_candidates
@@ -889,16 +829,16 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
 
             // Cursor indicator
             let cursor = if is_cursor {
-                Span::styled("▌", Style::default().fg(Color::Cyan))
+                Span::styled("▌", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
 
             // Checkbox
             let checkbox = if is_checked {
-                Span::styled("[x] ", Style::default().fg(Color::Green))
+                Span::styled("[x] ", Style::default().fg(t.checkbox_checked))
             } else {
-                Span::styled("[ ] ", Style::default().fg(Color::DarkGray))
+                Span::styled("[ ] ", Style::default().fg(t.checkbox_unchecked))
             };
 
             let (status_icon, status_color) = status_indicator(&pea.status);
@@ -924,7 +864,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
                     format!("{} ", status_icon),
                     Style::default().fg(status_color),
                 ),
-                Span::styled(&pea.id, Style::default().fg(Color::Cyan)),
+                Span::styled(&pea.id, Style::default().fg(t.id)),
                 Span::raw(" "),
                 Span::styled(title, style),
             ]))
@@ -939,7 +879,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
             .title(title)
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Yellow)),
+            .border_style(Style::default().fg(t.modal_border)),
     );
 
     f.render_widget(Clear, area);
@@ -949,6 +889,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
 fn draw_parent_modal(f: &mut Frame, app: &App) {
     // Use a larger area for parent modal since it can have many options
     let area = centered_rect(60, 50, f.area());
+    let t = theme();
 
     // Build items: first is "(none)", then all candidates
     let mut items: Vec<ListItem> = Vec::new();
@@ -956,7 +897,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
     // "(none)" option
     let is_none_selected = app.modal_selection == 0;
     let none_indicator = if is_none_selected {
-        Span::styled("▌", Style::default().fg(Color::Cyan))
+        Span::styled("▌", Style::default().fg(t.modal_cursor))
     } else {
         Span::raw(" ")
     };
@@ -967,14 +908,14 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
     };
     items.push(ListItem::new(Line::from(vec![
         none_indicator,
-        Span::styled("(none)", none_style.fg(Color::DarkGray)),
+        Span::styled("(none)", none_style.fg(t.text_muted)),
     ])));
 
     // Candidate options
     for (idx, pea) in app.parent_candidates.iter().enumerate() {
         let is_selected = app.modal_selection == idx + 1;
         let selection_indicator = if is_selected {
-            Span::styled("▌", Style::default().fg(Color::Cyan))
+            Span::styled("▌", Style::default().fg(t.modal_cursor))
         } else {
             Span::raw(" ")
         };
@@ -997,7 +938,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
 
         items.push(ListItem::new(Line::from(vec![
             selection_indicator,
-            Span::styled(&pea.id, Style::default().fg(Color::Cyan)),
+            Span::styled(&pea.id, Style::default().fg(t.id)),
             Span::raw(" "),
             Span::styled(format!("[{}]", pea.pea_type), Style::default().fg(type_col)),
             Span::raw(" "),
@@ -1010,7 +951,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
             .title(" Select Parent ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Yellow)),
+            .border_style(Style::default().fg(t.modal_border)),
     );
 
     f.render_widget(Clear, area);
@@ -1019,6 +960,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
 
 fn draw_type_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(30, 35, f.area());
+    let t = theme();
 
     let options = App::type_options();
     let items: Vec<ListItem> = options
@@ -1029,7 +971,7 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
             let color = type_color(pea_type);
 
             let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(Color::Cyan))
+                Span::styled("▌", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -1052,7 +994,7 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
             .title(" Type ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(Color::Yellow)),
+            .border_style(Style::default().fg(t.modal_border)),
     );
 
     f.render_widget(Clear, area);
@@ -1061,6 +1003,8 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
 
 fn draw_help_popup(f: &mut Frame) {
     let area = centered_rect(60, 70, f.area());
+    let t = theme();
+    let key_style = Style::default().fg(t.help_key);
 
     let help_text = vec![
         Line::from(Span::styled(
@@ -1073,23 +1017,23 @@ fn draw_help_popup(f: &mut Frame) {
             Style::default().add_modifier(Modifier::UNDERLINED),
         )),
         Line::from(vec![
-            Span::styled("↑/↓     ", Style::default().fg(Color::Cyan)),
+            Span::styled("↑/↓     ", key_style),
             Span::raw("Move up/down"),
         ]),
         Line::from(vec![
-            Span::styled("←/→     ", Style::default().fg(Color::Cyan)),
+            Span::styled("←/→     ", key_style),
             Span::raw("Prev/next page"),
         ]),
         Line::from(vec![
-            Span::styled("g/G     ", Style::default().fg(Color::Cyan)),
+            Span::styled("g/G     ", key_style),
             Span::raw("First/last item"),
         ]),
         Line::from(vec![
-            Span::styled("Enter   ", Style::default().fg(Color::Cyan)),
+            Span::styled("Enter   ", key_style),
             Span::raw("Open detail view"),
         ]),
         Line::from(vec![
-            Span::styled("/       ", Style::default().fg(Color::Cyan)),
+            Span::styled("/       ", key_style),
             Span::raw("Search"),
         ]),
         Line::from(""),
@@ -1098,62 +1042,59 @@ fn draw_help_popup(f: &mut Frame) {
             Style::default().add_modifier(Modifier::UNDERLINED),
         )),
         Line::from(vec![
-            Span::styled("c       ", Style::default().fg(Color::Cyan)),
+            Span::styled("c       ", key_style),
             Span::raw("Create new ticket"),
         ]),
         Line::from(vec![
-            Span::styled("s       ", Style::default().fg(Color::Cyan)),
+            Span::styled("s       ", key_style),
             Span::raw("Change status"),
         ]),
         Line::from(vec![
-            Span::styled("t       ", Style::default().fg(Color::Cyan)),
+            Span::styled("t       ", key_style),
             Span::raw("Change type"),
         ]),
         Line::from(vec![
-            Span::styled("P       ", Style::default().fg(Color::Cyan)),
+            Span::styled("P       ", key_style),
             Span::raw("Change priority"),
         ]),
         Line::from(vec![
-            Span::styled("p       ", Style::default().fg(Color::Cyan)),
+            Span::styled("p       ", key_style),
             Span::raw("Set parent"),
         ]),
         Line::from(vec![
-            Span::styled("b       ", Style::default().fg(Color::Cyan)),
+            Span::styled("b       ", key_style),
             Span::raw("Set blocking tickets"),
         ]),
         Line::from(vec![
-            Span::styled("Space   ", Style::default().fg(Color::Cyan)),
+            Span::styled("Space   ", key_style),
             Span::raw("Toggle selection (multi-select)"),
         ]),
         Line::from(vec![
-            Span::styled("e       ", Style::default().fg(Color::Cyan)),
+            Span::styled("e       ", key_style),
             Span::raw("Edit in $EDITOR"),
         ]),
         Line::from(vec![
-            Span::styled("d       ", Style::default().fg(Color::Cyan)),
+            Span::styled("d       ", key_style),
             Span::raw("Delete ticket"),
         ]),
         Line::from(vec![
-            Span::styled("y       ", Style::default().fg(Color::Cyan)),
+            Span::styled("y       ", key_style),
             Span::raw("Copy ID to clipboard"),
         ]),
         Line::from(vec![
-            Span::styled("r       ", Style::default().fg(Color::Cyan)),
+            Span::styled("r       ", key_style),
             Span::raw("Refresh list"),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("?       ", Style::default().fg(Color::Cyan)),
+            Span::styled("?       ", key_style),
             Span::raw("Toggle help"),
         ]),
         Line::from(vec![
-            Span::styled("Esc     ", Style::default().fg(Color::Cyan)),
+            Span::styled("Esc     ", key_style),
             Span::raw("Close / Cancel"),
         ]),
-        Line::from(vec![
-            Span::styled("q       ", Style::default().fg(Color::Cyan)),
-            Span::raw("Quit"),
-        ]),
+        Line::from(vec![Span::styled("q       ", key_style), Span::raw("Quit")]),
     ];
 
     let help = Paragraph::new(help_text)
@@ -1162,7 +1103,7 @@ fn draw_help_popup(f: &mut Frame) {
                 .title(" Help ")
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(Color::Yellow)),
+                .border_style(Style::default().fg(t.help_border)),
         )
         .wrap(Wrap { trim: true });
 
