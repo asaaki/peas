@@ -560,6 +560,17 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 
     let mut footer_spans = vec![mode_indicator];
 
+    // Show search input when in Filter mode
+    if app.input_mode == InputMode::Filter {
+        footer_spans.push(Span::raw(" Search: "));
+        footer_spans.push(Span::styled(
+            &app.search_query,
+            Style::default().fg(t.text_highlight),
+        ));
+        footer_spans.push(Span::styled("_", Style::default().fg(t.modal_cursor)));
+        footer_spans.push(Span::raw(" "));
+    }
+
     if let Some(ref msg) = app.message {
         footer_spans.push(Span::raw(" "));
         footer_spans.push(Span::styled(

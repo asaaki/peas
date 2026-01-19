@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-sdn6s",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-sdn6s--research-asset-support-architecture-for-tickets.md",
-    "previous_content": "+++\nid = \"peas-sdn6s\"\ntitle = \"Research asset support architecture for tickets\"\ntype = \"research\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-1le6t\"\ncreated = \"2026-01-19T16:11:56.593553400Z\"\nupdated = \"2026-01-19T16:11:56.593553400Z\"\n+++\n"
+    "id": "peas-7pg2r",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7pg2r--search-input-not-visible-no-feedback-on-typed-sear.md",
+    "previous_content": "+++\nid = \"peas-7pg2r\"\ntitle = \"Search input not visible - no feedback on typed search term\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-yf400\"\ncreated = \"2026-01-19T16:10:59.471056500Z\"\nupdated = \"2026-01-19T16:10:59.471056500Z\"\n+++\n"
   }
 }
