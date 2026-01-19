@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-jn0v2",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jn0v2--add-keybinding-to-open-urls-from-ticket-body.md",
-    "previous_content": "+++\nid = \"peas-jn0v2\"\ntitle = \"Add keybinding to open URLs from ticket body\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"normal\"\ncreated = \"2026-01-19T22:15:45.044324100Z\"\nupdated = \"2026-01-19T22:19:59.835567Z\"\n+++\n"
+    "id": "peas-jr51d",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jr51d--implement-memory-detail-view-in-tui.md",
+    "previous_content": "+++\nid = \"peas-jr51d\"\ntitle = \"Implement memory detail view in TUI\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"high\"\nparent = \"peas-i0vo8\"\nblocking = [\"peas-xc13w\"]\ncreated = \"2026-01-19T22:40:04.034187400Z\"\nupdated = \"2026-01-19T22:58:02.405630900Z\"\n+++\n\nCreate memory detail view when pressing Enter on a memory item\n\n**Features:**\n- Full-screen view showing memory content\n- Display key, tags, timestamps\n- Scrollable markdown body\n- Edit mode (e key to enter EditBody mode)\n- Return to list with Esc\n\n**Follow pattern:** Similar to ticket DetailView mode but simpler (no relations pane)\n\n**Update:** InputMode enum to handle memory detail/edit states\n"
   }
 }

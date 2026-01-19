@@ -1,3 +1,3 @@
 mod commands;
 
-pub use commands::{BulkAction, Cli, Commands, TemplateArg};
+pub use commands::{BulkAction, Cli, Commands, MemoryAction, TemplateArg};

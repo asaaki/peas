@@ -162,7 +162,14 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             ])
             .split(f.area());
 
-        draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll);
+        match app.view_mode {
+            super::app::ViewMode::Tickets => {
+                draw_detail_fullscreen(f, app, chunks[0], app.detail_scroll)
+            }
+            super::app::ViewMode::Memory => {
+                draw_memory_detail(f, app, chunks[0], app.detail_scroll)
+            }
+        }
         draw_footer(f, app, chunks[1]);
         return;
     }
@@ -170,12 +177,15 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(0),    // Main content (tree view)
+            Constraint::Min(0),    // Main content (tree view or memory list)
             Constraint::Length(1), // Footer (keybindings only)
         ])
         .split(f.area());
 
-    draw_tree(f, app, chunks[0]);
+    match app.view_mode {
+        super::app::ViewMode::Tickets => draw_tree(f, app, chunks[0]),
+        super::app::ViewMode::Memory => draw_memory_list(f, app, chunks[0]),
+    }
     draw_footer(f, app, chunks[1]);
 
     if app.show_help {
@@ -518,6 +528,205 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 /// Get color for type (without the indicator character)
 fn type_color(pea_type: &PeaType) -> Color {
     theme().type_color(pea_type)
+}
+
+fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
+    use ratatui::{
+        layout::Constraint,
+        style::{Modifier, Style},
+        text::{Line, Span},
+        widgets::{Block, Borders, Cell, Row, Table, TableState},
+    };
+
+    let t = theme();
+    let title = format!("─🧠 Memory ({}) ○", app.all_memories.len());
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(t.border));
+
+    let inner_area = block.inner(area);
+    f.render_widget(block, area);
+
+    let rows: Vec<Row> = app
+        .all_memories
+        .iter()
+        .enumerate()
+        .map(|(idx, memory)| {
+            let is_selected = idx == app.selected_index;
+
+            // Pulsing row marker (column 1)
+            let marker = if is_selected { t.row_marker } else { " " };
+            let marker_style = if is_selected {
+                let elapsed_millis = app.start_time.elapsed().as_millis();
+                let pulsing_color = t.selection_indicator_pulsing_color(elapsed_millis);
+                Style::default().fg(pulsing_color)
+            } else {
+                Style::default()
+            };
+            let marker_cell = Cell::from(Span::styled(marker, marker_style));
+
+            // Memory key styled as ID (column 2)
+            let key_style = if is_selected {
+                Style::default()
+                    .fg(t.id_selected)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(t.id)
+            };
+            let key_cell = Cell::from(Span::styled(&memory.key, key_style));
+
+            // Tags (column 3)
+            let mut tag_spans = vec![];
+            if !memory.tags.is_empty() {
+                for (i, tag) in memory.tags.iter().enumerate() {
+                    if i > 0 {
+                        tag_spans.push(Span::raw(" "));
+                    }
+                    tag_spans.push(Span::styled(
+                        format!("#{}", tag),
+                        Style::default().fg(t.tags),
+                    ));
+                }
+            }
+            let tags_cell = Cell::from(Line::from(tag_spans));
+
+            // Timestamp (column 4)
+            let time_str = memory.updated.format("%Y-%m-%d %H:%M").to_string();
+            let time_cell = Cell::from(Span::styled(time_str, Style::default().fg(t.text_muted)));
+
+            Row::new(vec![marker_cell, key_cell, tags_cell, time_cell])
+        })
+        .collect();
+
+    let widths = [
+        Constraint::Length(2),      // Marker
+        Constraint::Percentage(40), // Key
+        Constraint::Percentage(40), // Tags
+        Constraint::Percentage(20), // Timestamp
+    ];
+
+    let table = Table::new(rows, widths)
+        .column_spacing(1)
+        .row_highlight_style(Style::default());
+
+    // Use a fresh table state for selection
+    let mut table_state = TableState::default();
+    table_state.select(Some(app.selected_index));
+
+    f.render_stateful_widget(table, inner_area, &mut table_state);
+}
+
+fn draw_memory_detail(f: &mut Frame, app: &mut App, area: Rect, detail_scroll: u16) {
+    use ratatui::{
+        layout::{Constraint, Layout},
+        style::{Modifier, Style},
+        text::{Line, Span},
+        widgets::{Block, Borders, Paragraph, Wrap},
+    };
+
+    if app.selected_index >= app.all_memories.len() {
+        return;
+    }
+
+    let t = theme();
+    let memory = &app.all_memories[app.selected_index];
+
+    // Title with memory key styled like an ID
+    let title = format!(" {} ", memory.key);
+    let detail_block = Block::default()
+        .title(title)
+        .title_style(
+            Style::default()
+                .fg(t.id_selected)
+                .add_modifier(Modifier::BOLD),
+        )
+        .borders(Borders::ALL)
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(t.border_focused));
+
+    let inner = detail_block.inner(area);
+    f.render_widget(detail_block, area);
+
+    // Split into metadata section and content section
+    let chunks = Layout::default()
+        .direction(ratatui::layout::Direction::Vertical)
+        .constraints([
+            Constraint::Length(4), // Metadata (padding + tags + timestamps)
+            Constraint::Min(0),    // Content
+        ])
+        .split(inner);
+
+    // Metadata section with improved styling and padding
+    let mut metadata_lines = vec![];
+
+    // Top padding line
+    metadata_lines.push(Line::from(""));
+
+    // Tags line
+    if !memory.tags.is_empty() {
+        let mut tag_spans = vec![Span::raw("  ")]; // Left padding
+        for (i, tag) in memory.tags.iter().enumerate() {
+            if i > 0 {
+                tag_spans.push(Span::raw("  "));
+            }
+            tag_spans.push(Span::styled(
+                format!("#{}", tag),
+                Style::default().fg(t.tags),
+            ));
+        }
+        metadata_lines.push(Line::from(tag_spans));
+    }
+
+    // Timestamps line
+    let time_line = Line::from(vec![
+        Span::raw("  "), // Left padding
+        Span::styled("Created ", Style::default().fg(t.text_muted)),
+        Span::styled(
+            memory.created.format("%Y-%m-%d %H:%M").to_string(),
+            Style::default().fg(t.timestamp),
+        ),
+        Span::styled("  •  ", Style::default().fg(t.text_muted)),
+        Span::styled("Updated ", Style::default().fg(t.text_muted)),
+        Span::styled(
+            memory.updated.format("%Y-%m-%d %H:%M").to_string(),
+            Style::default().fg(t.timestamp),
+        ),
+    ]);
+    metadata_lines.push(time_line);
+
+    // Empty separator line
+    metadata_lines.push(Line::from(""));
+
+    let metadata = Paragraph::new(metadata_lines);
+    f.render_widget(metadata, chunks[0]);
+
+    // Content section with proper styling and padding
+    let content_lines: Vec<Line> = memory
+        .content
+        .lines()
+        .map(|line| {
+            // Add left padding to each line
+            Line::from(vec![
+                Span::raw("  "),
+                Span::styled(line, Style::default().fg(t.text)),
+            ])
+        })
+        .collect();
+
+    let content_height = chunks[1].height as usize;
+    let total_lines = content_lines.len();
+
+    // Update max scroll
+    let _max_scroll = total_lines.saturating_sub(content_height) as u16;
+    // Note: We can't update app here, so scrolling logic needs to be handled in event loop
+
+    let content = Paragraph::new(content_lines)
+        .scroll((detail_scroll, 0))
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(content, chunks[1]);
 }
 
 fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scroll: u16) {
@@ -908,18 +1117,24 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let help_text = match app.input_mode {
-        InputMode::Normal => {
-            " ↑↓:nav  ←→:page  Space:select  /:search  c:create  s:status  e:edit  ?:help  q:quit "
-        }
+        InputMode::Normal => match app.view_mode {
+            super::app::ViewMode::Tickets => {
+                " ↑↓:nav  ←→:page  Space:select  /:search  Tab:memory  c:create  s:status  e:edit  ?:help  q:quit "
+            }
+            super::app::ViewMode::Memory => " ↑↓:nav  Tab:tickets  ?:help  q:quit ",
+        },
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
         InputMode::StatusModal
         | InputMode::PriorityModal
         | InputMode::TypeModal
         | InputMode::ParentModal => " ↓/↑:nav  Enter:select  Esc:cancel ",
         InputMode::BlockingModal => " ↓/↑:nav  Space:toggle  Enter:apply  Esc:cancel ",
-        InputMode::DetailView => {
-            " ↓/↑:scroll  e:edit  o:open-url  s:status  P:priority  t:type  p:parent  b:blocking  y:copy-id  Esc/q:close "
-        }
+        InputMode::DetailView => match app.view_mode {
+            super::app::ViewMode::Tickets => {
+                " ↓/↑:scroll  e:edit  o:open-url  s:status  P:priority  t:type  p:parent  b:blocking  y:copy-id  Esc/q:close "
+            }
+            super::app::ViewMode::Memory => " ↓/↑:scroll  Esc/q:close ",
+        },
         InputMode::CreateModal => " Tab:next field  ←→:change type  Enter:create  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
         InputMode::EditBody => " Ctrl+S:save  Esc:cancel ",
@@ -1540,6 +1755,10 @@ fn draw_help_popup(f: &mut Frame) {
         Line::from(vec![
             Span::styled("/       ", key_style),
             Span::raw("Search"),
+        ]),
+        Line::from(vec![
+            Span::styled("Tab     ", key_style),
+            Span::raw("Switch between Tickets/Memory"),
         ]),
         Line::from(""),
         Line::from(Span::styled(

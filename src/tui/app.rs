@@ -2,8 +2,8 @@ use super::ui;
 use crate::{
     config::PeasConfig,
     error::Result,
-    model::{Pea, PeaPriority, PeaStatus, PeaType},
-    storage::PeaRepository,
+    model::{Memory, Pea, PeaPriority, PeaStatus, PeaType},
+    storage::{MemoryRepository, PeaRepository},
     undo::UndoManager,
 };
 use cli_clipboard::ClipboardProvider;
@@ -22,6 +22,12 @@ use std::{
     time::{Duration, Instant},
 };
 use tui_textarea::{Input, TextArea};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewMode {
+    Tickets, // Ticket tree view
+    Memory,  // Memory list view
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
@@ -67,14 +73,18 @@ pub struct PageInfo {
 }
 
 pub struct App {
+    pub view_mode: ViewMode, // Current view (Tickets or Memory)
     pub repo: PeaRepository,
+    pub memory_repo: MemoryRepository,
     pub data_path: PathBuf, // Path to .peas data directory
     pub all_peas: Vec<Pea>,
     pub filtered_peas: Vec<Pea>,
-    pub tree_nodes: Vec<TreeNode>, // Flattened tree for display
-    pub page_table: Vec<PageInfo>, // Virtual page table accounting for parent rows
-    pub selected_index: usize,     // Global index in tree_nodes
-    pub page_height: usize,        // Number of items that fit on one page
+    pub all_memories: Vec<Memory>,      // All memories
+    pub filtered_memories: Vec<Memory>, // Filtered memories
+    pub tree_nodes: Vec<TreeNode>,      // Flattened tree for display
+    pub page_table: Vec<PageInfo>,      // Virtual page table accounting for parent rows
+    pub selected_index: usize,          // Global index in tree_nodes
+    pub page_height: usize,             // Number of items that fit on one page
     pub list_state: ListState,
     pub detail_scroll: u16,         // Scroll offset for body/description
     pub detail_max_scroll: u16,     // Maximum scroll offset (0 means no scrolling)
@@ -107,9 +117,12 @@ impl App {
         super::theme::init_tui_config(config.tui.use_type_emojis);
 
         let repo = PeaRepository::new(config, project_root);
+        let memory_repo = MemoryRepository::new(config, project_root);
         let data_path = config.data_path(project_root);
         let all_peas = repo.list()?;
         let filtered_peas = all_peas.clone();
+        let all_memories = memory_repo.list(None).unwrap_or_default();
+        let filtered_memories = all_memories.clone();
 
         let mut list_state = ListState::default();
         if !filtered_peas.is_empty() {
@@ -117,10 +130,14 @@ impl App {
         }
 
         let mut app = Self {
+            view_mode: ViewMode::Tickets,
             repo,
+            memory_repo,
             data_path,
             all_peas,
             filtered_peas,
+            all_memories,
+            filtered_memories,
             tree_nodes: Vec::new(),
             page_table: Vec::new(),
             selected_index: 0,
@@ -157,12 +174,24 @@ impl App {
 
     pub fn refresh(&mut self) -> Result<()> {
         self.all_peas = self.repo.list()?;
+        self.all_memories = self.memory_repo.list(None).unwrap_or_default();
         self.apply_filter();
         self.build_tree();
         if self.page_height > 0 {
             self.build_page_table();
         }
         Ok(())
+    }
+
+    pub fn switch_view(&mut self) {
+        self.view_mode = match self.view_mode {
+            ViewMode::Tickets => ViewMode::Memory,
+            ViewMode::Memory => ViewMode::Tickets,
+        };
+        // Reset selection when switching views
+        self.selected_index = 0;
+        self.list_state.select(Some(0));
+        self.detail_scroll = 0;
     }
 
     /// Build a flattened tree structure from the filtered peas
@@ -1325,6 +1354,9 @@ fn run_app(
                 InputMode::Normal => match key.code {
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Char('?') => app.show_help = !app.show_help,
+                    KeyCode::Tab => {
+                        app.switch_view();
+                    }
                     KeyCode::Esc => {
                         if app.show_help {
                             app.show_help = false;
@@ -1345,11 +1377,22 @@ fn run_app(
                         app.input_mode = InputMode::Filter;
                     }
                     KeyCode::Enter => {
-                        // Open full-screen detail view
-                        if app.selected_pea().is_some() {
-                            app.detail_scroll = 0;
-                            app.build_relations();
-                            app.input_mode = InputMode::DetailView;
+                        match app.view_mode {
+                            ViewMode::Tickets => {
+                                // Open full-screen detail view for tickets
+                                if app.selected_pea().is_some() {
+                                    app.detail_scroll = 0;
+                                    app.build_relations();
+                                    app.input_mode = InputMode::DetailView;
+                                }
+                            }
+                            ViewMode::Memory => {
+                                // Open memory detail view
+                                if app.selected_index < app.all_memories.len() {
+                                    app.detail_scroll = 0;
+                                    app.input_mode = InputMode::DetailView;
+                                }
+                            }
                         }
                     }
                     KeyCode::Char(' ') => {

@@ -3,7 +3,7 @@
 //! Supports both YAML (---) and TOML (+++) frontmatter delimiters.
 
 use crate::error::{PeasError, Result};
-use crate::model::Pea;
+use crate::model::{Memory, Pea};
 
 const YAML_DELIMITER: &str = "---";
 const TOML_DELIMITER: &str = "+++";
@@ -112,6 +112,84 @@ pub fn render_markdown_with_format(pea: &Pea, format: FrontmatterFormat) -> Resu
     if !pea.body.is_empty() {
         output.push('\n');
         output.push_str(&pea.body);
+        output.push('\n');
+    }
+
+    Ok(output)
+}
+
+/// Parses markdown content for a Memory with auto-detected frontmatter format.
+pub fn parse_markdown_memory(content: &str) -> Result<Memory> {
+    let format = detect_format(content).ok_or_else(|| {
+        PeasError::Parse("Missing frontmatter delimiter (--- for YAML or +++ for TOML)".to_string())
+    })?;
+
+    parse_markdown_memory_with_format(content, format)
+}
+
+/// Parses markdown content for a Memory with a specific frontmatter format.
+pub fn parse_markdown_memory_with_format(
+    content: &str,
+    format: FrontmatterFormat,
+) -> Result<Memory> {
+    let content = content.trim();
+    let delimiter = format.delimiter();
+
+    if !content.starts_with(delimiter) {
+        return Err(PeasError::Parse(format!(
+            "Expected {} frontmatter delimiter",
+            match format {
+                FrontmatterFormat::Yaml => "YAML (---)",
+                FrontmatterFormat::Toml => "TOML (+++)",
+            }
+        )));
+    }
+
+    let after_first = &content[delimiter.len()..];
+    let end_index = after_first
+        .find(delimiter)
+        .ok_or_else(|| PeasError::Parse("Missing closing frontmatter delimiter".to_string()))?;
+
+    let frontmatter_content = after_first[..end_index].trim();
+    let body_start = delimiter.len() + end_index + delimiter.len();
+    let body = content[body_start..].trim().to_string();
+
+    let mut memory: Memory = match format {
+        FrontmatterFormat::Yaml => serde_yaml::from_str(frontmatter_content)?,
+        FrontmatterFormat::Toml => toml::from_str(frontmatter_content)
+            .map_err(|e| PeasError::Parse(format!("TOML parse error: {}", e)))?,
+    };
+    memory.content = body;
+
+    Ok(memory)
+}
+
+/// Renders a Memory to markdown with the specified frontmatter format.
+pub fn render_markdown_memory(memory: &Memory, format: FrontmatterFormat) -> Result<String> {
+    let delimiter = format.delimiter();
+
+    let frontmatter = match format {
+        FrontmatterFormat::Yaml => {
+            let yaml = serde_yaml::to_string(memory)?;
+            yaml.trim().to_string()
+        }
+        FrontmatterFormat::Toml => toml::to_string_pretty(memory)
+            .map_err(|e| PeasError::Parse(format!("TOML serialize error: {}", e)))?,
+    };
+
+    let mut output = String::new();
+    output.push_str(delimiter);
+    output.push('\n');
+    output.push_str(&frontmatter);
+    if !frontmatter.ends_with('\n') {
+        output.push('\n');
+    }
+    output.push_str(delimiter);
+    output.push('\n');
+
+    if !memory.content.is_empty() {
+        output.push('\n');
+        output.push_str(&memory.content);
         output.push('\n');
     }
 

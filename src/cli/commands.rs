@@ -300,6 +300,12 @@ pub enum Commands {
         action: BulkAction,
     },
 
+    /// Manage project memory and knowledge
+    Memory {
+        #[command(subcommand)]
+        action: MemoryAction,
+    },
+
     /// Undo the last operation
     Undo {
         /// Output as JSON
@@ -404,6 +410,63 @@ pub enum BulkAction {
         /// Preview what would be created without making changes
         #[arg(long)]
         dry_run: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum MemoryAction {
+    /// Save or update a memory entry
+    Save {
+        /// Memory key (used as filename)
+        key: String,
+
+        /// Memory content
+        content: String,
+
+        /// Tags to add
+        #[arg(long)]
+        tag: Vec<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Query a memory entry by key
+    Query {
+        /// Memory key
+        key: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// List all memory entries
+    List {
+        /// Filter by tag
+        #[arg(long)]
+        tag: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Edit a memory entry in $EDITOR
+    Edit {
+        /// Memory key
+        key: String,
+    },
+
+    /// Delete a memory entry
+    Delete {
+        /// Memory key
+        key: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
 }
 
