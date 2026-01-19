@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-fm3vn",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-fm3vn--show-iso-8601-date-and-time-in-tree-view-header.md",
-    "previous_content": "+++\nid = \"peas-fm3vn\"\ntitle = \"Show ISO 8601 date and time in tree view header\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-2v2rx\"\ncreated = \"2026-01-19T16:11:32.701483800Z\"\nupdated = \"2026-01-19T16:11:32.701483800Z\"\n+++\n"
+    "id": "peas-7a2bk",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7a2bk--detail-view-show-scrollbars-when-description-conte.md",
+    "previous_content": "+++\nid = \"peas-7a2bk\"\ntitle = \"Detail view: show scrollbars when description content is scrollable\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kx50f\"\ncreated = \"2026-01-19T16:11:12.451327200Z\"\nupdated = \"2026-01-19T16:11:12.451327200Z\"\n+++\n"
   }
 }

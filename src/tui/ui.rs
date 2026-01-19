@@ -9,6 +9,7 @@ use ratatui::{
     text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Wrap},
 };
+use ratatui_widgets::scrollbar::{Scrollbar, ScrollbarOrientation, ScrollbarState};
 
 /// Estimate the number of wrapped lines for a Text widget
 fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
@@ -538,6 +539,21 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 .wrap(Wrap { trim: false })
                 .scroll((detail_scroll, 0));
             f.render_widget(md_paragraph, inner);
+
+            // Render scrollbar if content is scrollable
+            if max_scroll > 0 {
+                let mut scrollbar_state =
+                    ScrollbarState::new(max_scroll as usize).position(detail_scroll as usize);
+
+                let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                    .begin_symbol(Some("↑"))
+                    .end_symbol(Some("↓"))
+                    .track_symbol(Some("│"))
+                    .thumb_symbol("█")
+                    .style(Style::default().fg(theme().border));
+
+                f.render_stateful_widget(scrollbar, body_rect, &mut scrollbar_state);
+            }
         } else {
             // No body, no scrolling needed
             app.set_detail_max_scroll(0);

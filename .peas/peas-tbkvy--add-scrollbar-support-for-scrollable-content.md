@@ -2,11 +2,11 @@
 id = "peas-tbkvy"
 title = "Add scrollbar support for scrollable content"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-g1gqo"
 created = "2026-01-19T16:11:39.671958800Z"
-updated = "2026-01-19T16:11:51.346888400Z"
+updated = "2026-01-19T16:22:38.030938800Z"
 +++
 
 Add scrollbar support for scrollable content (detail view description pane).
