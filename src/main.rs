@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use peas::{
-    cli::{BulkAction, Cli, Commands, TemplateArg},
+    cli::{BulkAction, Cli, Commands},
     config::{PeasConfig, PeasSettings},
     graphql::build_schema,
     model::{Pea, PeaStatus},
