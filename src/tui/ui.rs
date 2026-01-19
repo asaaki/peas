@@ -139,106 +139,139 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Only render items for the current page
     let page_items = app.current_page_items();
-    let rows: Vec<Row> = page_items
-        .iter()
-        .enumerate()
-        .map(|(idx, node)| {
-            let pea = &node.pea;
-            let is_selected = idx == index_in_page;
-            let is_multi_selected = app.is_multi_selected(&pea.id);
-            let (status_icon, status_color) = status_indicator(&pea.status);
-            let pea_type_color = type_color(&pea.pea_type);
 
-            // Build the tree prefix with rounded corners
-            let mut prefix = String::new();
-            for &has_line in &node.parent_lines {
-                if has_line {
-                    prefix.push_str("│  ");
-                } else {
-                    prefix.push_str("   ");
+    // Check if we need to show parent context (first item on page has parent not visible)
+    let mut parent_context_rows: Vec<Row> = Vec::new();
+    let mut has_parent_context = false;
+    if let Some(first_node) = page_items.first() {
+        if let Some(parent_id) = &first_node.pea.parent {
+            // Check if parent is not visible on current page
+            let parent_visible = page_items.iter().any(|n| &n.pea.id == parent_id);
+            if !parent_visible {
+                // Find parent in tree_nodes
+                if let Some(parent_node) = app.tree_nodes.iter().find(|n| &n.pea.id == parent_id) {
+                    let t = theme();
+                    let hint_style = Style::default().fg(t.text_muted);
+
+                    // Build a hint row showing the parent
+                    let hint_prefix = "   ⋮  ".to_string(); // Visual continuation indicator
+                    let parent_info = format!(
+                        "└─ (parent: {} - {})",
+                        parent_node.pea.id, parent_node.pea.title
+                    );
+
+                    parent_context_rows.push(Row::new(vec![
+                        Cell::from(""),
+                        Cell::from(""),
+                        Cell::from(hint_prefix + &parent_info).style(hint_style),
+                        Cell::from(""),
+                        Cell::from(""),
+                        Cell::from(""),
+                        Cell::from(""),
+                    ]));
+                    has_parent_context = true;
                 }
             }
-            if node.depth > 0 {
-                if node.is_last {
-                    prefix.push_str("╰─ ");
-                } else {
-                    prefix.push_str("├─ ");
-                }
+        }
+    }
+
+    let mut rows: Vec<Row> = parent_context_rows;
+    rows.extend(page_items.iter().enumerate().map(|(idx, node)| {
+        let pea = &node.pea;
+        let is_selected = idx == index_in_page;
+        let is_multi_selected = app.is_multi_selected(&pea.id);
+        let (status_icon, status_color) = status_indicator(&pea.status);
+        let pea_type_color = type_color(&pea.pea_type);
+
+        // Build the tree prefix with rounded corners
+        let mut prefix = String::new();
+        for &has_line in &node.parent_lines {
+            if has_line {
+                prefix.push_str("│  ");
+            } else {
+                prefix.push_str("   ");
             }
-
-            // Selection indicator (green, blinking)
-            let sel = if is_selected { "▌" } else { " " };
-            let sel_style = if is_selected {
-                theme().selection_indicator_style()
+        }
+        if node.depth > 0 {
+            if node.is_last {
+                prefix.push_str("╰─ ");
             } else {
-                Style::default()
-            };
+                prefix.push_str("├─ ");
+            }
+        }
 
-            // Multi-select checkbox
-            let checkbox = if is_multi_selected { "◆" } else { " " };
-            let checkbox_style = Style::default().fg(theme().multi_select);
+        // Selection indicator (green, blinking)
+        let sel = if is_selected { "▐" } else { " " };
+        let sel_style = if is_selected {
+            theme().selection_indicator_style()
+        } else {
+            Style::default()
+        };
 
-            // Priority indicator
-            let pri = if let Some((ind, _)) = priority_indicator(pea) {
-                ind
-            } else {
-                String::new()
-            };
-            let pri_color = priority_indicator(pea)
-                .map(|(_, c)| c)
-                .unwrap_or(Color::Reset);
+        // Multi-select checkbox
+        let checkbox = if is_multi_selected { "◆" } else { " " };
+        let checkbox_style = Style::default().fg(theme().multi_select);
 
-            // Title style and highlighting
-            let title_style = if is_selected {
-                Style::default().add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
+        // Priority indicator
+        let pri = if let Some((ind, _)) = priority_indicator(pea) {
+            ind
+        } else {
+            String::new()
+        };
+        let pri_color = priority_indicator(pea)
+            .map(|(_, c)| c)
+            .unwrap_or(Color::Reset);
 
-            // Highlight search terms in title
-            let title_spans = highlight_search(&pea.title, &app.search_query, title_style);
+        // Title style and highlighting
+        let title_style = if is_selected {
+            Style::default().add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
 
-            // Tree + ID combined in one cell (so tree connects to ID visually)
-            // ID is bold and bright green when selected
-            let id_style = theme().id_style(is_selected);
+        // Highlight search terms in title
+        let title_spans = highlight_search(&pea.title, &app.search_query, title_style);
 
-            // Highlight search terms in ID
-            let id_spans = highlight_search(&pea.id, &app.search_query, id_style);
-            let mut tree_id_spans = vec![Span::styled(
-                prefix,
-                Style::default().fg(theme().tree_lines),
-            )];
-            tree_id_spans.extend(id_spans);
-            let tree_and_id = Line::from(tree_id_spans);
+        // Tree + ID combined in one cell (so tree connects to ID visually)
+        // ID is bold and bright green when selected
+        let id_style = theme().id_style(is_selected);
 
-            // Type and status styles (bold when selected)
-            let type_style = if is_selected {
-                Style::default()
-                    .fg(pea_type_color)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(pea_type_color)
-            };
-            let status_style = if is_selected {
-                Style::default()
-                    .fg(status_color)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(status_color)
-            };
+        // Highlight search terms in ID
+        let id_spans = highlight_search(&pea.id, &app.search_query, id_style);
+        let mut tree_id_spans = vec![Span::styled(
+            prefix,
+            Style::default().fg(theme().tree_lines),
+        )];
+        tree_id_spans.extend(id_spans);
+        let tree_and_id = Line::from(tree_id_spans);
 
-            // Build cells for each column
-            Row::new(vec![
-                Cell::from(sel).style(sel_style),
-                Cell::from(checkbox).style(checkbox_style),
-                Cell::from(tree_and_id),
-                Cell::from(format!("{}", pea.pea_type)).style(type_style),
-                Cell::from(format!("{} {}", status_icon, pea.status)).style(status_style),
-                Cell::from(pri).style(Style::default().fg(pri_color)),
-                Cell::from(Line::from(title_spans)),
-            ])
-        })
-        .collect();
+        // Type and status styles (bold when selected)
+        let type_style = if is_selected {
+            Style::default()
+                .fg(pea_type_color)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(pea_type_color)
+        };
+        let status_style = if is_selected {
+            Style::default()
+                .fg(status_color)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(status_color)
+        };
+
+        // Build cells for each column
+        Row::new(vec![
+            Cell::from(sel).style(sel_style),
+            Cell::from(checkbox).style(checkbox_style),
+            Cell::from(tree_and_id),
+            Cell::from(format!("{}", pea.pea_type)).style(type_style),
+            Cell::from(format!("{} {}", status_icon, pea.status)).style(status_style),
+            Cell::from(pri).style(Style::default().fg(pri_color)),
+            Cell::from(Line::from(title_spans)),
+        ])
+    }));
 
     // Title shows count, selection count, and current date/time (ISO 8601)
     let selection_count = app.multi_select_count();
@@ -247,15 +280,15 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
     let title_left = if selection_count > 0 {
         format!(
-            "┤ peas ({}) [{} selected] ├",
+            "─🫛 peas ({}) [{} selected] ○",
             app.tree_nodes.len(),
             selection_count
         )
     } else {
-        format!("┤ peas ({}) ├", app.tree_nodes.len())
+        format!("─🫛 peas ({}) ○", app.tree_nodes.len())
     };
 
-    let title_right = format!("┤ {} ├", datetime_str);
+    let title_right = format!("○ {} ○─", datetime_str);
 
     // Page dots for bottom of panel (recalculate after page_height is set)
     let total_pages = app.total_pages();
@@ -275,9 +308,9 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Render the outer block first and get inner area
     // Combine left and right titles with border line spacing
-    let terminal_width = area.width.saturating_sub(2); // Account for borders
-    let left_len = title_left.len() as u16;
-    let right_len = title_right.len() as u16;
+    let terminal_width = area.width.saturating_sub(3); // Account for borders
+    let left_len = title_left.chars().count() as u16;
+    let right_len = title_right.chars().count() as u16;
     let spacing = terminal_width
         .saturating_sub(left_len)
         .saturating_sub(right_len);
@@ -323,8 +356,14 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         .row_highlight_style(Style::default());
 
     // Use a fresh table state for page-local selection
+    // Adjust index to account for parent context row if present
+    let adjusted_index = if has_parent_context {
+        index_in_page + 1 // Offset by 1 for the parent context row
+    } else {
+        index_in_page
+    };
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(index_in_page));
+    table_state.select(Some(adjusted_index));
     f.render_stateful_widget(table, table_area, &mut table_state);
 
     // Render page dots inside panel if needed
@@ -332,9 +371,9 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         let dots: Vec<Span> = (0..total_pages)
             .map(|i| {
                 if i == current_page {
-                    Span::styled("•", Style::default().fg(theme().text_highlight))
+                    Span::styled("☍︎", Style::default().fg(theme().status_todo))
                 } else {
-                    Span::styled("•", Style::default().fg(theme().text_muted))
+                    Span::styled("☍︎", Style::default().fg(theme().text_muted))
                 }
             })
             .collect();
@@ -496,7 +535,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
 
                     // Selection cursor
                     let cursor = if is_selected {
-                        Span::styled("▌ ", theme().selection_indicator_style())
+                        Span::styled("▐ ", theme().selection_indicator_style())
                     } else {
                         Span::raw("  ")
                     };
@@ -687,7 +726,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
             let (icon, color) = status_indicator(status);
 
             let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(t.modal_cursor))
+                Span::styled("▐", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -731,7 +770,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
             let color = priority_color(priority);
 
             let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(t.modal_cursor))
+                Span::styled("▐", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -924,7 +963,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
 
             // Cursor indicator
             let cursor = if is_cursor {
-                Span::styled("▌", Style::default().fg(t.modal_cursor))
+                Span::styled("▐", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -992,7 +1031,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
     // "(none)" option
     let is_none_selected = app.modal_selection == 0;
     let none_indicator = if is_none_selected {
-        Span::styled("▌", Style::default().fg(t.modal_cursor))
+        Span::styled("▐", Style::default().fg(t.modal_cursor))
     } else {
         Span::raw(" ")
     };
@@ -1010,7 +1049,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
     for (idx, pea) in app.parent_candidates.iter().enumerate() {
         let is_selected = app.modal_selection == idx + 1;
         let selection_indicator = if is_selected {
-            Span::styled("▌", Style::default().fg(t.modal_cursor))
+            Span::styled("▐", Style::default().fg(t.modal_cursor))
         } else {
             Span::raw(" ")
         };
@@ -1066,7 +1105,7 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
             let color = type_color(pea_type);
 
             let selection_indicator = if is_selected {
-                Span::styled("▌", Style::default().fg(t.modal_cursor))
+                Span::styled("▐", Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
