@@ -370,8 +370,8 @@ impl Theme {
             return self.selection_indicator;
         }
 
-        // Pulse period: 1000ms (1 second for full cycle)
-        let t = (elapsed_millis % 1000) as f32 / 1000.0;
+        // Pulse period: 1500ms (1.5 seconds for full cycle)
+        let t = (elapsed_millis % 1500) as f32 / 1500.0;
 
         // Sine wave for smooth pulsing (0.0 to 1.0 range)
         let mix = 0.5 + 0.5 * (t * 2.0 * std::f32::consts::PI).sin();
