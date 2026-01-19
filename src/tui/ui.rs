@@ -528,10 +528,11 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 .relations_items
                 .iter()
                 .enumerate()
-                .map(|(i, (rel_type, id, title))| {
+                .map(|(i, (rel_type, id, title, pea_type))| {
                     let is_selected = i == app.relations_selection;
                     let prefix = super::theme::Theme::relation_prefix(rel_type);
                     let rel_color = theme().relation_color(rel_type);
+                    let type_color = type_color(pea_type);
 
                     // Selection cursor (only show when pane is focused)
                     let cursor = if is_selected && is_focused {
@@ -544,11 +545,12 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                         cursor,
                         Span::styled(format!("{} ", prefix), Style::default().fg(rel_color)),
                         Span::styled(format!("[{}] ", rel_type), Style::default().fg(rel_color)),
+                        Span::styled(format!("{} ", pea_type), Style::default().fg(type_color)),
                         Span::styled(id, Style::default().fg(theme().id)),
                         Span::raw(" "),
                         Span::styled(
-                            if title.len() > 25 {
-                                format!("{}...", &title[..22])
+                            if title.len() > 20 {
+                                format!("{}...", &title[..17])
                             } else {
                                 title.clone()
                             },

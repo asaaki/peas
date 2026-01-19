@@ -67,8 +67,8 @@ pub struct App {
     pub detail_max_scroll: u16,     // Maximum scroll offset (0 means no scrolling)
     pub relations_scroll: u16,      // Scroll offset for relationships pane (future use)
     pub relations_selection: usize, // Selected item in relationships pane
-    pub relations_items: Vec<(String, String, String)>, // (type, id, title) for relationships
-    pub detail_pane: DetailPane,    // Which pane is focused in detail view
+    pub relations_items: Vec<(String, String, String, PeaType)>, // (rel_type, id, title, pea_type) for relationships
+    pub detail_pane: DetailPane, // Which pane is focused in detail view
     pub input_mode: InputMode,
     pub search_query: String,
     pub show_help: bool,
@@ -445,26 +445,26 @@ impl App {
         if let Some(pea) = self.selected_pea().cloned() {
             // Add parent if exists
             if let Some(ref parent_id) = pea.parent {
-                let title = self
-                    .all_peas
-                    .iter()
-                    .find(|p| p.id == *parent_id)
-                    .map(|p| p.title.clone())
-                    .unwrap_or_default();
-                self.relations_items
-                    .push(("Parent".to_string(), parent_id.clone(), title));
+                if let Some(parent) = self.all_peas.iter().find(|p| p.id == *parent_id) {
+                    self.relations_items.push((
+                        "Parent".to_string(),
+                        parent.id.clone(),
+                        parent.title.clone(),
+                        parent.pea_type,
+                    ));
+                }
             }
 
             // Add blocking tickets
             for id in &pea.blocking {
-                let title = self
-                    .all_peas
-                    .iter()
-                    .find(|p| p.id == *id)
-                    .map(|p| p.title.clone())
-                    .unwrap_or_default();
-                self.relations_items
-                    .push(("Blocks".to_string(), id.clone(), title));
+                if let Some(blocked) = self.all_peas.iter().find(|p| p.id == *id) {
+                    self.relations_items.push((
+                        "Blocks".to_string(),
+                        blocked.id.clone(),
+                        blocked.title.clone(),
+                        blocked.pea_type,
+                    ));
+                }
             }
 
             // Add children
@@ -478,6 +478,7 @@ impl App {
                     "Child".to_string(),
                     child.id.clone(),
                     child.title.clone(),
+                    child.pea_type,
                 ));
             }
         }
@@ -503,7 +504,7 @@ impl App {
 
     /// Jump to the selected relationship ticket
     pub fn jump_to_relation(&mut self) -> bool {
-        if let Some((_, id, _)) = self.relations_items.get(self.relations_selection) {
+        if let Some((_, id, _, _)) = self.relations_items.get(self.relations_selection) {
             let target_id = id.clone();
             // Find the ticket in tree_nodes
             if let Some(idx) = self.tree_nodes.iter().position(|n| n.pea.id == target_id) {
