@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-vefhc",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-vefhc--implement-tab-to-switch-between-panes.md",
-    "previous_content": "+++\nid = \"peas-vefhc\"\ntitle = \"Implement Tab to switch between panes\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-6kl1g\"\ncreated = \"2026-01-18T17:47:46.381230400Z\"\nupdated = \"2026-01-18T17:47:46.381230400Z\"\n+++\n\nTab key should cycle focus between relationships pane and content pane\n"
+    "id": "peas-sdn6s",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-sdn6s--research-asset-support-architecture-for-tickets.md",
+    "previous_content": "+++\nid = \"peas-sdn6s\"\ntitle = \"Research asset support architecture for tickets\"\ntype = \"research\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-1le6t\"\ncreated = \"2026-01-19T16:11:56.593553400Z\"\nupdated = \"2026-01-19T16:11:56.593553400Z\"\n+++\n"
   }
 }

@@ -3,13 +3,14 @@ id = "peas-naap4"
 title = "NOICE! sub task example"
 type = "task"
 status = "scrapped"
-# priority = "deferred"
+priority = "normal"
 parent = "peas-b7ok5"
+blocking = ["peas-jus7w"]
 created = "2026-01-18T21:22:59.418977500Z"
-updated = "2026-01-18T21:25:19.358097900Z"
+updated = "2026-01-19T15:38:20.937627300Z"
 +++
 
-# a headline
+# THIS IS INDEED a headline
 
 this works!
 
