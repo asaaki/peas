@@ -2,10 +2,10 @@
 id = "peas-td52k"
 title = "Refactor to 3-layer architecture: tree/page-table/render"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 created = "2026-01-19T19:30:40.024596200Z"
-updated = "2026-01-19T19:30:40.024596200Z"
+updated = "2026-01-19T19:35:37.423845200Z"
 +++
 
 Redesign the TUI rendering system to use a clean 3-layer architecture that separates concerns and makes the code more maintainable and extensible.
