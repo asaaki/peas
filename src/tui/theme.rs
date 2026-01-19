@@ -364,7 +364,7 @@ impl Theme {
     }
 
     /// Get pulsing color for selection indicator based on elapsed time
-    /// Uses sine wave to smoothly pulse between dim and bright
+    /// Uses sine wave to smoothly interpolate between two colors
     pub fn selection_indicator_pulsing_color(&self, elapsed_millis: u128) -> Color {
         if !self.cursor_blink {
             return self.selection_indicator;
@@ -373,18 +373,26 @@ impl Theme {
         // Pulse period: 1000ms (1 second for full cycle)
         let t = (elapsed_millis % 1000) as f32 / 1000.0;
 
-        // Sine wave for smooth pulsing (0.5 to 1.0 range for brightness)
-        let brightness = 0.5 + 0.5 * (t * 2.0 * std::f32::consts::PI).sin();
+        // Sine wave for smooth pulsing (0.0 to 1.0 range)
+        let mix = 0.5 + 0.5 * (t * 2.0 * std::f32::consts::PI).sin();
 
-        // Apply brightness to the base color
-        match self.selection_indicator {
-            Color::Rgb(r, g, b) => Color::Rgb(
-                (r as f32 * brightness) as u8,
-                (g as f32 * brightness) as u8,
-                (b as f32 * brightness) as u8,
-            ),
-            // For non-RGB colors, just return the base color
-            c => c,
+        // Interpolate between text_muted (dim) and selection_indicator (bright)
+        match (self.text_muted, self.selection_indicator) {
+            (Color::Rgb(r1, g1, b1), Color::Rgb(r2, g2, b2)) => {
+                // Linear interpolation between two RGB colors
+                let r = (r1 as f32 * (1.0 - mix) + r2 as f32 * mix) as u8;
+                let g = (g1 as f32 * (1.0 - mix) + g2 as f32 * mix) as u8;
+                let b = (b1 as f32 * (1.0 - mix) + b2 as f32 * mix) as u8;
+                Color::Rgb(r, g, b)
+            }
+            // If either color is not RGB, fall back to toggling between the two
+            _ => {
+                if mix > 0.5 {
+                    self.selection_indicator
+                } else {
+                    self.text_muted
+                }
+            }
         }
     }
 
