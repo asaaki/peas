@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-806q1",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-806q1--apply-monokai-color-scheme-as-default-theme.md",
-    "previous_content": "+++\nid = \"peas-806q1\"\ntitle = \"Apply Monokai color scheme as default theme\"\ntype = \"chore\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-2v2rx\"\ncreated = \"2026-01-19T16:11:32.342852600Z\"\nupdated = \"2026-01-19T16:11:32.342852600Z\"\n+++\n"
+    "id": "peas-7mbas",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7mbas--search-in-ticket-id-title-and-description-body.md",
+    "previous_content": "+++\nid = \"peas-7mbas\"\ntitle = \"Search in ticket ID, title, and description/body\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-yf400\"\ncreated = \"2026-01-19T16:11:00.153446800Z\"\nupdated = \"2026-01-19T16:11:00.153446800Z\"\n+++\n"
   }
 }

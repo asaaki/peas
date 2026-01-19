@@ -28,6 +28,41 @@ fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
     total_lines
 }
 
+/// Highlight search term in text by splitting into spans
+fn highlight_search<'a>(text: &str, query: &str, base_style: Style) -> Vec<Span<'a>> {
+    if query.is_empty() {
+        return vec![Span::styled(text.to_string(), base_style)];
+    }
+
+    let t = theme();
+    let lower_text = text.to_lowercase();
+    let lower_query = query.to_lowercase();
+    let mut spans = Vec::new();
+    let mut last_end = 0;
+
+    for (idx, _) in lower_text.match_indices(&lower_query) {
+        // Add text before match
+        if idx > last_end {
+            spans.push(Span::styled(text[last_end..idx].to_string(), base_style));
+        }
+        // Add highlighted match
+        spans.push(Span::styled(
+            text[idx..idx + query.len()].to_string(),
+            base_style
+                .fg(t.modal_border_create) // Blue highlight
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        ));
+        last_end = idx + query.len();
+    }
+
+    // Add remaining text
+    if last_end < text.len() {
+        spans.push(Span::styled(text[last_end..].to_string(), base_style));
+    }
+
+    spans
+}
+
 /// Returns priority indicator and color for a pea
 fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
     theme()
@@ -152,20 +187,28 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 .map(|(_, c)| c)
                 .unwrap_or(Color::Reset);
 
-            // Title style
+            // Title style and highlighting
             let title_style = if is_selected {
                 Style::default().add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
 
+            // Highlight search terms in title
+            let title_spans = highlight_search(&pea.title, &app.search_query, title_style);
+
             // Tree + ID combined in one cell (so tree connects to ID visually)
             // ID is bold and bright green when selected
             let id_style = theme().id_style(is_selected);
-            let tree_and_id = Line::from(vec![
-                Span::styled(prefix, Style::default().fg(theme().tree_lines)),
-                Span::styled(pea.id.clone(), id_style),
-            ]);
+
+            // Highlight search terms in ID
+            let id_spans = highlight_search(&pea.id, &app.search_query, id_style);
+            let mut tree_id_spans = vec![Span::styled(
+                prefix,
+                Style::default().fg(theme().tree_lines),
+            )];
+            tree_id_spans.extend(id_spans);
+            let tree_and_id = Line::from(tree_id_spans);
 
             // Type and status styles (bold when selected)
             let type_style = if is_selected {
@@ -191,7 +234,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 Cell::from(format!("{}", pea.pea_type)).style(type_style),
                 Cell::from(format!("{} {}", status_icon, pea.status)).style(status_style),
                 Cell::from(pri).style(Style::default().fg(pri_color)),
-                Cell::from(pea.title.clone()).style(title_style),
+                Cell::from(Line::from(title_spans)),
             ])
         })
         .collect();
