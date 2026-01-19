@@ -540,7 +540,7 @@ fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
     };
 
     let t = theme();
-    let title = format!("─🧠 Memory ({}) ○", app.all_memories.len());
+    let title = format!("─🧠 Memory ({}) ○", app.filtered_memories.len());
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
@@ -551,7 +551,7 @@ fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_widget(block, area);
 
     let rows: Vec<Row> = app
-        .all_memories
+        .filtered_memories
         .iter()
         .enumerate()
         .map(|(idx, memory)| {
@@ -627,12 +627,12 @@ fn draw_memory_detail(f: &mut Frame, app: &mut App, area: Rect, detail_scroll: u
         widgets::{Block, Borders, Paragraph, Wrap},
     };
 
-    if app.selected_index >= app.all_memories.len() {
+    if app.selected_index >= app.filtered_memories.len() {
         return;
     }
 
     let t = theme();
-    let memory = &app.all_memories[app.selected_index];
+    let memory = &app.filtered_memories[app.selected_index];
 
     // Title with memory key styled like an ID
     let title = format!(" {} ", memory.key);
@@ -1281,7 +1281,7 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
             ("Are you sure you want to delete this ticket?", pea_info)
         }
         super::app::ViewMode::Memory => {
-            let memory_info = if let Some(memory) = app.all_memories.get(app.selected_index) {
+            let memory_info = if let Some(memory) = app.filtered_memories.get(app.selected_index) {
                 memory.key.clone()
             } else {
                 "No memory selected".to_string()

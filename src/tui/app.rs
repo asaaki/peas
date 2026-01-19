@@ -407,6 +407,7 @@ impl App {
 
     /// Returns the start index of the current page
     pub fn apply_filter(&mut self) {
+        // Filter tickets
         self.filtered_peas = self
             .all_peas
             .iter()
@@ -425,11 +426,39 @@ impl App {
             .cloned()
             .collect();
 
-        if self.selected_index >= self.filtered_peas.len() {
-            self.selected_index = self.filtered_peas.len().saturating_sub(1);
+        // Filter memories
+        self.filtered_memories = self
+            .all_memories
+            .iter()
+            .filter(|m| {
+                // Search filter (searches in key, content, and tags)
+                if self.search_query.is_empty() {
+                    true
+                } else {
+                    let query = self.search_query.to_lowercase();
+                    m.key.to_lowercase().contains(&query)
+                        || m.content.to_lowercase().contains(&query)
+                        || m.tags.iter().any(|tag| tag.to_lowercase().contains(&query))
+                }
+            })
+            .cloned()
+            .collect();
+
+        // Adjust selection based on current view
+        match self.view_mode {
+            ViewMode::Tickets => {
+                if self.selected_index >= self.filtered_peas.len() {
+                    self.selected_index = self.filtered_peas.len().saturating_sub(1);
+                }
+            }
+            ViewMode::Memory => {
+                if self.selected_index >= self.filtered_memories.len() {
+                    self.selected_index = self.filtered_memories.len().saturating_sub(1);
+                }
+            }
         }
 
-        // Rebuild tree after filter changes
+        // Rebuild tree after filter changes (only for tickets)
         self.build_tree();
         if self.page_height > 0 {
             self.build_page_table();
@@ -913,7 +942,7 @@ impl App {
                 }
             }
             ViewMode::Memory => {
-                if self.selected_index < self.all_memories.len() {
+                if self.selected_index < self.filtered_memories.len() {
                     self.input_mode = InputMode::DeleteConfirm;
                 }
             }
@@ -937,13 +966,15 @@ impl App {
                 }
             }
             ViewMode::Memory => {
-                if let Some(memory) = self.all_memories.get(self.selected_index).cloned() {
+                if let Some(memory) = self.filtered_memories.get(self.selected_index).cloned() {
                     self.memory_repo.delete(&memory.key)?;
                     self.message = Some(format!("Deleted memory '{}'", memory.key));
                     self.refresh()?;
 
                     // Adjust selection if needed
-                    if self.selected_index >= self.all_memories.len() && self.selected_index > 0 {
+                    if self.selected_index >= self.filtered_memories.len()
+                        && self.selected_index > 0
+                    {
                         self.selected_index -= 1;
                     }
                 }
@@ -1474,7 +1505,7 @@ fn run_app(
                             }
                             ViewMode::Memory => {
                                 // Open memory detail view
-                                if app.selected_index < app.all_memories.len() {
+                                if app.selected_index < app.filtered_memories.len() {
                                     app.detail_scroll = 0;
                                     app.input_mode = InputMode::DetailView;
                                 }
