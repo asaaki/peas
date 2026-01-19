@@ -482,6 +482,21 @@ impl App {
                     child.pea_type,
                 ));
             }
+
+            // Add blocked-by (reverse blocking relationships)
+            let blocked_by: Vec<_> = self
+                .all_peas
+                .iter()
+                .filter(|p| p.blocking.contains(&pea.id))
+                .collect();
+            for blocker in blocked_by {
+                self.relations_items.push((
+                    "BlockedBy".to_string(),
+                    blocker.id.clone(),
+                    blocker.title.clone(),
+                    blocker.pea_type,
+                ));
+            }
         }
     }
 

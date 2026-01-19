@@ -287,6 +287,7 @@ impl Theme {
         match rel_type {
             "Parent" => self.relation_parent,
             "Blocks" => self.relation_blocks,
+            "BlockedBy" => self.relation_blocks, // Same color as Blocks
             "Child" => self.relation_child,
             _ => self.text,
         }
@@ -297,6 +298,7 @@ impl Theme {
         match rel_type {
             "Parent" => "↑",
             "Blocks" => "→",
+            "BlockedBy" => "←", // Opposite direction from Blocks
             "Child" => "↓",
             _ => " ",
         }
