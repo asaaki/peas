@@ -154,7 +154,6 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                     let hint_style = Style::default().fg(t.text_muted);
 
                     // Build a hint row showing the parent
-                    // Span the hint across tree+id column and extend into type/status/priority/title
                     let hint_prefix = "   ⋮  ".to_string(); // Visual continuation indicator
                     let parent_type_str = if tui_config().use_type_emojis {
                         format!(
@@ -170,11 +169,16 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                         parent_node.pea.id, parent_type_str, parent_node.pea.title
                     );
 
+                    // Create a row with 7 cells to match the table structure
+                    // Put the hint in the tree column and full parent info in the title column (Fill)
                     parent_context_rows.push(Row::new(vec![
-                        Cell::from(""), // Selection indicator column
-                        Cell::from(""), // Checkbox column
-                        // Span the parent info across remaining columns by putting it all in one cell
-                        Cell::from(hint_prefix + &parent_info).style(hint_style),
+                        Cell::from(""),                            // Selection indicator
+                        Cell::from(""),                            // Checkbox
+                        Cell::from(hint_prefix).style(hint_style), // Tree+ID column: just the ⋮ indicator
+                        Cell::from(""),                            // Type column
+                        Cell::from(""),                            // Status column
+                        Cell::from(""),                            // Priority column
+                        Cell::from(parent_info).style(hint_style), // Title column: full parent info (this fills)
                     ]));
                     has_parent_context = true;
                 }
