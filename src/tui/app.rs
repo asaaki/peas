@@ -84,8 +84,8 @@ pub struct App {
 
 impl App {
     pub fn new(config: &PeasConfig, project_root: &Path) -> Result<Self> {
-        // Initialize markers with config settings
-        super::theme::init_markers(config.tui.use_type_emojis);
+        // Initialize TUI config with settings
+        super::theme::init_tui_config(config.tui.use_type_emojis);
 
         let repo = PeaRepository::new(config, project_root);
         let data_path = config.data_path(project_root);

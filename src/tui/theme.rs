@@ -107,42 +107,27 @@ pub struct Theme {
     pub emoji_chore: &'static str,
     pub emoji_research: &'static str,
     pub emoji_task: &'static str,
+
+    // Special characters and markers
+    pub logo: &'static str,
+    pub row_marker: &'static str,
+    pub pane_marker_left: &'static str,
+    pub pane_marker_right: &'static str,
+    pub page_marker: &'static str,
 }
 
-/// Special characters and markers used throughout the TUI
+/// Configuration flags for TUI display options
 #[derive(Debug, Clone)]
-pub struct Markers {
-    /// Logo/brand emoji
-    pub logo: &'static str,
-    /// Row selection marker
-    pub row_marker: &'static str,
-    /// Pane title marker (left)
-    pub pane_marker_left: &'static str,
-    /// Pane title marker (right, with spacing)
-    pub pane_marker_right: &'static str,
-    /// Page indicator marker (stylized pea pod)
-    pub page_marker: &'static str,
+pub struct TuiConfig {
     /// Whether to use emojis for ticket types
     pub use_type_emojis: bool,
 }
 
-impl Default for Markers {
+impl Default for TuiConfig {
     fn default() -> Self {
         Self {
-            logo: "🫛",
-            row_marker: "▐",
-            pane_marker_left: "○",
-            pane_marker_right: "○─",
-            page_marker: "☍︎",
             use_type_emojis: false, // Disabled by default for compatibility
         }
-    }
-}
-
-impl Markers {
-    /// Check if type emojis should be displayed
-    pub fn show_type_emojis(&self) -> bool {
-        self.use_type_emojis
     }
 }
 
@@ -248,6 +233,13 @@ impl Default for Theme {
             emoji_chore: "🧹",
             emoji_research: "🔬",
             emoji_task: "☑️",
+
+            // Special characters and markers
+            logo: "🫛",
+            row_marker: "▐",
+            pane_marker_left: "○",
+            pane_marker_right: "○─",
+            page_marker: "☍︎",
         }
     }
 }
@@ -389,23 +381,20 @@ impl Theme {
 /// Global theme instance
 static THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
 
-/// Global markers instance
-static MARKERS: std::sync::OnceLock<Markers> = std::sync::OnceLock::new();
+/// Global TUI config instance
+static TUI_CONFIG: std::sync::OnceLock<TuiConfig> = std::sync::OnceLock::new();
 
 /// Get the current theme
 pub fn theme() -> &'static Theme {
     THEME.get_or_init(Theme::default)
 }
 
-/// Get the current markers
-pub fn markers() -> &'static Markers {
-    MARKERS.get_or_init(Markers::default)
+/// Get the current TUI config
+pub fn tui_config() -> &'static TuiConfig {
+    TUI_CONFIG.get_or_init(TuiConfig::default)
 }
 
-/// Initialize markers with custom settings (must be called before first use)
-pub fn init_markers(use_type_emojis: bool) {
-    MARKERS.get_or_init(|| Markers {
-        use_type_emojis,
-        ..Markers::default()
-    });
+/// Initialize TUI config with custom settings (must be called before first use)
+pub fn init_tui_config(use_type_emojis: bool) {
+    TUI_CONFIG.get_or_init(|| TuiConfig { use_type_emojis });
 }
