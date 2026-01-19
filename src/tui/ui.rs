@@ -431,13 +431,22 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                     let prefix = super::theme::Theme::relation_prefix(rel_type);
                     let rel_color = theme().relation_color(rel_type);
 
+                    // Selection cursor
+                    let cursor = if is_selected {
+                        Span::styled("▌ ", theme().selection_indicator_style())
+                    } else {
+                        Span::raw("  ")
+                    };
+
                     let content = Line::from(vec![
+                        cursor,
                         Span::styled(format!("{} ", prefix), Style::default().fg(rel_color)),
+                        Span::styled(format!("[{}] ", rel_type), Style::default().fg(rel_color)),
                         Span::styled(id, Style::default().fg(theme().id)),
                         Span::raw(" "),
                         Span::styled(
-                            if title.len() > 30 {
-                                format!("{}...", &title[..27])
+                            if title.len() > 25 {
+                                format!("{}...", &title[..22])
                             } else {
                                 title.clone()
                             },
@@ -446,11 +455,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                     ]);
 
                     if is_selected {
-                        ListItem::new(content).style(
-                            Style::default()
-                                .bg(theme().modal_highlight_bg)
-                                .add_modifier(Modifier::BOLD),
-                        )
+                        ListItem::new(content).style(Style::default().add_modifier(Modifier::BOLD))
                     } else {
                         ListItem::new(content)
                     }

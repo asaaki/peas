@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-rh872",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-rh872--detail-view-metadata-pane-not-switchable-cannot-ed.md",
-    "previous_content": "+++\nid = \"peas-rh872\"\ntitle = \"Detail view: metadata pane not switchable, cannot edit properties\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kx50f\"\ncreated = \"2026-01-19T16:11:11.696303Z\"\nupdated = \"2026-01-19T16:11:11.696303Z\"\n+++\n"
+    "id": "peas-7nozz",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7nozz--detail-view-relationships-pane-missing-row-selecti.md",
+    "previous_content": "+++\nid = \"peas-7nozz\"\ntitle = \"Detail view: relationships pane missing row selection marker and unclear relationship type\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kx50f\"\ncreated = \"2026-01-19T16:11:12.073010800Z\"\nupdated = \"2026-01-19T16:11:12.073010800Z\"\n+++\n"
   }
 }
