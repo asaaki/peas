@@ -41,9 +41,10 @@ pub enum InputMode {
     BlockingModal,
     DetailView,
     CreateModal,
-    EditBody,  // Inline body editing with textarea
-    TagsModal, // Tag editing modal
-    UrlModal,  // URL selection modal
+    MemoryCreateModal, // Memory creation modal
+    EditBody,          // Inline body editing with textarea
+    TagsModal,         // Tag editing modal
+    UrlModal,          // URL selection modal
 }
 
 /// Which pane is focused in detail view
@@ -109,6 +110,10 @@ pub struct App {
     pub body_textarea: Option<TextArea<'static>>, // TextArea for body editing
     pub start_time: Instant,         // App start time for pulsing effects
     pub url_candidates: Vec<String>, // URLs found in current ticket
+    pub memory_create_key: String,   // Key input for memory create modal
+    pub memory_create_tags: String,  // Tags input for memory create modal
+    pub memory_create_content: String, // Content input for memory create modal
+    pub memory_modal_selection: usize, // Current field in memory create modal (0=key, 1=tags, 2=content)
 }
 
 impl App {
@@ -166,6 +171,10 @@ impl App {
             body_textarea: None,
             start_time: Instant::now(),
             url_candidates: Vec::new(),
+            memory_create_key: String::new(),
+            memory_create_tags: String::new(),
+            memory_create_content: String::new(),
+            memory_modal_selection: 0,
         };
         app.build_tree();
         // Note: page_table will be built when page_height is set during first draw
@@ -1141,6 +1150,58 @@ impl App {
         Ok(())
     }
 
+    /// Open the memory creation modal
+    pub fn open_memory_create_modal(&mut self) {
+        self.memory_create_key.clear();
+        self.memory_create_tags.clear();
+        self.memory_create_content.clear();
+        self.memory_modal_selection = 0; // 0 = key field, 1 = tags field, 2 = content field
+        self.input_mode = InputMode::MemoryCreateModal;
+    }
+
+    /// Create a new memory from the modal inputs
+    pub fn create_memory_from_modal(&mut self) -> Result<()> {
+        let key = self.memory_create_key.trim();
+
+        // Validate key
+        if key.is_empty() {
+            self.message = Some("Key cannot be empty".to_string());
+            return Ok(());
+        }
+
+        // Validate key for filename safety (no path separators, no special chars)
+        if key.contains(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) {
+            self.message = Some("Key contains invalid characters".to_string());
+            return Ok(());
+        }
+
+        // Check if memory already exists
+        if self.memory_repo.get(key).is_ok() {
+            self.message = Some(format!("Memory '{}' already exists", key));
+            return Ok(());
+        }
+
+        // Parse tags (comma-separated)
+        let tags: Vec<String> = self
+            .memory_create_tags
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // Create memory
+        let memory = crate::model::Memory::new(key.to_string())
+            .with_tags(tags)
+            .with_content(self.memory_create_content.clone());
+
+        self.memory_repo.create(&memory)?;
+
+        self.message = Some(format!("Created memory '{}'", key));
+        self.refresh()?;
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
+
     /// Undo the last operation
     pub fn undo(&mut self) -> Result<()> {
         let undo_manager = UndoManager::new(&self.data_path);
@@ -1415,6 +1476,16 @@ fn run_app(
                     }
                     KeyCode::Char('c') => {
                         app.open_create_modal();
+                    }
+                    KeyCode::Char('n') => {
+                        match app.view_mode {
+                            ViewMode::Memory => {
+                                app.open_memory_create_modal();
+                            }
+                            ViewMode::Tickets => {
+                                // 'n' is not used in Tickets view
+                            }
+                        }
                     }
                     KeyCode::Char('d') => {
                         app.open_delete_confirm();
@@ -1797,6 +1868,44 @@ fn run_app(
                             app.create_type = types[new_idx];
                         }
                     }
+                    _ => {}
+                },
+                InputMode::MemoryCreateModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.create_memory_from_modal();
+                    }
+                    KeyCode::Tab => {
+                        // Cycle between key (0), tags (1), and content (2) fields
+                        app.memory_modal_selection = (app.memory_modal_selection + 1) % 3;
+                    }
+                    KeyCode::BackTab => {
+                        app.memory_modal_selection = if app.memory_modal_selection == 0 {
+                            2
+                        } else {
+                            app.memory_modal_selection - 1
+                        };
+                    }
+                    KeyCode::Char(c) => match app.memory_modal_selection {
+                        0 => app.memory_create_key.push(c),
+                        1 => app.memory_create_tags.push(c),
+                        2 => app.memory_create_content.push(c),
+                        _ => {}
+                    },
+                    KeyCode::Backspace => match app.memory_modal_selection {
+                        0 => {
+                            app.memory_create_key.pop();
+                        }
+                        1 => {
+                            app.memory_create_tags.pop();
+                        }
+                        2 => {
+                            app.memory_create_content.pop();
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 },
                 InputMode::EditBody => match key.code {

@@ -201,6 +201,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::ParentModal => draw_parent_modal(f, app),
         InputMode::BlockingModal => draw_blocking_modal(f, app),
         InputMode::CreateModal => draw_create_modal(f, app),
+        InputMode::MemoryCreateModal => draw_memory_create_modal(f, app),
         InputMode::TagsModal => draw_tags_modal(f, app),
         InputMode::UrlModal => draw_url_modal(f, app),
         _ => {}
@@ -1102,6 +1103,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " CREATE ",
             Style::default().bg(t.mode_create.0).fg(t.mode_create.1),
         ),
+        InputMode::MemoryCreateModal => Span::styled(
+            " CREATE MEMORY ",
+            Style::default().bg(t.mode_create.0).fg(t.mode_create.1),
+        ),
         InputMode::EditBody => Span::styled(
             " EDIT ",
             Style::default().bg(t.text_highlight).fg(Color::Black),
@@ -1121,7 +1126,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             super::app::ViewMode::Tickets => {
                 " ↑↓:nav  ←→:page  Space:select  /:search  Tab:memory  c:create  s:status  e:edit  ?:help  q:quit "
             }
-            super::app::ViewMode::Memory => " ↑↓:nav  Tab:tickets  ?:help  q:quit ",
+            super::app::ViewMode::Memory => " ↑↓:nav  Tab:tickets  n:new  ?:help  q:quit ",
         },
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
         InputMode::StatusModal
@@ -1136,6 +1141,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             super::app::ViewMode::Memory => " ↓/↑:scroll  Esc/q:close ",
         },
         InputMode::CreateModal => " Tab:next field  ←→:change type  Enter:create  Esc:cancel ",
+        InputMode::MemoryCreateModal => " Tab:next field  Enter:create  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
         InputMode::EditBody => " Ctrl+S:save  Esc:cancel ",
         InputMode::TagsModal => " Type comma-separated tags  Enter:save  Esc:cancel ",
@@ -1514,6 +1520,115 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
     let paragraph = Paragraph::new(all_content).block(
         Block::default()
             .title(" Create Ticket ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(t.modal_border_create)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(paragraph, area);
+}
+
+fn draw_memory_create_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 40, f.area());
+    let t = theme();
+
+    let key_active = app.memory_modal_selection == 0;
+    let tags_active = app.memory_modal_selection == 1;
+    let content_active = app.memory_modal_selection == 2;
+
+    // Build display text for key field
+    let key_display = if app.memory_create_key.is_empty() {
+        Span::styled("Enter key...", Style::default().fg(t.text_muted))
+    } else {
+        Span::raw(app.memory_create_key.clone())
+    };
+
+    // Build display text for tags field
+    let tags_display = if app.memory_create_tags.is_empty() {
+        Span::styled("tag1, tag2, ...", Style::default().fg(t.text_muted))
+    } else {
+        Span::raw(app.memory_create_tags.clone())
+    };
+
+    // Build display text for content field
+    let content_display = if app.memory_create_content.is_empty() {
+        Span::styled("Enter content...", Style::default().fg(t.text_muted))
+    } else {
+        Span::raw(app.memory_create_content.clone())
+    };
+
+    let key_style = if key_active {
+        Style::default().fg(t.modal_cursor)
+    } else {
+        Style::default().fg(t.text)
+    };
+
+    let tags_style = if tags_active {
+        Style::default().fg(t.modal_cursor)
+    } else {
+        Style::default().fg(t.text)
+    };
+
+    let content_style = if content_active {
+        Style::default().fg(t.modal_cursor)
+    } else {
+        Style::default().fg(t.text)
+    };
+
+    let content = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                if key_active { "▶ " } else { "  " },
+                Style::default().fg(t.modal_cursor),
+            ),
+            Span::styled("Key:     ", key_style.add_modifier(Modifier::BOLD)),
+            key_display,
+            if key_active {
+                Span::styled("_", Style::default().fg(t.modal_cursor))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                if tags_active { "▶ " } else { "  " },
+                Style::default().fg(t.modal_cursor),
+            ),
+            Span::styled("Tags:    ", tags_style.add_modifier(Modifier::BOLD)),
+            tags_display,
+            if tags_active {
+                Span::styled("_", Style::default().fg(t.modal_cursor))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                if content_active { "▶ " } else { "  " },
+                Style::default().fg(t.modal_cursor),
+            ),
+            Span::styled("Content: ", content_style.add_modifier(Modifier::BOLD)),
+            content_display,
+            if content_active {
+                Span::styled("_", Style::default().fg(t.modal_cursor))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  (Tab to switch fields, Enter to create)",
+            Style::default().fg(t.text_muted),
+        )),
+    ];
+
+    let paragraph = Paragraph::new(content).block(
+        Block::default()
+            .title(" Create Memory ")
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(Style::default().fg(t.modal_border_create)),
