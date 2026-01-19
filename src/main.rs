@@ -7,6 +7,7 @@ use peas::{
     graphql::build_schema,
     model::{Pea, PeaStatus},
     storage::PeaRepository,
+    undo::UndoManager,
 };
 use std::{
     io::{self, Read, Write},
@@ -120,6 +121,11 @@ fn main() -> Result<()> {
             }
 
             let path = repo.create(&pea)?;
+
+            // Record undo operation
+            let undo_manager = UndoManager::new(&config.data_path(&root));
+            let _ = peas::undo::record_create(&undo_manager, &pea.id, &path);
+
             let filename = path
                 .file_name()
                 .map(|f| f.to_string_lossy())
@@ -287,6 +293,12 @@ fn main() -> Result<()> {
             }
 
             pea.touch();
+
+            // Record undo operation before update
+            let undo_manager = UndoManager::new(&config.data_path(&root));
+            let old_path = repo.find_file_by_id(&pea.id)?;
+            let _ = peas::undo::record_update(&undo_manager, &pea.id, &old_path);
+
             let path = repo.update(&pea)?;
             let filename = path
                 .file_name()
@@ -304,8 +316,17 @@ fn main() -> Result<()> {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let pea = repo.get(&id)?;
-            let path = repo.archive(&id)?;
-            let filename = path
+
+            // Get original path before archive
+            let original_path = repo.find_file_by_id(&id)?;
+
+            let archive_path = repo.archive(&id)?;
+
+            // Record undo operation
+            let undo_manager = UndoManager::new(&config.data_path(&root));
+            let _ = peas::undo::record_archive(&undo_manager, &id, &original_path, &archive_path);
+
+            let filename = archive_path
                 .file_name()
                 .map(|f| f.to_string_lossy())
                 .unwrap_or_default();
@@ -337,6 +358,11 @@ fn main() -> Result<()> {
                     return Ok(());
                 }
             }
+
+            // Record undo operation before delete
+            let undo_manager = UndoManager::new(&config.data_path(&root));
+            let file_path = repo.find_file_by_id(&id)?;
+            let _ = peas::undo::record_delete(&undo_manager, &id, &file_path);
 
             repo.delete(&id)?;
             if json {
@@ -379,6 +405,12 @@ fn main() -> Result<()> {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
+
+            // Record undo operation before update
+            let undo_manager = UndoManager::new(&config.data_path(&root));
+            let old_path = repo.find_file_by_id(&pea.id)?;
+            let _ = peas::undo::record_update(&undo_manager, &pea.id, &old_path);
+
             pea.status = PeaStatus::InProgress;
             pea.touch();
             repo.update(&pea)?;
@@ -398,6 +430,12 @@ fn main() -> Result<()> {
             let (config, root) = load()?;
             let repo = PeaRepository::new(&config, &root);
             let mut pea = repo.get(&id)?;
+
+            // Record undo operation before update
+            let undo_manager = UndoManager::new(&config.data_path(&root));
+            let old_path = repo.find_file_by_id(&pea.id)?;
+            let _ = peas::undo::record_update(&undo_manager, &pea.id, &old_path);
+
             pea.status = PeaStatus::Completed;
             pea.touch();
             repo.update(&pea)?;
@@ -963,6 +1001,41 @@ fn main() -> Result<()> {
                             created_peas.len(),
                             errors_list.len()
                         );
+                    }
+                }
+            }
+            Ok(())
+        }
+        Commands::Undo { json } => {
+            let (config, root) = load()?;
+            let data_path = config.data_path(&root);
+            let undo_manager = UndoManager::new(&data_path);
+
+            match undo_manager.undo() {
+                Ok(msg) => {
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "action": "undo",
+                                "message": msg
+                            }))?
+                        );
+                    } else {
+                        println!("{} {}", "Undo:".green(), msg);
+                    }
+                }
+                Err(e) => {
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "action": "undo",
+                                "error": e.to_string()
+                            }))?
+                        );
+                    } else {
+                        println!("{} {}", "Nothing to undo:".yellow(), e);
                     }
                 }
             }

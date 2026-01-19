@@ -82,3 +82,8 @@ pub mod validation;
 ///
 /// Supports importing from and exporting to beans format.
 pub mod import_export;
+
+/// Undo functionality for reverting operations.
+///
+/// Tracks the last mutation and allows undoing it.
+pub mod undo;

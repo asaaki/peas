@@ -2,10 +2,10 @@
 id = "peas-mo067"
 title = "Evaluate markdown rendering libraries for TUI"
 type = "research"
-status = "in-progress"
+status = "completed"
 priority = "normal"
 created = "2026-01-18T23:43:00.903192500Z"
-updated = "2026-01-18T23:43:00.903192500Z"
+updated = "2026-01-18T23:48:32.751263400Z"
 +++
 
 Evaluate options for rendering markdown in the TUI detail view.

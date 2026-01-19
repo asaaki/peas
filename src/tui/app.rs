@@ -4,6 +4,7 @@ use crate::{
     error::Result,
     model::{Pea, PeaPriority, PeaStatus, PeaType},
     storage::PeaRepository,
+    undo::UndoManager,
 };
 use cli_clipboard::ClipboardProvider;
 use crossterm::{
@@ -46,6 +47,7 @@ pub struct TreeNode {
 
 pub struct App {
     pub repo: PeaRepository,
+    pub data_path: PathBuf, // Path to .peas data directory
     pub all_peas: Vec<Pea>,
     pub filtered_peas: Vec<Pea>,
     pub tree_nodes: Vec<TreeNode>, // Flattened tree for display
@@ -69,6 +71,7 @@ pub struct App {
 impl App {
     pub fn new(config: &PeasConfig, project_root: &Path) -> Result<Self> {
         let repo = PeaRepository::new(config, project_root);
+        let data_path = config.data_path(project_root);
         let all_peas = repo.list()?;
         let filtered_peas = all_peas.clone();
 
@@ -79,6 +82,7 @@ impl App {
 
         let mut app = Self {
             repo,
+            data_path,
             all_peas,
             filtered_peas,
             tree_nodes: Vec::new(),
@@ -428,8 +432,15 @@ impl App {
         if let Some(&new_status) = options.get(self.modal_selection) {
             let target_ids = self.target_ids();
             let count = target_ids.len();
-            for id in target_ids {
-                if let Some(pea) = self.all_peas.iter().find(|p| p.id == id).cloned() {
+            let undo_manager = UndoManager::new(&self.data_path);
+            for (i, id) in target_ids.iter().enumerate() {
+                if let Some(pea) = self.all_peas.iter().find(|p| p.id == *id).cloned() {
+                    // Record undo for the last item (will be what gets undone)
+                    if i == count - 1 {
+                        if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                            let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+                        }
+                    }
                     let mut updated = pea;
                     updated.status = new_status;
                     updated.touch();
@@ -474,8 +485,15 @@ impl App {
         if let Some(&new_priority) = options.get(self.modal_selection) {
             let target_ids = self.target_ids();
             let count = target_ids.len();
-            for id in target_ids {
-                if let Some(pea) = self.all_peas.iter().find(|p| p.id == id).cloned() {
+            let undo_manager = UndoManager::new(&self.data_path);
+            for (i, id) in target_ids.iter().enumerate() {
+                if let Some(pea) = self.all_peas.iter().find(|p| p.id == *id).cloned() {
+                    // Record undo for the last item
+                    if i == count - 1 {
+                        if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                            let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+                        }
+                    }
                     let mut updated = pea;
                     updated.priority = new_priority;
                     updated.touch();
@@ -523,8 +541,15 @@ impl App {
         if let Some(&new_type) = options.get(self.modal_selection) {
             let target_ids = self.target_ids();
             let count = target_ids.len();
-            for id in target_ids {
-                if let Some(pea) = self.all_peas.iter().find(|p| p.id == id).cloned() {
+            let undo_manager = UndoManager::new(&self.data_path);
+            for (i, id) in target_ids.iter().enumerate() {
+                if let Some(pea) = self.all_peas.iter().find(|p| p.id == *id).cloned() {
+                    // Record undo for the last item
+                    if i == count - 1 {
+                        if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                            let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+                        }
+                    }
                     let mut updated = pea;
                     updated.pea_type = new_type;
                     updated.touch();
@@ -553,6 +578,12 @@ impl App {
     /// Delete the currently selected pea
     pub fn delete_selected(&mut self) -> Result<()> {
         if let Some(pea) = self.selected_pea().cloned() {
+            // Record undo before delete
+            let undo_manager = UndoManager::new(&self.data_path);
+            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                let _ = crate::undo::record_delete(&undo_manager, &pea.id, &path);
+            }
+
             self.repo.delete(&pea.id)?;
             self.message = Some(format!("Deleted {}", pea.id));
             self.refresh()?;
@@ -632,6 +663,12 @@ impl App {
         };
 
         if let Some(pea) = self.selected_pea().cloned() {
+            // Record undo before update
+            let undo_manager = UndoManager::new(&self.data_path);
+            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            }
+
             let mut updated = pea.clone();
             updated.parent = new_parent.clone();
             updated.touch();
@@ -709,6 +746,12 @@ impl App {
             .collect();
 
         if let Some(pea) = self.selected_pea().cloned() {
+            // Record undo before update
+            let undo_manager = UndoManager::new(&self.data_path);
+            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            }
+
             let mut updated = pea.clone();
             updated.blocking = new_blocking.clone();
             updated.touch();
@@ -757,10 +800,30 @@ impl App {
         )
         .with_parent(parent);
 
-        self.repo.create(&pea)?;
+        let path = self.repo.create(&pea)?;
+
+        // Record undo after create
+        let undo_manager = UndoManager::new(&self.data_path);
+        let _ = crate::undo::record_create(&undo_manager, &id, &path);
+
         self.message = Some(format!("Created {}", id));
         self.refresh()?;
         self.input_mode = InputMode::Normal;
+        Ok(())
+    }
+
+    /// Undo the last operation
+    pub fn undo(&mut self) -> Result<()> {
+        let undo_manager = UndoManager::new(&self.data_path);
+        match undo_manager.undo() {
+            Ok(msg) => {
+                self.message = Some(format!("Undo: {}", msg));
+                self.refresh()?;
+            }
+            Err(e) => {
+                self.message = Some(format!("Nothing to undo: {}", e));
+            }
+        }
         Ok(())
     }
 }
@@ -947,6 +1010,9 @@ fn run_app(
                                 }
                             }
                         }
+                    }
+                    KeyCode::Char('u') => {
+                        let _ = app.undo();
                     }
                     _ => {}
                 },

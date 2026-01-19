@@ -299,6 +299,13 @@ pub enum Commands {
         #[command(subcommand)]
         action: BulkAction,
     },
+
+    /// Undo the last operation
+    Undo {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand)]
