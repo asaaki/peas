@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-jr51d",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jr51d--implement-memory-detail-view-in-tui.md",
-    "previous_content": "+++\nid = \"peas-jr51d\"\ntitle = \"Implement memory detail view in TUI\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"high\"\nparent = \"peas-i0vo8\"\nblocking = [\"peas-xc13w\"]\ncreated = \"2026-01-19T22:40:04.034187400Z\"\nupdated = \"2026-01-19T22:58:02.405630900Z\"\n+++\n\nCreate memory detail view when pressing Enter on a memory item\n\n**Features:**\n- Full-screen view showing memory content\n- Display key, tags, timestamps\n- Scrollable markdown body\n- Edit mode (e key to enter EditBody mode)\n- Return to list with Esc\n\n**Follow pattern:** Similar to ticket DetailView mode but simpler (no relations pane)\n\n**Update:** InputMode enum to handle memory detail/edit states\n"
+    "id": "peas-dxyxp",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-dxyxp--add-memory-search-filter-in-tui.md",
+    "previous_content": "+++\nid = \"peas-dxyxp\"\ntitle = \"Add memory search/filter in TUI\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-i0vo8\"\nblocking = [\"peas-xc13w\"]\ncreated = \"2026-01-19T22:40:21.164369300Z\"\nupdated = \"2026-01-19T22:40:21.164369300Z\"\n+++\n\nAdd search and filter functionality for memory view\n\n**Trigger:** Press '/' to enter filter mode\n\n**Behavior:**\n- Filter by key or content (fuzzy match)\n- Filter by tag\n- Update visible list in real-time\n- Show filter indicator in status bar\n\n**Follow pattern:** Similar to ticket filter functionality\n"
   }
 }
