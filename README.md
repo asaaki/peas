@@ -159,15 +159,19 @@ Or add to your `AGENTS.md`:
 
 ## Configuration
 
-peas uses `.peas.yml` for configuration:
+peas uses `.peas.toml` for configuration (also supports `.peas.yml`, `.peas.yaml`, or `.peas.json`):
 
-```yaml
-peas:
-  path: .peas          # Data directory
-  prefix: peas-        # ID prefix
-  id_length: 4         # Random ID length
-  default_status: todo
-  default_type: task
+```toml
+[peas]
+path = ".peas"          # Data directory
+prefix = "peas-"        # ID prefix
+id_length = 5           # Random ID length
+default_status = "todo"
+default_type = "task"
+frontmatter = "toml"    # Frontmatter format: toml, yaml
+
+[tui]
+use_type_emojis = false # Enable emoji icons for ticket types in TUI
 ```
 
 ## File Format

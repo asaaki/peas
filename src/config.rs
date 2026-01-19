@@ -101,7 +101,18 @@ impl PeasConfig {
     pub fn load(start_path: &Path) -> Result<(Self, PathBuf)> {
         let config_path = Self::find_config_file(start_path)?;
         let content = std::fs::read_to_string(&config_path)?;
-        let config: PeasConfig = serde_yaml::from_str(&content)?;
+
+        // Determine format based on file extension
+        let config: PeasConfig = if config_path.extension().and_then(|s| s.to_str()) == Some("toml")
+        {
+            toml::from_str(&content)?
+        } else if config_path.extension().and_then(|s| s.to_str()) == Some("json") {
+            serde_json::from_str(&content)?
+        } else {
+            // YAML for .yml/.yaml or unknown
+            serde_yaml::from_str(&content)?
+        };
+
         let project_root = config_path
             .parent()
             .ok_or_else(|| PeasError::Config("Config file has no parent directory".to_string()))?
@@ -112,9 +123,12 @@ impl PeasConfig {
     pub fn find_config_file(start_path: &Path) -> Result<PathBuf> {
         let mut current = start_path.to_path_buf();
         loop {
-            let config_path = current.join(".peas.yml");
-            if config_path.exists() {
-                return Ok(config_path);
+            // Try TOML first (preferred), then YAML, then JSON
+            for filename in [".peas.toml", ".peas.yml", ".peas.yaml", ".peas.json"] {
+                let config_path = current.join(filename);
+                if config_path.exists() {
+                    return Ok(config_path);
+                }
             }
             if !current.pop() {
                 return Err(PeasError::NotInitialized);
@@ -131,7 +145,17 @@ impl PeasConfig {
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
-        let content = serde_yaml::to_string(self)?;
+        // Determine format based on file extension, default to TOML
+        let content = if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+            match ext {
+                "toml" => toml::to_string_pretty(self)?,
+                "json" => serde_json::to_string_pretty(self)?,
+                "yml" | "yaml" => serde_yaml::to_string(self)?,
+                _ => toml::to_string_pretty(self)?, // Default to TOML
+            }
+        } else {
+            toml::to_string_pretty(self)? // Default to TOML
+        };
         std::fs::write(path, content)?;
         Ok(())
     }

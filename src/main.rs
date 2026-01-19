@@ -1046,7 +1046,7 @@ fn main() -> Result<()> {
 
 fn cmd_init(prefix: String, id_length: usize, peas_path: Option<String>) -> Result<()> {
     let cwd = std::env::current_dir()?;
-    let config_path = cwd.join(".peas.yml");
+    let config_path = cwd.join(".peas.toml");
 
     if config_path.exists() {
         anyhow::bail!("Project already initialized at {}", config_path.display());

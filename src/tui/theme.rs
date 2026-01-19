@@ -144,7 +144,7 @@ impl Markers {
             PeaType::Bug => Some("🐛"),
             PeaType::Chore => Some("🧹"),
             PeaType::Research => Some("🔬"),
-            PeaType::Task => Some("☑️"),
+            PeaType::Task => Some("📄"),
         }
     }
 }
