@@ -1136,6 +1136,11 @@ fn draw_url_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(80, 60, f.area());
     let t = theme();
 
+    // Compute pulsing color for row marker
+    let elapsed_millis = app.start_time.elapsed().as_millis();
+    let pulsing_color = theme().selection_indicator_pulsing_color(elapsed_millis);
+    let pulsing_style = Style::default().fg(pulsing_color);
+
     let mut content = vec![
         Line::from(""),
         Line::from(Span::styled(
@@ -1149,10 +1154,7 @@ fn draw_url_modal(f: &mut Frame, app: &App) {
     for (i, url) in app.url_candidates.iter().enumerate() {
         let is_selected = i == app.modal_selection;
         let marker = if is_selected {
-            Span::styled(
-                format!(" {} ", theme().row_marker),
-                theme().selection_indicator_style(),
-            )
+            Span::styled(format!(" {} ", theme().row_marker), pulsing_style)
         } else {
             Span::raw("   ")
         };
