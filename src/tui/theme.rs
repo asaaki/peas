@@ -99,6 +99,33 @@ pub struct Theme {
     pub help_border: Color,
 }
 
+/// Special characters and markers used throughout the TUI
+#[derive(Debug, Clone)]
+pub struct Markers {
+    /// Logo/brand emoji
+    pub logo: &'static str,
+    /// Row selection marker
+    pub row_marker: &'static str,
+    /// Pane title marker (left)
+    pub pane_marker_left: &'static str,
+    /// Pane title marker (right, with spacing)
+    pub pane_marker_right: &'static str,
+    /// Page indicator marker (stylized pea pod)
+    pub page_marker: &'static str,
+}
+
+impl Default for Markers {
+    fn default() -> Self {
+        Self {
+            logo: "🫛",
+            row_marker: "▐",
+            pane_marker_left: "○",
+            pane_marker_right: "○─",
+            page_marker: "☍︎",
+        }
+    }
+}
+
 impl Default for Theme {
     fn default() -> Self {
         // Monokai color scheme
@@ -316,7 +343,15 @@ impl Theme {
 /// Global theme instance
 static THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
 
+/// Global markers instance
+static MARKERS: std::sync::OnceLock<Markers> = std::sync::OnceLock::new();
+
 /// Get the current theme
 pub fn theme() -> &'static Theme {
     THEME.get_or_init(Theme::default)
+}
+
+/// Get the current markers
+pub fn markers() -> &'static Markers {
+    MARKERS.get_or_init(Markers::default)
 }

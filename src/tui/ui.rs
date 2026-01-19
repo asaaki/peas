@@ -1,5 +1,5 @@
 use super::app::{App, DetailPane, InputMode};
-use super::theme::theme;
+use super::theme::{markers, theme};
 use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
     Frame,
@@ -201,7 +201,11 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         }
 
         // Selection indicator (green, blinking)
-        let sel = if is_selected { "▐" } else { " " };
+        let sel = if is_selected {
+            markers().row_marker
+        } else {
+            " "
+        };
         let sel_style = if is_selected {
             theme().selection_indicator_style()
         } else {
@@ -536,7 +540,10 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
 
                     // Selection cursor (only show when pane is focused)
                     let cursor = if is_selected && is_focused {
-                        Span::styled("▐ ", theme().selection_indicator_style())
+                        Span::styled(
+                            format!("{} ", markers().row_marker),
+                            theme().selection_indicator_style(),
+                        )
                     } else {
                         Span::raw("  ")
                     };
@@ -728,7 +735,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
             let (icon, color) = status_indicator(status);
 
             let selection_indicator = if is_selected {
-                Span::styled("▐", Style::default().fg(t.modal_cursor))
+                Span::styled(markers().row_marker, Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -772,7 +779,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
             let color = priority_color(priority);
 
             let selection_indicator = if is_selected {
-                Span::styled("▐", Style::default().fg(t.modal_cursor))
+                Span::styled(markers().row_marker, Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -965,7 +972,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
 
             // Cursor indicator
             let cursor = if is_cursor {
-                Span::styled("▐", Style::default().fg(t.modal_cursor))
+                Span::styled(markers().row_marker, Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
@@ -1033,7 +1040,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
     // "(none)" option
     let is_none_selected = app.modal_selection == 0;
     let none_indicator = if is_none_selected {
-        Span::styled("▐", Style::default().fg(t.modal_cursor))
+        Span::styled(markers().row_marker, Style::default().fg(t.modal_cursor))
     } else {
         Span::raw(" ")
     };
@@ -1051,7 +1058,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
     for (idx, pea) in app.parent_candidates.iter().enumerate() {
         let is_selected = app.modal_selection == idx + 1;
         let selection_indicator = if is_selected {
-            Span::styled("▐", Style::default().fg(t.modal_cursor))
+            Span::styled(markers().row_marker, Style::default().fg(t.modal_cursor))
         } else {
             Span::raw(" ")
         };
@@ -1107,7 +1114,7 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
             let color = type_color(pea_type);
 
             let selection_indicator = if is_selected {
-                Span::styled("▐", Style::default().fg(t.modal_cursor))
+                Span::styled(markers().row_marker, Style::default().fg(t.modal_cursor))
             } else {
                 Span::raw(" ")
             };
