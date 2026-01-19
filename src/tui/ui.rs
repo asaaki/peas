@@ -154,20 +154,27 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                     let hint_style = Style::default().fg(t.text_muted);
 
                     // Build a hint row showing the parent
+                    // Span the hint across tree+id column and extend into type/status/priority/title
                     let hint_prefix = "   ⋮  ".to_string(); // Visual continuation indicator
+                    let parent_type_str = if tui_config().use_type_emojis {
+                        format!(
+                            "{} {}",
+                            theme().type_emoji(&parent_node.pea.pea_type),
+                            parent_node.pea.pea_type
+                        )
+                    } else {
+                        format!("{}", parent_node.pea.pea_type)
+                    };
                     let parent_info = format!(
-                        "└─ (parent: {} - {})",
-                        parent_node.pea.id, parent_node.pea.title
+                        "└─ (parent: {} {} - {})",
+                        parent_node.pea.id, parent_type_str, parent_node.pea.title
                     );
 
                     parent_context_rows.push(Row::new(vec![
-                        Cell::from(""),
-                        Cell::from(""),
+                        Cell::from(""), // Selection indicator column
+                        Cell::from(""), // Checkbox column
+                        // Span the parent info across remaining columns by putting it all in one cell
                         Cell::from(hint_prefix + &parent_info).style(hint_style),
-                        Cell::from(""),
-                        Cell::from(""),
-                        Cell::from(""),
-                        Cell::from(""),
                     ]));
                     has_parent_context = true;
                 }
