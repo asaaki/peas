@@ -575,6 +575,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         let is_metadata_focused = app.detail_pane == DetailPane::Metadata;
 
         // Helper to add row marker span if this property is selected
+        // Always reserves space for the marker to prevent jumping
         let row_marker = |index: usize| -> Span {
             if is_metadata_focused && app.metadata_selection == index {
                 Span::styled(
@@ -582,7 +583,11 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                     theme().selection_indicator_style(),
                 )
             } else {
-                Span::raw("  ")
+                // Reserve same space when not selected (using the marker's width)
+                Span::raw(format!(
+                    "{} ",
+                    " ".repeat(theme().row_marker.chars().count())
+                ))
             }
         };
 
