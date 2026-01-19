@@ -266,11 +266,17 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         };
 
         // Build cells for each column
+        let type_text = if let Some(emoji) = markers().type_emoji(&pea.pea_type) {
+            format!("{} {}", emoji, pea.pea_type)
+        } else {
+            format!("{}", pea.pea_type)
+        };
+
         Row::new(vec![
             Cell::from(sel).style(sel_style),
             Cell::from(checkbox).style(checkbox_style),
             Cell::from(tree_and_id),
-            Cell::from(format!("{}", pea.pea_type)).style(type_style),
+            Cell::from(type_text).style(type_style),
             Cell::from(format!("{} {}", status_icon, pea.status)).style(status_style),
             Cell::from(pri).style(Style::default().fg(pri_color)),
             Cell::from(Line::from(title_spans)),
@@ -460,7 +466,11 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             Line::from(vec![
                 Span::raw("Type:     "),
                 Span::styled(
-                    format!("{}", pea.pea_type),
+                    if let Some(emoji) = markers().type_emoji(&pea.pea_type) {
+                        format!("{} {}", emoji, pea.pea_type)
+                    } else {
+                        format!("{}", pea.pea_type)
+                    },
                     Style::default().fg(type_color(&pea.pea_type)),
                 ),
             ]),
@@ -548,11 +558,17 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                         Span::raw("  ")
                     };
 
+                    let type_text = if let Some(emoji) = markers().type_emoji(pea_type) {
+                        format!("{} {} ", emoji, pea_type)
+                    } else {
+                        format!("{} ", pea_type)
+                    };
+
                     let content = Line::from(vec![
                         cursor,
                         Span::styled(format!("{} ", prefix), Style::default().fg(rel_color)),
                         Span::styled(format!("[{}] ", rel_type), Style::default().fg(rel_color)),
-                        Span::styled(format!("{} ", pea_type), Style::default().fg(type_color)),
+                        Span::styled(type_text, Style::default().fg(type_color)),
                         Span::styled(id, Style::default().fg(theme().id)),
                         Span::raw(" "),
                         Span::styled(
@@ -911,7 +927,11 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
             ),
             Span::styled("Type:  ", type_style.add_modifier(Modifier::BOLD)),
             Span::styled(
-                format!("< {} >", app.create_type),
+                if let Some(emoji) = markers().type_emoji(&app.create_type) {
+                    format!("< {} {} >", emoji, app.create_type)
+                } else {
+                    format!("< {} >", app.create_type)
+                },
                 Style::default().fg(pea_type_color),
             ),
         ]),
@@ -1079,11 +1099,17 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
             pea.title.clone()
         };
 
+        let type_text = if let Some(emoji) = markers().type_emoji(&pea.pea_type) {
+            format!("[{} {}]", emoji, pea.pea_type)
+        } else {
+            format!("[{}]", pea.pea_type)
+        };
+
         items.push(ListItem::new(Line::from(vec![
             selection_indicator,
             Span::styled(&pea.id, Style::default().fg(t.id)),
             Span::raw(" "),
-            Span::styled(format!("[{}]", pea.pea_type), Style::default().fg(type_col)),
+            Span::styled(type_text, Style::default().fg(type_col)),
             Span::raw(" "),
             Span::styled(title, style),
         ])));
@@ -1125,9 +1151,15 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
                 Style::default()
             };
 
+            let type_text = if let Some(emoji) = markers().type_emoji(pea_type) {
+                format!("{} {}", emoji, pea_type)
+            } else {
+                format!("{}", pea_type)
+            };
+
             ListItem::new(Line::from(vec![
                 selection_indicator,
-                Span::styled(format!("{}", pea_type), style.fg(color)),
+                Span::styled(type_text, style.fg(color)),
             ]))
         })
         .collect();

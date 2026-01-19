@@ -112,6 +112,8 @@ pub struct Markers {
     pub pane_marker_right: &'static str,
     /// Page indicator marker (stylized pea pod)
     pub page_marker: &'static str,
+    /// Whether to use emojis for ticket types
+    pub use_type_emojis: bool,
 }
 
 impl Default for Markers {
@@ -122,6 +124,27 @@ impl Default for Markers {
             pane_marker_left: "○",
             pane_marker_right: "○─",
             page_marker: "☍︎",
+            use_type_emojis: false, // Disabled by default for compatibility
+        }
+    }
+}
+
+impl Markers {
+    /// Get emoji for ticket type (if enabled)
+    pub fn type_emoji(&self, pea_type: &PeaType) -> Option<&'static str> {
+        if !self.use_type_emojis {
+            return None;
+        }
+
+        match pea_type {
+            PeaType::Milestone => Some("🏁"),
+            PeaType::Epic => Some("🌟"),
+            PeaType::Story => Some("📖"),
+            PeaType::Feature => Some("✨"),
+            PeaType::Bug => Some("🐛"),
+            PeaType::Chore => Some("🧹"),
+            PeaType::Research => Some("🔬"),
+            PeaType::Task => Some("☑️"),
         }
     }
 }
