@@ -203,6 +203,33 @@ impl App {
         self.detail_scroll = 0;
     }
 
+    /// Handle mouse click events
+    pub fn handle_mouse_click(&mut self, _column: u16, row: u16) {
+        // In Normal mode, clicking on list items should select them
+        if self.input_mode == InputMode::Normal {
+            // Account for header rows (title bar, borders, etc.)
+            // Typically the list content starts at row 2 (0-indexed)
+            if row >= 2 {
+                let clicked_row = (row - 2) as usize;
+
+                match self.view_mode {
+                    ViewMode::Tickets => {
+                        if clicked_row < self.tree_nodes.len() {
+                            self.selected_index = clicked_row;
+                            self.list_state.select(Some(clicked_row));
+                        }
+                    }
+                    ViewMode::Memory => {
+                        if clicked_row < self.filtered_memories.len() {
+                            self.selected_index = clicked_row;
+                            self.list_state.select(Some(clicked_row));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Build a flattened tree structure from the filtered peas
     pub fn build_tree(&mut self) {
         use std::collections::{HashMap, HashSet};
@@ -1462,579 +1489,619 @@ fn run_app(
             continue;
         }
 
-        if let Event::Key(key) = event::read()? {
-            if key.kind != KeyEventKind::Press {
+        let event = event::read()?;
+
+        match event {
+            Event::Mouse(mouse_event) => {
+                use crossterm::event::{MouseButton, MouseEventKind};
+
+                match mouse_event.kind {
+                    MouseEventKind::Down(MouseButton::Left) => {
+                        // Handle click events
+                        app.handle_mouse_click(mouse_event.column, mouse_event.row);
+                    }
+                    MouseEventKind::ScrollDown => {
+                        if app.input_mode == InputMode::Normal {
+                            app.next();
+                        } else if app.input_mode == InputMode::DetailView {
+                            // Scroll detail view down
+                            if app.detail_scroll < app.detail_max_scroll {
+                                app.detail_scroll += 1;
+                            }
+                        }
+                    }
+                    MouseEventKind::ScrollUp => {
+                        if app.input_mode == InputMode::Normal {
+                            app.previous();
+                        } else if app.input_mode == InputMode::DetailView {
+                            // Scroll detail view up
+                            if app.detail_scroll > 0 {
+                                app.detail_scroll -= 1;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
                 continue;
             }
+            Event::Key(key) => {
+                if key.kind != KeyEventKind::Press {
+                    continue;
+                }
 
-            match app.input_mode {
-                InputMode::Normal => match key.code {
-                    KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Char('?') => app.show_help = !app.show_help,
-                    KeyCode::Tab => {
-                        app.switch_view();
-                    }
-                    KeyCode::Esc => {
-                        if app.show_help {
-                            app.show_help = false;
-                        } else if !app.multi_selected.is_empty() {
-                            app.clear_multi_select();
-                        } else if !app.search_query.is_empty() {
-                            app.search_query.clear();
+                match app.input_mode {
+                    InputMode::Normal => match key.code {
+                        KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Char('?') => app.show_help = !app.show_help,
+                        KeyCode::Tab => {
+                            app.switch_view();
+                        }
+                        KeyCode::Esc => {
+                            if app.show_help {
+                                app.show_help = false;
+                            } else if !app.multi_selected.is_empty() {
+                                app.clear_multi_select();
+                            } else if !app.search_query.is_empty() {
+                                app.search_query.clear();
+                                app.apply_filter();
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => app.next(),
+                        KeyCode::Up | KeyCode::Char('k') => app.previous(),
+                        KeyCode::Right | KeyCode::PageDown | KeyCode::Char('J') => app.next_page(),
+                        KeyCode::Left | KeyCode::PageUp | KeyCode::Char('K') => app.previous_page(),
+                        KeyCode::Home | KeyCode::Char('g') => app.first(),
+                        KeyCode::End | KeyCode::Char('G') => app.last(),
+                        KeyCode::Char('/') => {
+                            app.input_mode = InputMode::Filter;
+                        }
+                        KeyCode::Enter => {
+                            match app.view_mode {
+                                ViewMode::Tickets => {
+                                    // Open full-screen detail view for tickets
+                                    if app.selected_pea().is_some() {
+                                        app.detail_scroll = 0;
+                                        app.build_relations();
+                                        app.input_mode = InputMode::DetailView;
+                                    }
+                                }
+                                ViewMode::Memory => {
+                                    // Open memory detail view
+                                    if app.selected_index < app.filtered_memories.len() {
+                                        app.detail_scroll = 0;
+                                        app.input_mode = InputMode::DetailView;
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::Char(' ') => {
+                            app.toggle_multi_select();
+                        }
+                        KeyCode::Char('s') => {
+                            app.open_status_modal();
+                        }
+                        KeyCode::Char('P') => {
+                            app.open_priority_modal();
+                        }
+                        KeyCode::Char('t') => {
+                            app.open_type_modal();
+                        }
+                        KeyCode::Char('p') => {
+                            app.open_parent_modal();
+                        }
+                        KeyCode::Char('b') => {
+                            app.open_blocking_modal();
+                        }
+                        KeyCode::Char('c') => {
+                            app.open_create_modal();
+                        }
+                        KeyCode::Char('n') => {
+                            match app.view_mode {
+                                ViewMode::Memory => {
+                                    app.open_memory_create_modal();
+                                }
+                                ViewMode::Tickets => {
+                                    // 'n' is not used in Tickets view
+                                }
+                            }
+                        }
+                        KeyCode::Char('d') => {
+                            app.open_delete_confirm();
+                        }
+                        KeyCode::Char('r') => {
+                            let _ = app.refresh();
+                            app.message = Some("Refreshed".to_string());
+                        }
+                        KeyCode::Char('y') => {
+                            if let Some(pea) = app.selected_pea() {
+                                let id = pea.id.clone();
+                                if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
+                                    if ctx.set_contents(id.clone()).is_ok() {
+                                        app.message = Some(format!("Copied: {}", id));
+                                    } else {
+                                        app.message =
+                                            Some("Failed to copy to clipboard".to_string());
+                                    }
+                                } else {
+                                    app.message = Some("Clipboard not available".to_string());
+                                }
+                            }
+                        }
+                        KeyCode::Char('e') => {
+                            if let Some(file_path) = app.selected_pea_file_path() {
+                                // Leave alternate screen temporarily
+                                disable_raw_mode()?;
+                                execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+
+                                // Get editor from environment
+                                let editor = std::env::var("EDITOR")
+                                    .or_else(|_| std::env::var("VISUAL"))
+                                    .unwrap_or_else(|_| {
+                                        if cfg!(windows) {
+                                            "notepad".to_string()
+                                        } else {
+                                            "vi".to_string()
+                                        }
+                                    });
+
+                                // Spawn editor and wait
+                                let status =
+                                    std::process::Command::new(&editor).arg(&file_path).status();
+
+                                // Re-enter alternate screen
+                                enable_raw_mode()?;
+                                execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+                                terminal.clear()?;
+
+                                // Refresh and show result
+                                let _ = app.refresh();
+                                match status {
+                                    Ok(s) if s.success() => {
+                                        app.message = Some("Editor closed".to_string());
+                                    }
+                                    Ok(_) => {
+                                        app.message = Some("Editor exited with error".to_string());
+                                    }
+                                    Err(e) => {
+                                        app.message = Some(format!("Failed to open editor: {}", e));
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::Char('u') => {
+                            let _ = app.undo();
+                        }
+                        _ => {}
+                    },
+                    InputMode::Filter => match key.code {
+                        KeyCode::Enter | KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        KeyCode::Char(c) => {
+                            app.search_query.push(c);
                             app.apply_filter();
                         }
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => app.next(),
-                    KeyCode::Up | KeyCode::Char('k') => app.previous(),
-                    KeyCode::Right | KeyCode::PageDown | KeyCode::Char('J') => app.next_page(),
-                    KeyCode::Left | KeyCode::PageUp | KeyCode::Char('K') => app.previous_page(),
-                    KeyCode::Home | KeyCode::Char('g') => app.first(),
-                    KeyCode::End | KeyCode::Char('G') => app.last(),
-                    KeyCode::Char('/') => {
-                        app.input_mode = InputMode::Filter;
-                    }
-                    KeyCode::Enter => {
-                        match app.view_mode {
-                            ViewMode::Tickets => {
-                                // Open full-screen detail view for tickets
-                                if app.selected_pea().is_some() {
-                                    app.detail_scroll = 0;
-                                    app.build_relations();
-                                    app.input_mode = InputMode::DetailView;
-                                }
-                            }
-                            ViewMode::Memory => {
-                                // Open memory detail view
-                                if app.selected_index < app.filtered_memories.len() {
-                                    app.detail_scroll = 0;
-                                    app.input_mode = InputMode::DetailView;
-                                }
-                            }
+                        KeyCode::Backspace => {
+                            app.search_query.pop();
+                            app.apply_filter();
                         }
-                    }
-                    KeyCode::Char(' ') => {
-                        app.toggle_multi_select();
-                    }
-                    KeyCode::Char('s') => {
-                        app.open_status_modal();
-                    }
-                    KeyCode::Char('P') => {
-                        app.open_priority_modal();
-                    }
-                    KeyCode::Char('t') => {
-                        app.open_type_modal();
-                    }
-                    KeyCode::Char('p') => {
-                        app.open_parent_modal();
-                    }
-                    KeyCode::Char('b') => {
-                        app.open_blocking_modal();
-                    }
-                    KeyCode::Char('c') => {
-                        app.open_create_modal();
-                    }
-                    KeyCode::Char('n') => {
-                        match app.view_mode {
-                            ViewMode::Memory => {
-                                app.open_memory_create_modal();
-                            }
-                            ViewMode::Tickets => {
-                                // 'n' is not used in Tickets view
-                            }
+                        _ => {}
+                    },
+                    InputMode::StatusModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
                         }
-                    }
-                    KeyCode::Char('d') => {
-                        app.open_delete_confirm();
-                    }
-                    KeyCode::Char('r') => {
-                        let _ = app.refresh();
-                        app.message = Some("Refreshed".to_string());
-                    }
-                    KeyCode::Char('y') => {
-                        if let Some(pea) = app.selected_pea() {
-                            let id = pea.id.clone();
-                            if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
-                                if ctx.set_contents(id.clone()).is_ok() {
-                                    app.message = Some(format!("Copied: {}", id));
-                                } else {
-                                    app.message = Some("Failed to copy to clipboard".to_string());
-                                }
-                            } else {
-                                app.message = Some("Clipboard not available".to_string());
-                            }
+                        KeyCode::Enter => {
+                            let _ = app.apply_modal_status();
                         }
-                    }
-                    KeyCode::Char('e') => {
-                        if let Some(file_path) = app.selected_pea_file_path() {
-                            // Leave alternate screen temporarily
-                            disable_raw_mode()?;
-                            execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
-
-                            // Get editor from environment
-                            let editor = std::env::var("EDITOR")
-                                .or_else(|_| std::env::var("VISUAL"))
-                                .unwrap_or_else(|_| {
-                                    if cfg!(windows) {
-                                        "notepad".to_string()
-                                    } else {
-                                        "vi".to_string()
-                                    }
-                                });
-
-                            // Spawn editor and wait
-                            let status =
-                                std::process::Command::new(&editor).arg(&file_path).status();
-
-                            // Re-enter alternate screen
-                            enable_raw_mode()?;
-                            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
-                            terminal.clear()?;
-
-                            // Refresh and show result
-                            let _ = app.refresh();
-                            match status {
-                                Ok(s) if s.success() => {
-                                    app.message = Some("Editor closed".to_string());
-                                }
-                                Ok(_) => {
-                                    app.message = Some("Editor exited with error".to_string());
-                                }
-                                Err(e) => {
-                                    app.message = Some(format!("Failed to open editor: {}", e));
-                                }
-                            }
-                        }
-                    }
-                    KeyCode::Char('u') => {
-                        let _ = app.undo();
-                    }
-                    _ => {}
-                },
-                InputMode::Filter => match key.code {
-                    KeyCode::Enter | KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
-                    }
-                    KeyCode::Char(c) => {
-                        app.search_query.push(c);
-                        app.apply_filter();
-                    }
-                    KeyCode::Backspace => {
-                        app.search_query.pop();
-                        app.apply_filter();
-                    }
-                    _ => {}
-                },
-                InputMode::StatusModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.apply_modal_status();
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let count = App::status_options().len();
-                        app.modal_selection = (app.modal_selection + 1) % count;
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let count = App::status_options().len();
-                        app.modal_selection = if app.modal_selection == 0 {
-                            count - 1
-                        } else {
-                            app.modal_selection - 1
-                        };
-                    }
-                    _ => {}
-                },
-                InputMode::PriorityModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.apply_modal_priority();
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let count = App::priority_options().len();
-                        app.modal_selection = (app.modal_selection + 1) % count;
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let count = App::priority_options().len();
-                        app.modal_selection = if app.modal_selection == 0 {
-                            count - 1
-                        } else {
-                            app.modal_selection - 1
-                        };
-                    }
-                    _ => {}
-                },
-                InputMode::TypeModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.apply_modal_type();
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let count = App::type_options().len();
-                        app.modal_selection = (app.modal_selection + 1) % count;
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let count = App::type_options().len();
-                        app.modal_selection = if app.modal_selection == 0 {
-                            count - 1
-                        } else {
-                            app.modal_selection - 1
-                        };
-                    }
-                    _ => {}
-                },
-                InputMode::DeleteConfirm => match key.code {
-                    KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
-                        app.input_mode = InputMode::Normal;
-                    }
-                    KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
-                        let _ = app.delete_selected();
-                    }
-                    _ => {}
-                },
-                InputMode::ParentModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.apply_modal_parent();
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let count = app.parent_candidates.len() + 1; // +1 for "(none)"
-                        app.modal_selection = (app.modal_selection + 1) % count;
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let count = app.parent_candidates.len() + 1; // +1 for "(none)"
-                        app.modal_selection = if app.modal_selection == 0 {
-                            count - 1
-                        } else {
-                            app.modal_selection - 1
-                        };
-                    }
-                    _ => {}
-                },
-                InputMode::BlockingModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.apply_modal_blocking();
-                    }
-                    KeyCode::Char(' ') => {
-                        app.toggle_blocking_selection();
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let count = app.blocking_candidates.len();
-                        if count > 0 {
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let count = App::status_options().len();
                             app.modal_selection = (app.modal_selection + 1) % count;
                         }
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let count = app.blocking_candidates.len();
-                        if count > 0 {
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = App::status_options().len();
                             app.modal_selection = if app.modal_selection == 0 {
                                 count - 1
                             } else {
                                 app.modal_selection - 1
                             };
                         }
-                    }
-                    _ => {}
-                },
-                InputMode::DetailView => match key.code {
-                    KeyCode::Esc | KeyCode::Char('q') => {
-                        app.input_mode = InputMode::Normal;
-                        app.detail_pane = DetailPane::Body;
-                    }
-                    KeyCode::Tab => {
-                        app.toggle_detail_pane();
-                    }
-                    KeyCode::Enter => {
-                        // Open modal for selected metadata property or jump to relation
-                        if app.detail_pane == DetailPane::Metadata {
-                            match app.metadata_selection {
-                                0 => app.open_type_modal(),     // Type
-                                1 => app.open_status_modal(),   // Status
-                                2 => app.open_priority_modal(), // Priority
-                                3 => app.open_tags_modal(),     // Tags
-                                _ => {}
+                        _ => {}
+                    },
+                    InputMode::PriorityModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.apply_modal_priority();
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let count = App::priority_options().len();
+                            app.modal_selection = (app.modal_selection + 1) % count;
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = App::priority_options().len();
+                            app.modal_selection = if app.modal_selection == 0 {
+                                count - 1
+                            } else {
+                                app.modal_selection - 1
+                            };
+                        }
+                        _ => {}
+                    },
+                    InputMode::TypeModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.apply_modal_type();
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let count = App::type_options().len();
+                            app.modal_selection = (app.modal_selection + 1) % count;
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = App::type_options().len();
+                            app.modal_selection = if app.modal_selection == 0 {
+                                count - 1
+                            } else {
+                                app.modal_selection - 1
+                            };
+                        }
+                        _ => {}
+                    },
+                    InputMode::DeleteConfirm => match key.code {
+                        KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+                            let _ = app.delete_selected();
+                        }
+                        _ => {}
+                    },
+                    InputMode::ParentModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.apply_modal_parent();
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let count = app.parent_candidates.len() + 1; // +1 for "(none)"
+                            app.modal_selection = (app.modal_selection + 1) % count;
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = app.parent_candidates.len() + 1; // +1 for "(none)"
+                            app.modal_selection = if app.modal_selection == 0 {
+                                count - 1
+                            } else {
+                                app.modal_selection - 1
+                            };
+                        }
+                        _ => {}
+                    },
+                    InputMode::BlockingModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.apply_modal_blocking();
+                        }
+                        KeyCode::Char(' ') => {
+                            app.toggle_blocking_selection();
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let count = app.blocking_candidates.len();
+                            if count > 0 {
+                                app.modal_selection = (app.modal_selection + 1) % count;
                             }
-                        } else if app.detail_pane == DetailPane::Relations
-                            && !app.relations_items.is_empty()
-                        {
-                            app.jump_to_relation();
-                        } else {
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = app.blocking_candidates.len();
+                            if count > 0 {
+                                app.modal_selection = if app.modal_selection == 0 {
+                                    count - 1
+                                } else {
+                                    app.modal_selection - 1
+                                };
+                            }
+                        }
+                        _ => {}
+                    },
+                    InputMode::DetailView => match key.code {
+                        KeyCode::Esc | KeyCode::Char('q') => {
                             app.input_mode = InputMode::Normal;
                             app.detail_pane = DetailPane::Body;
                         }
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => match app.detail_pane {
-                        DetailPane::Metadata => {
-                            // Navigate down through metadata properties (type, status, priority, tags)
-                            if app.metadata_selection < 3 {
-                                app.metadata_selection += 1;
+                        KeyCode::Tab => {
+                            app.toggle_detail_pane();
+                        }
+                        KeyCode::Enter => {
+                            // Open modal for selected metadata property or jump to relation
+                            if app.detail_pane == DetailPane::Metadata {
+                                match app.metadata_selection {
+                                    0 => app.open_type_modal(),     // Type
+                                    1 => app.open_status_modal(),   // Status
+                                    2 => app.open_priority_modal(), // Priority
+                                    3 => app.open_tags_modal(),     // Tags
+                                    _ => {}
+                                }
+                            } else if app.detail_pane == DetailPane::Relations
+                                && !app.relations_items.is_empty()
+                            {
+                                app.jump_to_relation();
+                            } else {
+                                app.input_mode = InputMode::Normal;
+                                app.detail_pane = DetailPane::Body;
                             }
                         }
-                        DetailPane::Body => app.scroll_detail_down(),
-                        DetailPane::Relations => app.relations_next(),
-                    },
-                    KeyCode::Up | KeyCode::Char('k') => match app.detail_pane {
-                        DetailPane::Metadata => {
-                            // Navigate up through metadata properties
-                            if app.metadata_selection > 0 {
-                                app.metadata_selection -= 1;
+                        KeyCode::Down | KeyCode::Char('j') => match app.detail_pane {
+                            DetailPane::Metadata => {
+                                // Navigate down through metadata properties (type, status, priority, tags)
+                                if app.metadata_selection < 3 {
+                                    app.metadata_selection += 1;
+                                }
                             }
-                        }
-                        DetailPane::Body => app.scroll_detail_up(),
-                        DetailPane::Relations => app.relations_previous(),
-                    },
-                    KeyCode::Char('J') => {
-                        // Always scroll body
-                        app.scroll_detail_down();
-                    }
-                    KeyCode::Char('K') => {
-                        // Always scroll body
-                        app.scroll_detail_up();
-                    }
-                    KeyCode::PageDown => {
-                        for _ in 0..10 {
+                            DetailPane::Body => app.scroll_detail_down(),
+                            DetailPane::Relations => app.relations_next(),
+                        },
+                        KeyCode::Up | KeyCode::Char('k') => match app.detail_pane {
+                            DetailPane::Metadata => {
+                                // Navigate up through metadata properties
+                                if app.metadata_selection > 0 {
+                                    app.metadata_selection -= 1;
+                                }
+                            }
+                            DetailPane::Body => app.scroll_detail_up(),
+                            DetailPane::Relations => app.relations_previous(),
+                        },
+                        KeyCode::Char('J') => {
+                            // Always scroll body
                             app.scroll_detail_down();
                         }
-                    }
-                    KeyCode::PageUp => {
-                        for _ in 0..10 {
+                        KeyCode::Char('K') => {
+                            // Always scroll body
                             app.scroll_detail_up();
                         }
-                    }
-                    KeyCode::Char('e') => {
-                        // Start inline editing
-                        app.start_body_edit();
-                    }
-                    KeyCode::Char('E') => {
-                        // External editor (uppercase E)
-                        if let Some(file_path) = app.selected_pea_file_path() {
-                            disable_raw_mode()?;
-                            execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
-
-                            let editor = std::env::var("EDITOR")
-                                .or_else(|_| std::env::var("VISUAL"))
-                                .unwrap_or_else(|_| {
-                                    if cfg!(windows) {
-                                        "notepad".to_string()
-                                    } else {
-                                        "vi".to_string()
-                                    }
-                                });
-
-                            let _ = std::process::Command::new(&editor).arg(&file_path).status();
-
-                            enable_raw_mode()?;
-                            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
-                            terminal.clear()?;
-                            let _ = app.refresh();
-                            app.build_relations(); // Rebuild relations after edit
-                        }
-                    }
-                    // Property editing hotkeys (same as normal mode)
-                    KeyCode::Char('s') => {
-                        app.open_status_modal();
-                    }
-                    KeyCode::Char('P') => {
-                        app.open_priority_modal();
-                    }
-                    KeyCode::Char('t') => {
-                        app.open_type_modal();
-                    }
-                    KeyCode::Char('p') => {
-                        app.open_parent_modal();
-                    }
-                    KeyCode::Char('b') => {
-                        app.open_blocking_modal();
-                    }
-                    KeyCode::Char('y') => {
-                        // Copy ticket ID to clipboard
-                        if let Some(pea) = app.selected_pea() {
-                            let id = pea.id.clone();
-                            if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
-                                if ctx.set_contents(id.clone()).is_ok() {
-                                    app.message = Some(format!("Copied: {}", id));
-                                } else {
-                                    app.message = Some("Failed to copy to clipboard".to_string());
-                                }
-                            } else {
-                                app.message = Some("Clipboard not available".to_string());
+                        KeyCode::PageDown => {
+                            for _ in 0..10 {
+                                app.scroll_detail_down();
                             }
                         }
-                    }
-                    KeyCode::Char('o') => {
-                        // Open URL selection modal
-                        app.open_url_modal();
-                    }
-                    _ => {}
-                },
-                InputMode::CreateModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.create_from_modal();
-                    }
-                    KeyCode::Tab => {
-                        // Toggle between title (0) and type (1) fields
-                        app.modal_selection = (app.modal_selection + 1) % 2;
-                    }
-                    KeyCode::BackTab => {
-                        app.modal_selection = if app.modal_selection == 0 { 1 } else { 0 };
-                    }
-                    KeyCode::Char(c) => {
-                        if app.modal_selection == 0 {
-                            // Title field - add character
-                            app.create_title.push(c);
-                        } else {
-                            // Type field - cycle through types with space
-                            // (handled below)
+                        KeyCode::PageUp => {
+                            for _ in 0..10 {
+                                app.scroll_detail_up();
+                            }
                         }
-                    }
-                    KeyCode::Backspace => {
-                        if app.modal_selection == 0 {
-                            app.create_title.pop();
+                        KeyCode::Char('e') => {
+                            // Start inline editing
+                            app.start_body_edit();
                         }
-                    }
-                    KeyCode::Left | KeyCode::Right => {
-                        if app.modal_selection == 1 {
-                            // Cycle type
-                            let types = App::type_options();
-                            let current_idx = types
-                                .iter()
-                                .position(|t| *t == app.create_type)
-                                .unwrap_or(0);
-                            let new_idx = if key.code == KeyCode::Right {
-                                (current_idx + 1) % types.len()
-                            } else {
-                                if current_idx == 0 {
-                                    types.len() - 1
-                                } else {
-                                    current_idx - 1
-                                }
-                            };
-                            app.create_type = types[new_idx];
-                        }
-                    }
-                    _ => {}
-                },
-                InputMode::MemoryCreateModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.create_memory_from_modal();
-                    }
-                    KeyCode::Tab => {
-                        // Cycle between key (0), tags (1), and content (2) fields
-                        app.memory_modal_selection = (app.memory_modal_selection + 1) % 3;
-                    }
-                    KeyCode::BackTab => {
-                        app.memory_modal_selection = if app.memory_modal_selection == 0 {
-                            2
-                        } else {
-                            app.memory_modal_selection - 1
-                        };
-                    }
-                    KeyCode::Char(c) => match app.memory_modal_selection {
-                        0 => app.memory_create_key.push(c),
-                        1 => app.memory_create_tags.push(c),
-                        2 => app.memory_create_content.push(c),
-                        _ => {}
-                    },
-                    KeyCode::Backspace => match app.memory_modal_selection {
-                        0 => {
-                            app.memory_create_key.pop();
-                        }
-                        1 => {
-                            app.memory_create_tags.pop();
-                        }
-                        2 => {
-                            app.memory_create_content.pop();
-                        }
-                        _ => {}
-                    },
-                    _ => {}
-                },
-                InputMode::EditBody => match key.code {
-                    KeyCode::Esc => {
-                        app.cancel_body_edit();
-                    }
-                    KeyCode::Char('s')
-                        if key
-                            .modifiers
-                            .contains(crossterm::event::KeyModifiers::CONTROL) =>
-                    {
-                        if let Err(e) = app.save_body_edit() {
-                            app.message = Some(format!("Save failed: {}", e));
-                        } else {
-                            app.message = Some("Saved successfully".to_string());
-                        }
-                    }
-                    _ => {
-                        // Pass all other events to textarea
-                        if let Some(ref mut textarea) = app.body_textarea {
-                            let event = Event::Key(key);
-                            textarea.input(Input::from(event));
-                        }
-                    }
-                },
-                InputMode::TagsModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        if let Err(e) = app.apply_tags_modal() {
-                            app.message = Some(format!("Failed to update tags: {}", e));
-                        }
-                    }
-                    KeyCode::Char(c) => {
-                        app.tags_input.push(c);
-                    }
-                    KeyCode::Backspace => {
-                        app.tags_input.pop();
-                    }
-                    _ => {}
-                },
-                InputMode::UrlModal => match key.code {
-                    KeyCode::Esc => {
-                        app.input_mode = app.previous_mode;
-                    }
-                    KeyCode::Enter => {
-                        let _ = app.open_selected_url();
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let count = app.url_candidates.len();
-                        if count > 0 {
-                            app.modal_selection = (app.modal_selection + 1) % count;
-                        }
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let count = app.url_candidates.len();
-                        if count > 0 {
-                            app.modal_selection = if app.modal_selection == 0 {
-                                count - 1
-                            } else {
-                                app.modal_selection - 1
-                            };
-                        }
-                    }
-                    _ => {}
-                },
-            }
+                        KeyCode::Char('E') => {
+                            // External editor (uppercase E)
+                            if let Some(file_path) = app.selected_pea_file_path() {
+                                disable_raw_mode()?;
+                                execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
 
-            // Clear message after any key press
-            if app.message.is_some() && key.code != KeyCode::Enter {
-                app.message = None;
+                                let editor = std::env::var("EDITOR")
+                                    .or_else(|_| std::env::var("VISUAL"))
+                                    .unwrap_or_else(|_| {
+                                        if cfg!(windows) {
+                                            "notepad".to_string()
+                                        } else {
+                                            "vi".to_string()
+                                        }
+                                    });
+
+                                let _ =
+                                    std::process::Command::new(&editor).arg(&file_path).status();
+
+                                enable_raw_mode()?;
+                                execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+                                terminal.clear()?;
+                                let _ = app.refresh();
+                                app.build_relations(); // Rebuild relations after edit
+                            }
+                        }
+                        // Property editing hotkeys (same as normal mode)
+                        KeyCode::Char('s') => {
+                            app.open_status_modal();
+                        }
+                        KeyCode::Char('P') => {
+                            app.open_priority_modal();
+                        }
+                        KeyCode::Char('t') => {
+                            app.open_type_modal();
+                        }
+                        KeyCode::Char('p') => {
+                            app.open_parent_modal();
+                        }
+                        KeyCode::Char('b') => {
+                            app.open_blocking_modal();
+                        }
+                        KeyCode::Char('y') => {
+                            // Copy ticket ID to clipboard
+                            if let Some(pea) = app.selected_pea() {
+                                let id = pea.id.clone();
+                                if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
+                                    if ctx.set_contents(id.clone()).is_ok() {
+                                        app.message = Some(format!("Copied: {}", id));
+                                    } else {
+                                        app.message =
+                                            Some("Failed to copy to clipboard".to_string());
+                                    }
+                                } else {
+                                    app.message = Some("Clipboard not available".to_string());
+                                }
+                            }
+                        }
+                        KeyCode::Char('o') => {
+                            // Open URL selection modal
+                            app.open_url_modal();
+                        }
+                        _ => {}
+                    },
+                    InputMode::CreateModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.create_from_modal();
+                        }
+                        KeyCode::Tab => {
+                            // Toggle between title (0) and type (1) fields
+                            app.modal_selection = (app.modal_selection + 1) % 2;
+                        }
+                        KeyCode::BackTab => {
+                            app.modal_selection = if app.modal_selection == 0 { 1 } else { 0 };
+                        }
+                        KeyCode::Char(c) => {
+                            if app.modal_selection == 0 {
+                                // Title field - add character
+                                app.create_title.push(c);
+                            } else {
+                                // Type field - cycle through types with space
+                                // (handled below)
+                            }
+                        }
+                        KeyCode::Backspace => {
+                            if app.modal_selection == 0 {
+                                app.create_title.pop();
+                            }
+                        }
+                        KeyCode::Left | KeyCode::Right => {
+                            if app.modal_selection == 1 {
+                                // Cycle type
+                                let types = App::type_options();
+                                let current_idx = types
+                                    .iter()
+                                    .position(|t| *t == app.create_type)
+                                    .unwrap_or(0);
+                                let new_idx = if key.code == KeyCode::Right {
+                                    (current_idx + 1) % types.len()
+                                } else {
+                                    if current_idx == 0 {
+                                        types.len() - 1
+                                    } else {
+                                        current_idx - 1
+                                    }
+                                };
+                                app.create_type = types[new_idx];
+                            }
+                        }
+                        _ => {}
+                    },
+                    InputMode::MemoryCreateModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.create_memory_from_modal();
+                        }
+                        KeyCode::Tab => {
+                            // Cycle between key (0), tags (1), and content (2) fields
+                            app.memory_modal_selection = (app.memory_modal_selection + 1) % 3;
+                        }
+                        KeyCode::BackTab => {
+                            app.memory_modal_selection = if app.memory_modal_selection == 0 {
+                                2
+                            } else {
+                                app.memory_modal_selection - 1
+                            };
+                        }
+                        KeyCode::Char(c) => match app.memory_modal_selection {
+                            0 => app.memory_create_key.push(c),
+                            1 => app.memory_create_tags.push(c),
+                            2 => app.memory_create_content.push(c),
+                            _ => {}
+                        },
+                        KeyCode::Backspace => match app.memory_modal_selection {
+                            0 => {
+                                app.memory_create_key.pop();
+                            }
+                            1 => {
+                                app.memory_create_tags.pop();
+                            }
+                            2 => {
+                                app.memory_create_content.pop();
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    },
+                    InputMode::EditBody => match key.code {
+                        KeyCode::Esc => {
+                            app.cancel_body_edit();
+                        }
+                        KeyCode::Char('s')
+                            if key
+                                .modifiers
+                                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                        {
+                            if let Err(e) = app.save_body_edit() {
+                                app.message = Some(format!("Save failed: {}", e));
+                            } else {
+                                app.message = Some("Saved successfully".to_string());
+                            }
+                        }
+                        _ => {
+                            // Pass all other events to textarea
+                            if let Some(ref mut textarea) = app.body_textarea {
+                                let event = Event::Key(key);
+                                textarea.input(Input::from(event));
+                            }
+                        }
+                    },
+                    InputMode::TagsModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
+                        }
+                        KeyCode::Enter => {
+                            if let Err(e) = app.apply_tags_modal() {
+                                app.message = Some(format!("Failed to update tags: {}", e));
+                            }
+                        }
+                        KeyCode::Char(c) => {
+                            app.tags_input.push(c);
+                        }
+                        KeyCode::Backspace => {
+                            app.tags_input.pop();
+                        }
+                        _ => {}
+                    },
+                    InputMode::UrlModal => match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = app.previous_mode;
+                        }
+                        KeyCode::Enter => {
+                            let _ = app.open_selected_url();
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let count = app.url_candidates.len();
+                            if count > 0 {
+                                app.modal_selection = (app.modal_selection + 1) % count;
+                            }
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = app.url_candidates.len();
+                            if count > 0 {
+                                app.modal_selection = if app.modal_selection == 0 {
+                                    count - 1
+                                } else {
+                                    app.modal_selection - 1
+                                };
+                            }
+                        }
+                        _ => {}
+                    },
+                }
+
+                // Clear message after any key press
+                if app.message.is_some() && key.code != KeyCode::Enter {
+                    app.message = None;
+                }
             }
+            _ => {}
         }
     }
 }
