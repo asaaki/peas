@@ -274,7 +274,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     ];
 
     // Render the outer block first and get inner area
-    // Combine left and right titles with spacing
+    // Combine left and right titles with border line spacing
     let terminal_width = area.width.saturating_sub(2); // Account for borders
     let left_len = title_left.len() as u16;
     let right_len = title_right.len() as u16;
@@ -282,11 +282,10 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         .saturating_sub(left_len)
         .saturating_sub(right_len);
     let combined_title = format!(
-        "{}{:width$}{}",
+        "{}{}{}",
         title_left,
-        "",
-        title_right,
-        width = spacing as usize
+        "─".repeat(spacing as usize),
+        title_right
     );
 
     let block = Block::default()
