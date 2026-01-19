@@ -574,12 +574,15 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         let t = theme();
         let is_metadata_focused = app.detail_pane == DetailPane::Metadata;
 
-        // Helper to add row marker if this property is selected
-        let row_marker = |index: usize| -> &'static str {
+        // Helper to add row marker span if this property is selected
+        let row_marker = |index: usize| -> Span {
             if is_metadata_focused && app.metadata_selection == index {
-                "> "
+                Span::styled(
+                    format!("{} ", theme().row_marker),
+                    theme().selection_indicator_style(),
+                )
             } else {
-                "  "
+                Span::raw("  ")
             }
         };
 
@@ -594,7 +597,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
             Line::from(""),
             Line::from(vec![
-                Span::raw(row_marker(0)), // Type is index 0
+                row_marker(0), // Type is index 0
                 Span::raw("Type:     "),
                 Span::styled(
                     if tui_config().use_type_emojis {
@@ -606,12 +609,12 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 ),
             ]),
             Line::from(vec![
-                Span::raw(row_marker(1)), // Status is index 1
+                row_marker(1), // Status is index 1
                 Span::raw("Status:   "),
                 Span::styled(format!("{}", pea.status), Style::default().fg(status_color)),
             ]),
             Line::from(vec![
-                Span::raw(row_marker(2)), // Priority is index 2
+                row_marker(2), // Priority is index 2
                 Span::raw("Priority: "),
                 Span::styled(
                     format!("{}", pea.priority),
@@ -627,7 +630,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             pea.tags.join(", ")
         };
         lines.push(Line::from(vec![
-            Span::raw(row_marker(3)), // Tags is index 3
+            row_marker(3), // Tags is index 3
             Span::raw("Tags:     "),
             Span::styled(tags_display, Style::default().fg(theme().tags)),
         ]));

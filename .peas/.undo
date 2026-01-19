@@ -1,6 +1,7 @@
 {
-  "Create": {
-    "id": "peas-nry73",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-nry73--add-interactive-property-editing-in-metadata-pane.md"
+  "Update": {
+    "id": "peas-beb7f",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-beb7f--inline-tui-editing-with-textarea-for-description.md",
+    "previous_content": "+++\nid = \"peas-beb7f\"\ntitle = \"Inline TUI editing with textarea for description\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"high\"\nparent = \"peas-6592j\"\ncreated = \"2026-01-19T16:11:18.839662500Z\"\nupdated = \"2026-01-19T21:31:11.753968500Z\"\n+++\n\nImplement inline editing in TUI using ratatui and relevant dependencies.\n\n## Requirements\n- Edit mode opens directly in detail view, jumping to description pane\n- Replace markdown rendering with simple textarea input\n- Ctrl+S to save\n- Ctrl+Arrow keys to switch between panes\n- Research dependencies on lib.rs and crates.io\n\n## Potentially useful dependency\n- https://lib.rs/crates/terminput\n"
   }
 }

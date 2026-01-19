@@ -3,10 +3,15 @@ id = "peas-beb7f"
 title = "Inline TUI editing with textarea for description"
 type = "feature"
 status = "in-progress"
-priority = "normal"
+priority = "high"
+tags = [
+    "foo",
+    "bar",
+    "baz",
+]
 parent = "peas-6592j"
 created = "2026-01-19T16:11:18.839662500Z"
-updated = "2026-01-19T21:19:56.452538500Z"
+updated = "2026-01-19T21:31:22.937186700Z"
 +++
 
 Implement inline editing in TUI using ratatui and relevant dependencies.
