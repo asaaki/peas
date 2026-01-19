@@ -319,7 +319,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(Color::Green));
 
-    if let Some(pea) = app.selected_pea() {
+    if let Some(pea) = app.selected_pea().cloned() {
         let status_color = match pea.status {
             PeaStatus::Draft => Color::DarkGray,
             PeaStatus::Todo => Color::White,
@@ -336,6 +336,49 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             PeaPriority::Deferred => Color::DarkGray,
         };
 
+        // Check if we have body content
+        let has_body = !pea.body.is_empty();
+        let has_relations = !app.relations_items.is_empty();
+        let body_content = pea.body.clone();
+
+        // Layout: Top section (metadata + relations) | Bottom section (body)
+        let vertical_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(if has_body {
+                vec![
+                    Constraint::Length(12), // Top section (metadata + relations)
+                    Constraint::Min(5),     // Body
+                ]
+            } else {
+                vec![Constraint::Min(0)]
+            })
+            .split(area);
+
+        let top_area = vertical_chunks[0];
+        let body_area = if has_body {
+            Some(vertical_chunks[1])
+        } else {
+            None
+        };
+
+        // Split top area horizontally: metadata (left) | relations (right)
+        let top_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(if has_relations {
+                vec![Constraint::Percentage(50), Constraint::Percentage(50)]
+            } else {
+                vec![Constraint::Percentage(100)]
+            })
+            .split(top_area);
+
+        let metadata_area = top_chunks[0];
+        let relations_area = if has_relations {
+            Some(top_chunks[1])
+        } else {
+            None
+        };
+
+        // Build metadata lines
         let mut lines = vec![
             Line::from(vec![
                 Span::styled(
@@ -368,66 +411,6 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
         ];
 
-        if let Some(ref parent) = pea.parent {
-            let parent_title = app
-                .all_peas
-                .iter()
-                .find(|p| p.id == *parent)
-                .map(|p| p.title.as_str())
-                .unwrap_or("");
-            lines.push(Line::from(vec![
-                Span::raw("Parent:   "),
-                Span::styled(parent, Style::default().fg(Color::Cyan)),
-                Span::raw(" "),
-                Span::styled(parent_title, Style::default().fg(Color::DarkGray)),
-            ]));
-        }
-
-        // Show blocking tickets
-        if !pea.blocking.is_empty() {
-            lines.push(Line::from(vec![
-                Span::raw("Blocking: "),
-                Span::styled(
-                    format!("{} tickets", pea.blocking.len()),
-                    Style::default().fg(Color::LightRed),
-                ),
-            ]));
-            for id in pea.blocking.iter().take(5) {
-                let title = app
-                    .all_peas
-                    .iter()
-                    .find(|p| &p.id == id)
-                    .map(|p| format!("{} ({})", id, p.title))
-                    .unwrap_or_else(|| id.clone());
-                lines.push(Line::from(vec![
-                    Span::raw("          "),
-                    Span::styled(title, Style::default().fg(Color::DarkGray)),
-                ]));
-            }
-            if pea.blocking.len() > 5 {
-                lines.push(Line::from(Span::styled(
-                    format!("          ... and {} more", pea.blocking.len() - 5),
-                    Style::default().fg(Color::DarkGray),
-                )));
-            }
-        }
-
-        // Find children
-        let children: Vec<_> = app
-            .all_peas
-            .iter()
-            .filter(|p| p.parent.as_ref() == Some(&pea.id))
-            .collect();
-        if !children.is_empty() {
-            lines.push(Line::from(vec![
-                Span::raw("Children: "),
-                Span::styled(
-                    format!("{} items", children.len()),
-                    Style::default().fg(Color::DarkGray),
-                ),
-            ]));
-        }
-
         if !pea.tags.is_empty() {
             lines.push(Line::from(vec![
                 Span::raw("Tags:     "),
@@ -451,69 +434,80 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ),
         ]));
 
-        // List children if any
-        if !children.is_empty() {
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "Children:",
-                Style::default().add_modifier(Modifier::UNDERLINED),
-            )));
-            for child in children.iter().take(15) {
-                let (status_icon, status_color) = status_indicator(&child.status);
-                lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("  {} ", status_icon),
-                        Style::default().fg(status_color),
-                    ),
-                    Span::styled(&child.id, Style::default().fg(Color::Cyan)),
-                    Span::raw(" "),
-                    Span::raw(&child.title),
-                ]));
-            }
-            if children.len() > 15 {
-                lines.push(Line::from(Span::styled(
-                    format!("  ... and {} more", children.len() - 15),
-                    Style::default().fg(Color::DarkGray),
-                )));
-            }
-        }
-
-        // Calculate metadata height
-        let metadata_height = lines.len() as u16;
-
-        // Check if we have body content
-        let has_body = !pea.body.is_empty();
-        let body_content = pea.body.clone();
-
-        // Split area: metadata (top) + body (bottom) if body exists
-        let (metadata_area, body_area) = if has_body {
-            // Leave some space for the body - at least half the remaining space
-            let available = area.height.saturating_sub(2); // minus borders
-            let meta_lines = (metadata_height + 2).min(available / 2); // +2 for description header
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(meta_lines + 2), // metadata + border
-                    Constraint::Min(5),                 // body area
-                ])
-                .split(area);
-            (chunks[0], Some(chunks[1]))
-        } else {
-            (area, None)
-        };
-
         // Render metadata section
-        let detail_block = Block::default()
+        let metadata_block = Block::default()
             .title(format!(" {} ", pea.id))
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(Style::default().fg(Color::Green));
 
-        let detail = Paragraph::new(Text::from(lines))
-            .block(detail_block)
+        let metadata = Paragraph::new(Text::from(lines))
+            .block(metadata_block)
             .wrap(Wrap { trim: true });
 
-        f.render_widget(detail, metadata_area);
+        f.render_widget(metadata, metadata_area);
+
+        // Render relationships pane if there are any
+        if let Some(rel_area) = relations_area {
+            let rel_count = app.relations_items.len();
+            let relations_block = Block::default()
+                .title(format!(" Relationships ({}) ", rel_count))
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
+                .border_style(Style::default().fg(Color::DarkGray));
+
+            let inner = relations_block.inner(rel_area);
+            f.render_widget(relations_block, rel_area);
+
+            // Build list items for relationships
+            let items: Vec<ListItem> = app
+                .relations_items
+                .iter()
+                .enumerate()
+                .map(|(i, (rel_type, id, title))| {
+                    let is_selected = i == app.relations_selection;
+                    let prefix = match rel_type.as_str() {
+                        "Parent" => "↑",
+                        "Blocks" => "→",
+                        "Child" => "↓",
+                        _ => " ",
+                    };
+                    let type_color = match rel_type.as_str() {
+                        "Parent" => Color::Yellow,
+                        "Blocks" => Color::LightRed,
+                        "Child" => Color::Cyan,
+                        _ => Color::White,
+                    };
+
+                    let content = Line::from(vec![
+                        Span::styled(format!("{} ", prefix), Style::default().fg(type_color)),
+                        Span::styled(id, Style::default().fg(Color::Cyan)),
+                        Span::raw(" "),
+                        Span::styled(
+                            if title.len() > 30 {
+                                format!("{}...", &title[..27])
+                            } else {
+                                title.clone()
+                            },
+                            Style::default().fg(Color::DarkGray),
+                        ),
+                    ]);
+
+                    if is_selected {
+                        ListItem::new(content).style(
+                            Style::default()
+                                .bg(Color::DarkGray)
+                                .add_modifier(Modifier::BOLD),
+                        )
+                    } else {
+                        ListItem::new(content)
+                    }
+                })
+                .collect();
+
+            let list = List::new(items);
+            f.render_widget(list, inner);
+        }
 
         // Render body section with tui-markdown
         if let Some(body_rect) = body_area {
@@ -530,7 +524,6 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             let md_text = tui_markdown::from_str(&body_content);
 
             // Calculate content height for scroll limiting
-            // Estimate wrapped lines based on content width
             let view_height = inner.height as u16;
             let content_lines = estimate_wrapped_lines(&md_text, inner.width as usize);
             let max_scroll = content_lines.saturating_sub(view_height);

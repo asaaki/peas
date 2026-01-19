@@ -54,8 +54,11 @@ pub struct App {
     pub selected_index: usize,     // Global index in tree_nodes
     pub page_height: usize,        // Number of items that fit on one page
     pub list_state: ListState,
-    pub detail_scroll: u16,     // Scroll offset for details view
-    pub detail_max_scroll: u16, // Maximum scroll offset (0 means no scrolling)
+    pub detail_scroll: u16,         // Scroll offset for body/description
+    pub detail_max_scroll: u16,     // Maximum scroll offset (0 means no scrolling)
+    pub relations_scroll: u16,      // Scroll offset for relationships pane (future use)
+    pub relations_selection: usize, // Selected item in relationships pane
+    pub relations_items: Vec<(String, String, String)>, // (type, id, title) for relationships
     pub input_mode: InputMode,
     pub search_query: String,
     pub show_help: bool,
@@ -92,6 +95,9 @@ impl App {
             list_state,
             detail_scroll: 0,
             detail_max_scroll: 0,
+            relations_scroll: 0,
+            relations_selection: 0,
+            relations_items: Vec::new(),
             input_mode: InputMode::Normal,
             search_query: String::new(),
             show_help: false,
@@ -417,6 +423,87 @@ impl App {
         if self.detail_scroll > max_scroll {
             self.detail_scroll = max_scroll;
         }
+    }
+
+    /// Build the relationships list for the current pea
+    pub fn build_relations(&mut self) {
+        self.relations_items.clear();
+        self.relations_selection = 0;
+        self.relations_scroll = 0;
+
+        if let Some(pea) = self.selected_pea().cloned() {
+            // Add parent if exists
+            if let Some(ref parent_id) = pea.parent {
+                let title = self
+                    .all_peas
+                    .iter()
+                    .find(|p| p.id == *parent_id)
+                    .map(|p| p.title.clone())
+                    .unwrap_or_default();
+                self.relations_items
+                    .push(("Parent".to_string(), parent_id.clone(), title));
+            }
+
+            // Add blocking tickets
+            for id in &pea.blocking {
+                let title = self
+                    .all_peas
+                    .iter()
+                    .find(|p| p.id == *id)
+                    .map(|p| p.title.clone())
+                    .unwrap_or_default();
+                self.relations_items
+                    .push(("Blocks".to_string(), id.clone(), title));
+            }
+
+            // Add children
+            let children: Vec<_> = self
+                .all_peas
+                .iter()
+                .filter(|p| p.parent.as_ref() == Some(&pea.id))
+                .collect();
+            for child in children {
+                self.relations_items.push((
+                    "Child".to_string(),
+                    child.id.clone(),
+                    child.title.clone(),
+                ));
+            }
+        }
+    }
+
+    /// Navigate down in relationships pane
+    pub fn relations_next(&mut self) {
+        if !self.relations_items.is_empty() {
+            self.relations_selection = (self.relations_selection + 1) % self.relations_items.len();
+        }
+    }
+
+    /// Navigate up in relationships pane
+    pub fn relations_previous(&mut self) {
+        if !self.relations_items.is_empty() {
+            self.relations_selection = if self.relations_selection == 0 {
+                self.relations_items.len() - 1
+            } else {
+                self.relations_selection - 1
+            };
+        }
+    }
+
+    /// Jump to the selected relationship ticket
+    pub fn jump_to_relation(&mut self) -> bool {
+        if let Some((_, id, _)) = self.relations_items.get(self.relations_selection) {
+            let target_id = id.clone();
+            // Find the ticket in tree_nodes
+            if let Some(idx) = self.tree_nodes.iter().position(|n| n.pea.id == target_id) {
+                self.selected_index = idx;
+                self.list_state.select(Some(self.index_in_page()));
+                self.detail_scroll = 0;
+                self.build_relations(); // Rebuild for new ticket
+                return true;
+            }
+        }
+        false
     }
 
     /// Returns the list of available statuses for the modal
@@ -938,6 +1025,7 @@ fn run_app(
                         // Open full-screen detail view
                         if app.selected_pea().is_some() {
                             app.detail_scroll = 0;
+                            app.build_relations();
                             app.input_mode = InputMode::DetailView;
                         }
                     }
@@ -1165,14 +1253,28 @@ fn run_app(
                     _ => {}
                 },
                 InputMode::DetailView => match key.code {
-                    KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
+                    KeyCode::Esc | KeyCode::Char('q') => {
                         app.input_mode = InputMode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        // Jump to selected relationship or exit if none
+                        if !app.relations_items.is_empty() {
+                            app.jump_to_relation();
+                        } else {
+                            app.input_mode = InputMode::Normal;
+                        }
                     }
                     KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
                         app.scroll_detail_down();
                     }
                     KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
                         app.scroll_detail_up();
+                    }
+                    KeyCode::Left | KeyCode::Char('h') => {
+                        app.relations_previous();
+                    }
+                    KeyCode::Right | KeyCode::Char('l') => {
+                        app.relations_next();
                     }
                     KeyCode::PageDown => {
                         for _ in 0..10 {
