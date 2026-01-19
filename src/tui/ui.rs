@@ -152,8 +152,8 @@ fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
 }
 
 pub fn draw(f: &mut Frame, app: &mut App) {
-    // Full-screen detail view when in DetailView mode
-    if app.input_mode == InputMode::DetailView {
+    // Full-screen detail view when in DetailView or EditBody mode
+    if app.input_mode == InputMode::DetailView || app.input_mode == InputMode::EditBody {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
