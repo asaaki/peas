@@ -1,4 +1,4 @@
-use super::app::{App, DetailPane, InputMode, TreeNode};
+use super::app::{App, DetailPane, InputMode};
 use super::theme::{theme, tui_config};
 use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
@@ -145,100 +145,79 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     let page_info = app.page_table.get(current_page_num).cloned();
 
     // Get the items for current page based on page table
-    let (page_items, _parent_context_count, page_start) = if let Some(info) = page_info {
+    let (page_items, parent_indices, page_start) = if let Some(info) = page_info {
         let start = info.start_index;
         let end = start + info.item_count;
         let items = &app.tree_nodes[start..end.min(app.tree_nodes.len())];
-        (items, info.parent_count, start)
+        (items, info.parent_indices, start)
     } else {
         // Fallback if page table not ready
-        (&app.tree_nodes[..0], 0, 0)
+        (&app.tree_nodes[..0], Vec::new(), 0)
     };
 
     // Calculate index within page for highlighting
     let index_in_page = app.selected_index.saturating_sub(page_start);
 
-    // Check if we need to show parent context (first item on page has parent not visible)
+    // Build parent context rows using indices from page table (Layer 2 → Layer 3)
     let mut parent_context_rows: Vec<Row> = Vec::new();
-    let mut has_parent_context = false;
-    if let Some(first_node) = page_items.first() {
-        if let Some(parent_id) = &first_node.pea.parent {
-            // Check if parent is not visible on current page
-            let parent_visible = page_items.iter().any(|n| &n.pea.id == parent_id);
-            if !parent_visible {
-                // Build the full parent chain by walking up from the first item's parent
-                let mut parent_chain: Vec<&TreeNode> = Vec::new();
-                let mut current_parent_id = Some(parent_id.clone());
+    let has_parent_context = !parent_indices.is_empty();
 
-                while let Some(pid) = current_parent_id {
-                    if let Some(parent_node) = app.tree_nodes.iter().find(|n| n.pea.id == pid) {
-                        parent_chain.push(parent_node);
-                        current_parent_id = parent_node.pea.parent.clone();
+    if has_parent_context {
+        let t = theme();
+        let muted_style = Style::default().fg(t.text_muted);
+
+        // Render each parent from the page table (already in top-down order)
+        for &parent_index in &parent_indices {
+            if let Some(parent_node) = app.tree_nodes.get(parent_index) {
+                let pea = &parent_node.pea;
+                let (status_icon, _) = status_indicator(&pea.status);
+
+                // Build tree prefix using dotted lines (┊) instead of solid lines (│)
+                let mut prefix = String::new();
+                for &has_line in &parent_node.parent_lines {
+                    if has_line {
+                        prefix.push_str("┊  ");
                     } else {
-                        break;
+                        prefix.push_str("   ");
+                    }
+                }
+                if parent_node.depth > 0 {
+                    if parent_node.is_last {
+                        prefix.push_str("╰─ ");
+                    } else {
+                        prefix.push_str("├─ ");
                     }
                 }
 
-                // Reverse so we render from top-level parent down to direct parent
-                parent_chain.reverse();
+                // Priority indicator
+                let pri = if let Some((ind, _)) = priority_indicator(pea) {
+                    ind
+                } else {
+                    String::new()
+                };
 
-                let t = theme();
-                let muted_style = Style::default().fg(t.text_muted);
+                // Type text
+                let type_text = if tui_config().use_type_emojis {
+                    format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
+                } else {
+                    format!("{}", pea.pea_type)
+                };
 
-                // Render each parent in the chain as a normal row (but muted and with ┊ prefix)
-                for parent_node in parent_chain.iter() {
-                    let pea = &parent_node.pea;
-                    let (status_icon, _) = status_indicator(&pea.status);
+                // Create tree+id cell
+                let tree_and_id = Line::from(vec![
+                    Span::styled(prefix, muted_style),
+                    Span::styled(&pea.id, muted_style),
+                ]);
 
-                    // Build tree prefix using dotted lines (┊) instead of solid lines (│)
-                    let mut prefix = String::new();
-                    for &has_line in &parent_node.parent_lines {
-                        if has_line {
-                            prefix.push_str("┊  ");
-                        } else {
-                            prefix.push_str("   ");
-                        }
-                    }
-                    if parent_node.depth > 0 {
-                        if parent_node.is_last {
-                            prefix.push_str("╰─ ");
-                        } else {
-                            prefix.push_str("├─ ");
-                        }
-                    }
-
-                    // Priority indicator
-                    let pri = if let Some((ind, _)) = priority_indicator(pea) {
-                        ind
-                    } else {
-                        String::new()
-                    };
-
-                    // Type text
-                    let type_text = if tui_config().use_type_emojis {
-                        format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
-                    } else {
-                        format!("{}", pea.pea_type)
-                    };
-
-                    // Create tree+id cell
-                    let tree_and_id = Line::from(vec![
-                        Span::styled(prefix, muted_style),
-                        Span::styled(&pea.id, muted_style),
-                    ]);
-
-                    parent_context_rows.push(Row::new(vec![
-                        Cell::from(""), // Selection indicator (empty for context rows)
-                        Cell::from(""), // Checkbox (empty for context rows)
-                        Cell::from(tree_and_id),
-                        Cell::from(type_text).style(muted_style),
-                        Cell::from(format!("{} {}", status_icon, pea.status)).style(muted_style),
-                        Cell::from(pri).style(muted_style),
-                        Cell::from(pea.title.as_str()).style(muted_style),
-                    ]));
-                }
-
-                has_parent_context = !parent_context_rows.is_empty();
+                parent_context_rows.push(Row::new(vec![
+                    Cell::from(""), // Selection indicator (empty for context rows)
+                    Cell::from(""), // Checkbox (empty for context rows)
+                    Cell::from(tree_and_id),
+                    Cell::from(type_text).style(muted_style),
+                    Cell::from(format!("{} {}", status_icon, pea.status)).style(muted_style),
+                    Cell::from(pri).style(muted_style),
+                    Cell::from(pea.title.as_str()).style(muted_style),
+                ]));
             }
         }
     }

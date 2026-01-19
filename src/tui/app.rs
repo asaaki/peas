@@ -54,11 +54,12 @@ pub struct TreeNode {
     pub parent_lines: Vec<bool>, // Which parent levels need continuing lines
 }
 
+/// Layer 2: Page table entry with references to tree nodes
 #[derive(Debug, Clone)]
 pub struct PageInfo {
-    pub start_index: usize,  // Starting index in tree_nodes
-    pub item_count: usize,   // Number of actual items on this page
-    pub parent_count: usize, // Number of parent context rows
+    pub start_index: usize, // Starting index in tree_nodes for regular items
+    pub item_count: usize,  // Number of actual items on this page
+    pub parent_indices: Vec<usize>, // Indices of parent context nodes to show (top-down order)
 }
 
 pub struct App {
@@ -260,8 +261,9 @@ impl App {
 
         let mut current_index = 0;
         while current_index < self.tree_nodes.len() {
-            // Calculate parent context count for this page
-            let parent_count = self.calculate_parent_count_at(current_index);
+            // Get parent context indices for this page
+            let parent_indices = self.get_parent_indices_at(current_index);
+            let parent_count = parent_indices.len();
 
             // Calculate how many items can fit on this page
             let available_slots = self.page_height.saturating_sub(parent_count).max(1);
@@ -271,47 +273,45 @@ impl App {
             self.page_table.push(PageInfo {
                 start_index: current_index,
                 item_count,
-                parent_count,
+                parent_indices,
             });
 
             current_index += item_count;
         }
     }
 
-    /// Calculate how many parent context rows would appear at a given start index
-    fn calculate_parent_count_at(&self, start_index: usize) -> usize {
+    /// Get parent context indices for a given start index (top-down order)
+    fn get_parent_indices_at(&self, start_index: usize) -> Vec<usize> {
         if start_index >= self.tree_nodes.len() {
-            return 0;
+            return Vec::new();
         }
 
         let first_node = &self.tree_nodes[start_index];
         if let Some(parent_id) = &first_node.pea.parent {
-            // Build the parent chain
-            let mut count = 0;
+            // Build the parent chain (stores indices)
+            let mut parent_indices = Vec::new();
             let mut current_parent_id = Some(parent_id.clone());
 
             while let Some(pid) = current_parent_id {
-                if let Some(parent_node) = self.tree_nodes.iter().find(|n| n.pea.id == pid) {
+                if let Some(parent_index) = self.tree_nodes.iter().position(|n| n.pea.id == pid) {
                     // Check if this parent would be visible in items starting from start_index
                     // A parent is visible if it appears at or after start_index
-                    let parent_index = self
-                        .tree_nodes
-                        .iter()
-                        .position(|n| n.pea.id == pid)
-                        .unwrap();
                     if parent_index >= start_index {
                         // Parent is on or after this page, no need for context
                         break;
                     }
-                    count += 1;
-                    current_parent_id = parent_node.pea.parent.clone();
+                    parent_indices.push(parent_index);
+                    current_parent_id = self.tree_nodes[parent_index].pea.parent.clone();
                 } else {
                     break;
                 }
             }
-            return count;
+
+            // Reverse to get top-down order (root ancestor first)
+            parent_indices.reverse();
+            return parent_indices;
         }
-        0
+        Vec::new()
     }
 
     /// Returns the number of items in the current view
@@ -352,62 +352,6 @@ impl App {
     }
 
     /// Returns the start index of the current page
-    pub fn page_start(&self) -> usize {
-        self.current_page() * self.page_height
-    }
-
-    /// Returns the items for the current page
-    pub fn current_page_items(&self) -> &[TreeNode] {
-        let start = self.page_start();
-        let end = (start + self.page_height).min(self.tree_nodes.len());
-        &self.tree_nodes[start..end]
-    }
-
-    /// Calculate how many parent context rows would be shown for current page
-    pub fn parent_context_count(&self) -> usize {
-        let start = self.page_start();
-        let end = (start + self.page_height).min(self.tree_nodes.len());
-        if start >= self.tree_nodes.len() {
-            return 0;
-        }
-
-        let first_node = &self.tree_nodes[start];
-        if let Some(parent_id) = &first_node.pea.parent {
-            // Check if parent is visible on this page
-            let parent_visible = self.tree_nodes[start..end]
-                .iter()
-                .any(|n| &n.pea.id == parent_id);
-            if !parent_visible {
-                // Count the parent chain
-                let mut count = 0;
-                let mut current_parent_id = Some(parent_id.clone());
-                while let Some(pid) = current_parent_id {
-                    if let Some(parent_node) = self.tree_nodes.iter().find(|n| n.pea.id == pid) {
-                        count += 1;
-                        current_parent_id = parent_node.pea.parent.clone();
-                    } else {
-                        break;
-                    }
-                }
-                return count;
-            }
-        }
-        0
-    }
-
-    /// Returns the items for the current page, adjusted for parent context rows
-    pub fn current_page_items_with_context(&self, available_height: usize) -> &[TreeNode] {
-        let parent_count = self.parent_context_count();
-        let adjusted_height = available_height.saturating_sub(parent_count);
-        if adjusted_height == 0 {
-            return &[];
-        }
-
-        let start = self.page_start();
-        let end = (start + adjusted_height).min(self.tree_nodes.len());
-        &self.tree_nodes[start..end]
-    }
-
     pub fn apply_filter(&mut self) {
         self.filtered_peas = self
             .all_peas
