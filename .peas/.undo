@@ -2,6 +2,6 @@
   "Update": {
     "id": "peas-jn0v2",
     "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jn0v2--add-keybinding-to-open-urls-from-ticket-body.md",
-    "previous_content": "+++\nid = \"peas-jn0v2\"\ntitle = \"Add keybinding to open URLs from ticket body\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"normal\"\ncreated = \"2026-01-19T22:15:45.044324100Z\"\nupdated = \"2026-01-19T22:15:45.044324100Z\"\n+++\n"
+    "previous_content": "+++\nid = \"peas-jn0v2\"\ntitle = \"Add keybinding to open URLs from ticket body\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"normal\"\ncreated = \"2026-01-19T22:15:45.044324100Z\"\nupdated = \"2026-01-19T22:19:59.835567Z\"\n+++\n"
   }
 }

@@ -192,6 +192,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::BlockingModal => draw_blocking_modal(f, app),
         InputMode::CreateModal => draw_create_modal(f, app),
         InputMode::TagsModal => draw_tags_modal(f, app),
+        InputMode::UrlModal => draw_url_modal(f, app),
         _ => {}
     }
 }
@@ -900,6 +901,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " TAGS ",
             Style::default().bg(t.mode_parent.0).fg(t.mode_parent.1),
         ),
+        InputMode::UrlModal => Span::styled(
+            " URL ",
+            Style::default().bg(t.mode_parent.0).fg(t.mode_parent.1),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -919,6 +924,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
         InputMode::EditBody => " Ctrl+S:save  Esc:cancel ",
         InputMode::TagsModal => " Type comma-separated tags  Enter:save  Esc:cancel ",
+        InputMode::UrlModal => " ↓/↑:navigate  Enter:open  Esc:cancel ",
     };
 
     let mut footer_spans = vec![mode_indicator];
@@ -1117,6 +1123,74 @@ fn draw_tags_modal(f: &mut Frame, app: &App) {
     let paragraph = Paragraph::new(content).block(
         Block::default()
             .title(" Edit Tags ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(t.modal_border)),
+    );
+
+    f.render_widget(Clear, area);
+    f.render_widget(paragraph, area);
+}
+
+fn draw_url_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(80, 60, f.area());
+    let t = theme();
+
+    let mut content = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            " URLs found in ticket body:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+    ];
+
+    // Add each URL as a selectable item
+    for (i, url) in app.url_candidates.iter().enumerate() {
+        let is_selected = i == app.modal_selection;
+        let marker = if is_selected {
+            Span::styled(
+                format!(" {} ", theme().row_marker),
+                theme().selection_indicator_style(),
+            )
+        } else {
+            Span::raw("   ")
+        };
+
+        // Truncate long URLs for display
+        let display_url = if url.len() > 70 {
+            format!("{}...", &url[..67])
+        } else {
+            url.clone()
+        };
+
+        let url_style = if is_selected {
+            Style::default()
+                .fg(t.text_highlight)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(t.text)
+        };
+
+        content.push(Line::from(vec![
+            marker,
+            Span::styled(display_url, url_style),
+        ]));
+    }
+
+    content.push(Line::from(""));
+    content.push(Line::from(Span::styled(
+        "  ↓/↑: Navigate  Enter: Open URL  Esc: Cancel",
+        Style::default().fg(t.text_muted),
+    )));
+
+    let paragraph = Paragraph::new(content).block(
+        Block::default()
+            .title(format!(
+                " Open URL ({}/{}) ",
+                app.modal_selection + 1,
+                app.url_candidates.len()
+            ))
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(Style::default().fg(t.modal_border)),

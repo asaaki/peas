@@ -37,6 +37,7 @@ pub enum InputMode {
     CreateModal,
     EditBody,  // Inline body editing with textarea
     TagsModal, // Tag editing modal
+    UrlModal,  // URL selection modal
 }
 
 /// Which pane is focused in detail view
@@ -97,6 +98,7 @@ pub struct App {
     pub multi_selected: HashSet<String>, // IDs of multi-selected tickets
     pub body_textarea: Option<TextArea<'static>>, // TextArea for body editing
     pub start_time: Instant,         // App start time for pulsing effects
+    pub url_candidates: Vec<String>, // URLs found in current ticket
 }
 
 impl App {
@@ -146,6 +148,7 @@ impl App {
             multi_selected: HashSet::new(),
             body_textarea: None,
             start_time: Instant::now(),
+            url_candidates: Vec::new(),
         };
         app.build_tree();
         // Note: page_table will be built when page_height is set during first draw
@@ -1124,30 +1127,77 @@ impl App {
         Ok(())
     }
 
-    /// Extract first URL from ticket body
-    fn extract_url(text: &str) -> Option<String> {
-        // Simple regex pattern for http/https URLs
-        let url_pattern = regex::Regex::new(r"https?://[^\s)\]>]+").ok()?;
-        url_pattern.find(text).map(|m| m.as_str().to_string())
-    }
+    /// Extract all URLs from ticket body with smart punctuation handling
+    fn extract_urls(text: &str) -> Vec<String> {
+        let mut urls = Vec::new();
 
-    /// Open first URL found in current ticket body
-    pub fn open_url(&mut self) -> Result<()> {
-        if let Some(pea) = self.selected_pea() {
-            if let Some(url) = Self::extract_url(&pea.body) {
-                // Use open crate to open URL in default browser
-                match open::that(&url) {
-                    Ok(_) => {
-                        self.message = Some(format!("Opening: {}", url));
+        // Find potential URLs with regex
+        let url_pattern = regex::Regex::new(r"https?://[^\s<>]+").unwrap();
+
+        for matched in url_pattern.find_iter(text) {
+            let mut url_str = matched.as_str();
+
+            // Trim trailing punctuation that's likely not part of the URL
+            // Common cases: "Check out https://example.com." or "(see https://example.com)"
+            while !url_str.is_empty() {
+                let last_char = url_str.chars().last().unwrap();
+                if matches!(
+                    last_char,
+                    '.' | ',' | ';' | ':' | '!' | '?' | ')' | ']' | '}' | '\'' | '"'
+                ) {
+                    // Check if this is actually part of the URL or sentence punctuation
+                    // If removing it still gives a valid URL, it was probably sentence punctuation
+                    let trimmed = &url_str[..url_str.len() - last_char.len_utf8()];
+                    if url::Url::parse(trimmed).is_ok() {
+                        url_str = trimmed;
+                    } else {
+                        break;
                     }
-                    Err(e) => {
-                        self.message = Some(format!("Failed to open URL: {}", e));
-                    }
+                } else {
+                    break;
                 }
-            } else {
-                self.message = Some("No URL found in ticket body".to_string());
+            }
+
+            // Validate and add if it's a proper URL
+            if url::Url::parse(url_str).is_ok() {
+                urls.push(url_str.to_string());
             }
         }
+
+        // Deduplicate while preserving order
+        let mut seen = HashSet::new();
+        urls.retain(|url| seen.insert(url.clone()));
+
+        urls
+    }
+
+    /// Open URL modal showing all URLs found in ticket body
+    pub fn open_url_modal(&mut self) {
+        if let Some(pea) = self.selected_pea() {
+            self.url_candidates = Self::extract_urls(&pea.body);
+            if !self.url_candidates.is_empty() {
+                self.modal_selection = 0;
+                self.previous_mode = self.input_mode;
+                self.input_mode = InputMode::UrlModal;
+            } else {
+                self.message = Some("No URLs found in ticket body".to_string());
+            }
+        }
+    }
+
+    /// Open selected URL from modal
+    pub fn open_selected_url(&mut self) -> Result<()> {
+        if let Some(url) = self.url_candidates.get(self.modal_selection) {
+            match open::that(url) {
+                Ok(_) => {
+                    self.message = Some(format!("Opening: {}", url));
+                }
+                Err(e) => {
+                    self.message = Some(format!("Failed to open URL: {}", e));
+                }
+            }
+        }
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -1651,8 +1701,8 @@ fn run_app(
                         }
                     }
                     KeyCode::Char('o') => {
-                        // Open first URL in ticket body
-                        let _ = app.open_url();
+                        // Open URL selection modal
+                        app.open_url_modal();
                     }
                     _ => {}
                 },
@@ -1743,6 +1793,31 @@ fn run_app(
                     }
                     KeyCode::Backspace => {
                         app.tags_input.pop();
+                    }
+                    _ => {}
+                },
+                InputMode::UrlModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = app.previous_mode;
+                    }
+                    KeyCode::Enter => {
+                        let _ = app.open_selected_url();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let count = app.url_candidates.len();
+                        if count > 0 {
+                            app.modal_selection = (app.modal_selection + 1) % count;
+                        }
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        let count = app.url_candidates.len();
+                        if count > 0 {
+                            app.modal_selection = if app.modal_selection == 0 {
+                                count - 1
+                            } else {
+                                app.modal_selection - 1
+                            };
+                        }
                     }
                     _ => {}
                 },
