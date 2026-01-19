@@ -395,11 +395,12 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         ]));
 
         // Render metadata section
+        let is_metadata_focused = app.detail_pane == DetailPane::Metadata;
         let metadata_block = Block::default()
             .title(format!(" {} ", pea.id))
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
-            .border_style(Style::default().fg(theme().border_focused));
+            .border_style(theme().border_style(is_metadata_focused));
 
         let metadata = Paragraph::new(Text::from(lines))
             .block(metadata_block)

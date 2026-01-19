@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-7pg2r",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7pg2r--search-input-not-visible-no-feedback-on-typed-sear.md",
-    "previous_content": "+++\nid = \"peas-7pg2r\"\ntitle = \"Search input not visible - no feedback on typed search term\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-yf400\"\ncreated = \"2026-01-19T16:10:59.471056500Z\"\nupdated = \"2026-01-19T16:10:59.471056500Z\"\n+++\n"
+    "id": "peas-rh872",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-rh872--detail-view-metadata-pane-not-switchable-cannot-ed.md",
+    "previous_content": "+++\nid = \"peas-rh872\"\ntitle = \"Detail view: metadata pane not switchable, cannot edit properties\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kx50f\"\ncreated = \"2026-01-19T16:11:11.696303Z\"\nupdated = \"2026-01-19T16:11:11.696303Z\"\n+++\n"
   }
 }

@@ -39,6 +39,7 @@ pub enum InputMode {
 /// Which pane is focused in detail view
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DetailPane {
+    Metadata, // Ticket properties/metadata
     #[default]
     Body, // Description/markdown content
     Relations, // Relationships pane
@@ -516,17 +517,18 @@ impl App {
         false
     }
 
-    /// Toggle between detail view panes
+    /// Toggle between detail view panes (Metadata -> Body -> Relations -> Metadata)
     pub fn toggle_detail_pane(&mut self) {
         self.detail_pane = match self.detail_pane {
+            DetailPane::Metadata => DetailPane::Body,
             DetailPane::Body => {
                 if !self.relations_items.is_empty() {
                     DetailPane::Relations
                 } else {
-                    DetailPane::Body
+                    DetailPane::Metadata
                 }
             }
-            DetailPane::Relations => DetailPane::Body,
+            DetailPane::Relations => DetailPane::Metadata,
         };
     }
 
@@ -1296,10 +1298,12 @@ fn run_app(
                         }
                     }
                     KeyCode::Down | KeyCode::Char('j') => match app.detail_pane {
+                        DetailPane::Metadata => {} // Metadata is static, no scrolling
                         DetailPane::Body => app.scroll_detail_down(),
                         DetailPane::Relations => app.relations_next(),
                     },
                     KeyCode::Up | KeyCode::Char('k') => match app.detail_pane {
+                        DetailPane::Metadata => {} // Metadata is static, no scrolling
                         DetailPane::Body => app.scroll_detail_up(),
                         DetailPane::Relations => app.relations_previous(),
                     },
