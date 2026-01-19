@@ -1,6 +1,7 @@
 {
-  "Create": {
-    "id": "peas-pzg66",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-pzg66--consolidate-styling-into-central-configurable-them.md"
+  "Update": {
+    "id": "peas-1ls5h",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-1ls5h--prevent-scrolling-when-detail-content-fits.md",
+    "previous_content": "+++\nid = \"peas-1ls5h\"\ntitle = \"Prevent scrolling when detail content fits\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-6kl1g\"\ncreated = \"2026-01-19T00:21:46.624575800Z\"\nupdated = \"2026-01-19T00:21:46.624575800Z\"\n+++\n\nIf the content in the detail view is smaller than the available space, do not allow scrolling at all.\n"
   }
 }

@@ -9,6 +9,24 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Wrap},
 };
 
+/// Estimate the number of wrapped lines for a Text widget
+fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
+    if width == 0 {
+        return 0;
+    }
+    let mut total_lines = 0u16;
+    for line in &text.lines {
+        let line_width: usize = line.spans.iter().map(|s| s.content.len()).sum();
+        let wrapped = if line_width == 0 {
+            1 // Empty line still takes 1 line
+        } else {
+            ((line_width + width - 1) / width) as u16 // Ceiling division
+        };
+        total_lines = total_lines.saturating_add(wrapped);
+    }
+    total_lines
+}
+
 /// Returns priority indicator and color for a pea
 fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
     match pea.priority {
@@ -294,7 +312,7 @@ fn type_color(pea_type: &PeaType) -> Color {
     }
 }
 
-fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u16) {
+fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scroll: u16) {
     let detail_block = Block::default()
         .title(" Details ")
         .borders(Borders::ALL)
@@ -510,10 +528,21 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &App, area: Rect, detail_scroll: u
 
             // Render markdown using tui-markdown
             let md_text = tui_markdown::from_str(&body_content);
+
+            // Calculate content height for scroll limiting
+            // Estimate wrapped lines based on content width
+            let view_height = inner.height as u16;
+            let content_lines = estimate_wrapped_lines(&md_text, inner.width as usize);
+            let max_scroll = content_lines.saturating_sub(view_height);
+            app.set_detail_max_scroll(max_scroll);
+
             let md_paragraph = Paragraph::new(md_text)
                 .wrap(Wrap { trim: false })
                 .scroll((detail_scroll, 0));
             f.render_widget(md_paragraph, inner);
+        } else {
+            // No body, no scrolling needed
+            app.set_detail_max_scroll(0);
         }
     } else {
         let empty = Paragraph::new("No pea selected")

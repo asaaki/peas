@@ -54,7 +54,8 @@ pub struct App {
     pub selected_index: usize,     // Global index in tree_nodes
     pub page_height: usize,        // Number of items that fit on one page
     pub list_state: ListState,
-    pub detail_scroll: u16, // Scroll offset for details view
+    pub detail_scroll: u16,     // Scroll offset for details view
+    pub detail_max_scroll: u16, // Maximum scroll offset (0 means no scrolling)
     pub input_mode: InputMode,
     pub search_query: String,
     pub show_help: bool,
@@ -90,6 +91,7 @@ impl App {
             page_height: 20, // Default, updated when drawing
             list_state,
             detail_scroll: 0,
+            detail_max_scroll: 0,
             input_mode: InputMode::Normal,
             search_query: String::new(),
             show_help: false,
@@ -399,11 +401,22 @@ impl App {
     }
 
     pub fn scroll_detail_down(&mut self) {
-        self.detail_scroll = self.detail_scroll.saturating_add(1);
+        if self.detail_scroll < self.detail_max_scroll {
+            self.detail_scroll = self.detail_scroll.saturating_add(1);
+        }
     }
 
     pub fn scroll_detail_up(&mut self) {
         self.detail_scroll = self.detail_scroll.saturating_sub(1);
+    }
+
+    /// Set the maximum scroll value (called from UI during render)
+    pub fn set_detail_max_scroll(&mut self, max_scroll: u16) {
+        self.detail_max_scroll = max_scroll;
+        // Clamp current scroll to new max
+        if self.detail_scroll > max_scroll {
+            self.detail_scroll = max_scroll;
+        }
     }
 
     /// Returns the list of available statuses for the modal
