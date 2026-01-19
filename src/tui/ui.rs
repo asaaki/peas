@@ -1,4 +1,4 @@
-use super::app::{App, DetailPane, InputMode};
+use super::app::{App, DetailPane, InputMode, TreeNode};
 use super::theme::{theme, tui_config};
 use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
@@ -148,40 +148,69 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             // Check if parent is not visible on current page
             let parent_visible = page_items.iter().any(|n| &n.pea.id == parent_id);
             if !parent_visible {
-                // Find parent in tree_nodes
-                if let Some(parent_node) = app.tree_nodes.iter().find(|n| &n.pea.id == parent_id) {
-                    let t = theme();
-                    let hint_style = Style::default().fg(t.text_muted);
+                // Build the full parent chain by walking up from the first item's parent
+                let mut parent_chain: Vec<&TreeNode> = Vec::new();
+                let mut current_parent_id = Some(parent_id.clone());
 
-                    // Build a hint row showing the parent
-                    let hint_prefix = "   ⋮  ".to_string(); // Visual continuation indicator
-                    let parent_type_str = if tui_config().use_type_emojis {
-                        format!(
-                            "{} {}",
-                            theme().type_emoji(&parent_node.pea.pea_type),
-                            parent_node.pea.pea_type
-                        )
+                while let Some(pid) = current_parent_id {
+                    if let Some(parent_node) = app.tree_nodes.iter().find(|n| n.pea.id == pid) {
+                        parent_chain.push(parent_node);
+                        current_parent_id = parent_node.pea.parent.clone();
                     } else {
-                        format!("{}", parent_node.pea.pea_type)
-                    };
-                    let parent_info = format!(
-                        "└─ (parent: {} {} - {})",
-                        parent_node.pea.id, parent_type_str, parent_node.pea.title
-                    );
-
-                    // Create a row with 7 cells to match the table structure
-                    // Put the hint in the tree column and full parent info in the title column (Fill)
-                    parent_context_rows.push(Row::new(vec![
-                        Cell::from(""),                            // Selection indicator
-                        Cell::from(""),                            // Checkbox
-                        Cell::from(hint_prefix).style(hint_style), // Tree+ID column: just the ⋮ indicator
-                        Cell::from(""),                            // Type column
-                        Cell::from(""),                            // Status column
-                        Cell::from(""),                            // Priority column
-                        Cell::from(parent_info).style(hint_style), // Title column: full parent info (this fills)
-                    ]));
-                    has_parent_context = true;
+                        break;
+                    }
                 }
+
+                // Reverse so we render from top-level parent down to direct parent
+                parent_chain.reverse();
+
+                let t = theme();
+                let muted_style = Style::default().fg(t.text_muted);
+
+                // Render each parent in the chain as a normal row (but muted and with ⋮ prefix)
+                for (idx, parent_node) in parent_chain.iter().enumerate() {
+                    let pea = &parent_node.pea;
+                    let (status_icon, _) = status_indicator(&pea.status);
+
+                    // Build tree prefix with ⋮ indicator for context rows
+                    let prefix = if idx == 0 {
+                        "⋮  ".to_string()
+                    } else {
+                        "⋮  │  ".to_string()
+                    };
+
+                    // Priority indicator
+                    let pri = if let Some((ind, _)) = priority_indicator(pea) {
+                        ind
+                    } else {
+                        String::new()
+                    };
+
+                    // Type text
+                    let type_text = if tui_config().use_type_emojis {
+                        format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
+                    } else {
+                        format!("{}", pea.pea_type)
+                    };
+
+                    // Create tree+id cell
+                    let tree_and_id = Line::from(vec![
+                        Span::styled(prefix, muted_style),
+                        Span::styled(&pea.id, muted_style),
+                    ]);
+
+                    parent_context_rows.push(Row::new(vec![
+                        Cell::from(""), // Selection indicator (empty for context rows)
+                        Cell::from(""), // Checkbox (empty for context rows)
+                        Cell::from(tree_and_id),
+                        Cell::from(type_text).style(muted_style),
+                        Cell::from(format!("{} {}", status_icon, pea.status)).style(muted_style),
+                        Cell::from(pri).style(muted_style),
+                        Cell::from(pea.title.as_str()).style(muted_style),
+                    ]));
+                }
+
+                has_parent_context = !parent_context_rows.is_empty();
             }
         }
     }
