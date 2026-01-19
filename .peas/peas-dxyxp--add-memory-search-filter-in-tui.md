@@ -2,12 +2,12 @@
 id = "peas-dxyxp"
 title = "Add memory search/filter in TUI"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-i0vo8"
 blocking = ["peas-xc13w"]
 created = "2026-01-19T22:40:21.164369300Z"
-updated = "2026-01-19T22:40:21.164369300Z"
+updated = "2026-01-19T23:27:43.972944300Z"
 +++
 
 Add search and filter functionality for memory view

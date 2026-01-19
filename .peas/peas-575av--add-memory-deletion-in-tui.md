@@ -2,12 +2,12 @@
 id = "peas-575av"
 title = "Add memory deletion in TUI"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-i0vo8"
 blocking = ["peas-myfdb"]
 created = "2026-01-19T22:40:15.622116600Z"
-updated = "2026-01-19T22:40:15.622116600Z"
+updated = "2026-01-19T23:27:40.453290800Z"
 +++
 
 Add deletion functionality for memory items in TUI

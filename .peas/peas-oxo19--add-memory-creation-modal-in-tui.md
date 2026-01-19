@@ -2,12 +2,12 @@
 id = "peas-oxo19"
 title = "Add memory creation modal in TUI"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-i0vo8"
 blocking = ["peas-myfdb"]
 created = "2026-01-19T22:40:10.397141100Z"
-updated = "2026-01-19T22:40:10.397141100Z"
+updated = "2026-01-19T23:27:36.768203900Z"
 +++
 
 Add modal for creating new memory items in TUI
