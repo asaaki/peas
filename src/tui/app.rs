@@ -270,7 +270,7 @@ impl App {
             .all_peas
             .iter()
             .filter(|p| {
-                // Search filter only (filter tabs removed)
+                // Search filter (searches in id, title, body, and tags)
                 if self.search_query.is_empty() {
                     true
                 } else {
@@ -278,6 +278,7 @@ impl App {
                     p.title.to_lowercase().contains(&query)
                         || p.id.to_lowercase().contains(&query)
                         || p.body.to_lowercase().contains(&query)
+                        || p.tags.iter().any(|tag| tag.to_lowercase().contains(&query))
                 }
             })
             .cloned()
