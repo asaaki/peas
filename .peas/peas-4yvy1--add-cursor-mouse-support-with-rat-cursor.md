@@ -2,7 +2,7 @@
 id = "peas-4yvy1"
 title = "Add cursor/mouse support with rat-cursor"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "critical"
 tags = [
     "very important to me!",
@@ -10,7 +10,7 @@ tags = [
 ]
 parent = "peas-g1gqo"
 created = "2026-01-19T16:11:39.331483100Z"
-updated = "2026-01-19T22:12:38.512550500Z"
+updated = "2026-01-19T23:52:17.919066400Z"
 +++
 
 Add cursor/mouse support using https://lib.rs/crates/rat-cursor.
