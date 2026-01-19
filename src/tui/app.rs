@@ -35,7 +35,8 @@ pub enum InputMode {
     BlockingModal,
     DetailView,
     CreateModal,
-    EditBody, // Inline body editing with textarea
+    EditBody,  // Inline body editing with textarea
+    TagsModal, // Tag editing modal
 }
 
 /// Which pane is focused in detail view
@@ -79,7 +80,8 @@ pub struct App {
     pub relations_scroll: u16,      // Scroll offset for relationships pane (future use)
     pub relations_selection: usize, // Selected item in relationships pane
     pub relations_items: Vec<(String, String, String, PeaType)>, // (rel_type, id, title, pea_type) for relationships
-    pub detail_pane: DetailPane, // Which pane is focused in detail view
+    pub metadata_selection: usize, // Selected property in metadata pane (0=type, 1=status, 2=priority, 3=tags)
+    pub detail_pane: DetailPane,   // Which pane is focused in detail view
     pub input_mode: InputMode,
     pub search_query: String,
     pub show_help: bool,
@@ -90,6 +92,7 @@ pub struct App {
     pub blocking_selected: Vec<bool>, // Which candidates are selected (multi-select)
     pub create_title: String,        // Title input for create modal
     pub create_type: PeaType,        // Type selection for create modal
+    pub tags_input: String,          // Tag input for tags modal
     pub multi_selected: HashSet<String>, // IDs of multi-selected tickets
     pub body_textarea: Option<TextArea<'static>>, // TextArea for body editing
 }
@@ -124,6 +127,7 @@ impl App {
             relations_scroll: 0,
             relations_selection: 0,
             relations_items: Vec::new(),
+            metadata_selection: 0,
             detail_pane: DetailPane::default(),
             input_mode: InputMode::Normal,
             search_query: String::new(),
@@ -135,6 +139,7 @@ impl App {
             blocking_selected: Vec::new(),
             create_title: String::new(),
             create_type: PeaType::Task,
+            tags_input: String::new(),
             multi_selected: HashSet::new(),
             body_textarea: None,
         };
@@ -811,6 +816,45 @@ impl App {
         Ok(())
     }
 
+    /// Open the tags modal with the current pea's tags
+    pub fn open_tags_modal(&mut self) {
+        if let Some(pea) = self.selected_pea() {
+            // Convert tags vec to comma-separated string
+            self.tags_input = pea.tags.join(", ");
+            self.input_mode = InputMode::TagsModal;
+        }
+    }
+
+    /// Apply the tags from the modal
+    pub fn apply_tags_modal(&mut self) -> Result<()> {
+        if let Some(pea) = self.selected_pea().cloned() {
+            // Parse comma-separated tags, trim whitespace, filter empty
+            let new_tags: Vec<String> = self
+                .tags_input
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            // Record undo before update
+            let undo_manager = UndoManager::new(&self.data_path);
+            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            }
+
+            // Update pea
+            let mut updated = pea;
+            updated.tags = new_tags;
+            updated.touch();
+            self.repo.update(&updated)?;
+
+            self.message = Some("Tags updated".to_string());
+            self.refresh()?;
+        }
+        self.input_mode = InputMode::Normal;
+        Ok(())
+    }
+
     /// Open delete confirmation dialog
     pub fn open_delete_confirm(&mut self) {
         if self.selected_pea().is_some() {
@@ -1453,8 +1497,16 @@ fn run_app(
                         app.toggle_detail_pane();
                     }
                     KeyCode::Enter => {
-                        // Jump to selected relationship if in relations pane
-                        if app.detail_pane == DetailPane::Relations
+                        // Open modal for selected metadata property or jump to relation
+                        if app.detail_pane == DetailPane::Metadata {
+                            match app.metadata_selection {
+                                0 => app.open_type_modal(),     // Type
+                                1 => app.open_status_modal(),   // Status
+                                2 => app.open_priority_modal(), // Priority
+                                3 => app.open_tags_modal(),     // Tags
+                                _ => {}
+                            }
+                        } else if app.detail_pane == DetailPane::Relations
                             && !app.relations_items.is_empty()
                         {
                             app.jump_to_relation();
@@ -1464,12 +1516,22 @@ fn run_app(
                         }
                     }
                     KeyCode::Down | KeyCode::Char('j') => match app.detail_pane {
-                        DetailPane::Metadata => {} // Metadata is static, no scrolling
+                        DetailPane::Metadata => {
+                            // Navigate down through metadata properties (type, status, priority, tags)
+                            if app.metadata_selection < 3 {
+                                app.metadata_selection += 1;
+                            }
+                        }
                         DetailPane::Body => app.scroll_detail_down(),
                         DetailPane::Relations => app.relations_next(),
                     },
                     KeyCode::Up | KeyCode::Char('k') => match app.detail_pane {
-                        DetailPane::Metadata => {} // Metadata is static, no scrolling
+                        DetailPane::Metadata => {
+                            // Navigate up through metadata properties
+                            if app.metadata_selection > 0 {
+                                app.metadata_selection -= 1;
+                            }
+                        }
                         DetailPane::Body => app.scroll_detail_up(),
                         DetailPane::Relations => app.relations_previous(),
                     },
@@ -1625,6 +1687,23 @@ fn run_app(
                             textarea.input(Input::from(event));
                         }
                     }
+                },
+                InputMode::TagsModal => match key.code {
+                    KeyCode::Esc => {
+                        app.input_mode = InputMode::DetailView;
+                    }
+                    KeyCode::Enter => {
+                        if let Err(e) = app.apply_tags_modal() {
+                            app.message = Some(format!("Failed to update tags: {}", e));
+                        }
+                    }
+                    KeyCode::Char(c) => {
+                        app.tags_input.push(c);
+                    }
+                    KeyCode::Backspace => {
+                        app.tags_input.pop();
+                    }
+                    _ => {}
                 },
             }
 

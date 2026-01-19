@@ -191,6 +191,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         InputMode::ParentModal => draw_parent_modal(f, app),
         InputMode::BlockingModal => draw_blocking_modal(f, app),
         InputMode::CreateModal => draw_create_modal(f, app),
+        InputMode::TagsModal => draw_tags_modal(f, app),
         _ => {}
     }
 }
@@ -571,6 +572,17 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
 
         // Build metadata lines
         let t = theme();
+        let is_metadata_focused = app.detail_pane == DetailPane::Metadata;
+
+        // Helper to add row marker if this property is selected
+        let row_marker = |index: usize| -> &'static str {
+            if is_metadata_focused && app.metadata_selection == index {
+                "> "
+            } else {
+                "  "
+            }
+        };
+
         let mut lines = vec![
             Line::from(vec![
                 Span::styled(
@@ -582,6 +594,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
             Line::from(""),
             Line::from(vec![
+                Span::raw(row_marker(0)), // Type is index 0
                 Span::raw("Type:     "),
                 Span::styled(
                     if tui_config().use_type_emojis {
@@ -593,10 +606,12 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 ),
             ]),
             Line::from(vec![
+                Span::raw(row_marker(1)), // Status is index 1
                 Span::raw("Status:   "),
                 Span::styled(format!("{}", pea.status), Style::default().fg(status_color)),
             ]),
             Line::from(vec![
+                Span::raw(row_marker(2)), // Priority is index 2
                 Span::raw("Priority: "),
                 Span::styled(
                     format!("{}", pea.priority),
@@ -605,12 +620,17 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
         ];
 
-        if !pea.tags.is_empty() {
-            lines.push(Line::from(vec![
-                Span::raw("Tags:     "),
-                Span::styled(pea.tags.join(", "), Style::default().fg(theme().tags)),
-            ]));
-        }
+        // Always show tags field (index 3)
+        let tags_display = if pea.tags.is_empty() {
+            "(none)".to_string()
+        } else {
+            pea.tags.join(", ")
+        };
+        lines.push(Line::from(vec![
+            Span::raw(row_marker(3)), // Tags is index 3
+            Span::raw("Tags:     "),
+            Span::styled(tags_display, Style::default().fg(theme().tags)),
+        ]));
 
         lines.push(Line::from(""));
         lines.push(Line::from(vec![
@@ -848,6 +868,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " EDIT ",
             Style::default().bg(t.text_highlight).fg(Color::Black),
         ),
+        InputMode::TagsModal => Span::styled(
+            " TAGS ",
+            Style::default().bg(t.mode_parent.0).fg(t.mode_parent.1),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -866,6 +890,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         InputMode::CreateModal => " Tab:next field  ←→:change type  Enter:create  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
         InputMode::EditBody => " Ctrl+S:save  Esc:cancel ",
+        InputMode::TagsModal => " Type comma-separated tags  Enter:save  Esc:cancel ",
     };
 
     let mut footer_spans = vec![mode_indicator];
@@ -1033,6 +1058,41 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
                 .border_style(Style::default().fg(t.modal_border_delete)),
         )
         .alignment(ratatui::layout::Alignment::Center);
+
+    f.render_widget(Clear, area);
+    f.render_widget(paragraph, area);
+}
+
+fn draw_tags_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 20, f.area());
+    let t = theme();
+
+    let content = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Tags: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(&app.tags_input),
+            Span::styled("_", Style::default().fg(t.modal_cursor)),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Enter comma-separated tags (e.g., bug, ui, performance)",
+            Style::default().fg(t.text_muted),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Press Enter to save, Esc to cancel",
+            Style::default().fg(t.text_muted),
+        )),
+    ];
+
+    let paragraph = Paragraph::new(content).block(
+        Block::default()
+            .title(" Edit Tags ")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(t.modal_border)),
+    );
 
     f.render_widget(Clear, area);
     f.render_widget(paragraph, area);
