@@ -21,7 +21,7 @@ We already have modal-based relationship editing:
 - Filtered: Can't select self, only container types
 - Sorted by type hierarchy (milestone first, then epic, story, feature)
 - Option "(none)" to clear parent
-- Navigate with j/k, select with Enter, cancel with Esc
+- Navigate with ↓/↑, select with Enter, cancel with Esc
 - Current parent is pre-selected
 
 **Blocking Modal (Key: 'b')**
@@ -32,7 +32,7 @@ We already have modal-based relationship editing:
 
 **Relationships Pane in Detail View**
 - Shows: Parent, Blocks, Children, BlockedBy
-- Navigate with j/k when focused (Tab to switch panes)
+- Navigate with ↓/↑ when focused (Tab to switch panes)
 - Enter to jump to selected relationship ticket
 - Read-only display with type indicators
 
@@ -98,7 +98,7 @@ Add 'd' key when Relations pane focused:
 - If on "Child X", show message: "Edit child's parent instead"
 
 ### Priority 3: Better Modal Titles
-- "Select Parent" → "Set Parent (p=none, j/k=navigate, Enter=select, Esc=cancel)"
+- "Select Parent" → "Set Parent (p=none, ↓/↑=navigate, Enter=select, Esc=cancel)"
 - "Select Blocking" → "Set Blocking Relationships (Space=toggle, Enter=save, Esc=cancel)"
 
 ## Conclusion

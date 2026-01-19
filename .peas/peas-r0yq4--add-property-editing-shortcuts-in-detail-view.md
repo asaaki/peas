@@ -18,17 +18,17 @@ The functionality was already implemented in lines 1524-1538 of app.rs. The issu
 
 Updated the help text from:
 ```
-" j/k:scroll  e:edit  Esc/Enter/q:close "
+" ↓/↑:scroll  e:edit  Esc/Enter/q:close "
 ```
 
 To:
 ```
-" j/k:scroll  e:edit  s:status  P:priority  t:type  p:parent  b:blocking  y:copy-id  Esc/Enter/q:close "
+" ↓/↑:scroll  e:edit  s:status  P:priority  t:type  p:parent  b:blocking  y:copy-id  Esc/Enter/q:close "
 ```
 
 ## Available Shortcuts in Detail View
 
-- **j/k** - Scroll up/down
+- **↓/↑** - Scroll up/down
 - **e** - Edit body inline
 - **E** - Edit in external editor
 - **s** - Change status

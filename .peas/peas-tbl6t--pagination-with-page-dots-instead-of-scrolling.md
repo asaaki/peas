@@ -19,7 +19,7 @@ Implementation:
 - Show page indicator dots (••••) where each dot represents a page
 - Highlight current page dot (e.g., make it brighter or different color)
 - Page up/down with PageUp/PageDown keys
-- j/k still move within page, wrapping to next/prev page at boundaries
+- ↓/↑ still move within page, wrapping to next/prev page at boundaries
 
 Example with 3 pages, on page 1:
 ```

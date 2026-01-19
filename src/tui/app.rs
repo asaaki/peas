@@ -83,6 +83,7 @@ pub struct App {
     pub metadata_selection: usize, // Selected property in metadata pane (0=type, 1=status, 2=priority, 3=tags)
     pub detail_pane: DetailPane,   // Which pane is focused in detail view
     pub input_mode: InputMode,
+    pub previous_mode: InputMode, // Mode to return to after closing modal
     pub search_query: String,
     pub show_help: bool,
     pub message: Option<String>,
@@ -130,6 +131,7 @@ impl App {
             metadata_selection: 0,
             detail_pane: DetailPane::default(),
             input_mode: InputMode::Normal,
+            previous_mode: InputMode::Normal,
             search_query: String::new(),
             show_help: false,
             message: None,
@@ -670,6 +672,7 @@ impl App {
         if let Some(pea) = self.selected_pea() {
             let options = Self::status_options();
             self.modal_selection = options.iter().position(|s| *s == pea.status).unwrap_or(0);
+            self.previous_mode = self.input_mode;
             self.input_mode = InputMode::StatusModal;
         }
     }
@@ -703,7 +706,7 @@ impl App {
             self.clear_multi_select();
             self.refresh()?;
         }
-        self.input_mode = InputMode::Normal;
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -723,6 +726,7 @@ impl App {
         if let Some(pea) = self.selected_pea() {
             let options = Self::priority_options();
             self.modal_selection = options.iter().position(|p| *p == pea.priority).unwrap_or(0);
+            self.previous_mode = self.input_mode;
             self.input_mode = InputMode::PriorityModal;
         }
     }
@@ -756,7 +760,7 @@ impl App {
             self.clear_multi_select();
             self.refresh()?;
         }
-        self.input_mode = InputMode::Normal;
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -779,6 +783,7 @@ impl App {
         if let Some(pea) = self.selected_pea() {
             let options = Self::type_options();
             self.modal_selection = options.iter().position(|t| *t == pea.pea_type).unwrap_or(0);
+            self.previous_mode = self.input_mode;
             self.input_mode = InputMode::TypeModal;
         }
     }
@@ -812,7 +817,7 @@ impl App {
             self.clear_multi_select();
             self.refresh()?;
         }
-        self.input_mode = InputMode::Normal;
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -821,6 +826,7 @@ impl App {
         if let Some(pea) = self.selected_pea() {
             // Convert tags vec to comma-separated string
             self.tags_input = pea.tags.join(", ");
+            self.previous_mode = self.input_mode;
             self.input_mode = InputMode::TagsModal;
         }
     }
@@ -851,7 +857,7 @@ impl App {
             self.message = Some("Tags updated".to_string());
             self.refresh()?;
         }
-        self.input_mode = InputMode::Normal;
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -935,6 +941,7 @@ impl App {
                 0 // No parent = "(none)" selected
             };
 
+            self.previous_mode = self.input_mode;
             self.input_mode = InputMode::ParentModal;
         }
     }
@@ -965,7 +972,7 @@ impl App {
             self.message = Some(format!("{} parent -> {}", pea.id, parent_display));
             self.refresh()?;
         }
-        self.input_mode = InputMode::Normal;
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -1008,6 +1015,7 @@ impl App {
                 .collect();
 
             self.modal_selection = 0;
+            self.previous_mode = self.input_mode;
             self.input_mode = InputMode::BlockingModal;
         }
     }
@@ -1048,7 +1056,7 @@ impl App {
             self.message = Some(format!("{} blocking {} tickets", pea.id, count));
             self.refresh()?;
         }
-        self.input_mode = InputMode::Normal;
+        self.input_mode = self.previous_mode;
         Ok(())
     }
 
@@ -1369,7 +1377,7 @@ fn run_app(
                 },
                 InputMode::StatusModal => match key.code {
                     KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
+                        app.input_mode = app.previous_mode;
                     }
                     KeyCode::Enter => {
                         let _ = app.apply_modal_status();
@@ -1390,7 +1398,7 @@ fn run_app(
                 },
                 InputMode::PriorityModal => match key.code {
                     KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
+                        app.input_mode = app.previous_mode;
                     }
                     KeyCode::Enter => {
                         let _ = app.apply_modal_priority();
@@ -1411,7 +1419,7 @@ fn run_app(
                 },
                 InputMode::TypeModal => match key.code {
                     KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
+                        app.input_mode = app.previous_mode;
                     }
                     KeyCode::Enter => {
                         let _ = app.apply_modal_type();
@@ -1441,7 +1449,7 @@ fn run_app(
                 },
                 InputMode::ParentModal => match key.code {
                     KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
+                        app.input_mode = app.previous_mode;
                     }
                     KeyCode::Enter => {
                         let _ = app.apply_modal_parent();
@@ -1462,7 +1470,7 @@ fn run_app(
                 },
                 InputMode::BlockingModal => match key.code {
                     KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
+                        app.input_mode = app.previous_mode;
                     }
                     KeyCode::Enter => {
                         let _ = app.apply_modal_blocking();
@@ -1690,7 +1698,7 @@ fn run_app(
                 },
                 InputMode::TagsModal => match key.code {
                     KeyCode::Esc => {
-                        app.input_mode = InputMode::DetailView;
+                        app.input_mode = app.previous_mode;
                     }
                     KeyCode::Enter => {
                         if let Err(e) = app.apply_tags_modal() {

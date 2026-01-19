@@ -10,7 +10,7 @@ updated = "2026-01-19T21:25:00Z"
 
 ## Description
 
-When the Metadata pane is focused in detail view, add a row marker that allows navigating through editable properties (type, status, priority, tags) with j/k keys. Pressing Enter on a property opens the corresponding modal for editing.
+When the Metadata pane is focused in detail view, add a row marker that allows navigating through editable properties (type, status, priority, tags) with ↓/↑ keys. Pressing Enter on a property opens the corresponding modal for editing.
 
 ## Implementation
 
@@ -18,7 +18,7 @@ When the Metadata pane is focused in detail view, add a row marker that allows n
 
 1. **Row marker navigation in Metadata pane**
    - Added `metadata_selection` field to App struct (tracks selected property: 0=type, 1=status, 2=priority, 3=tags)
-   - j/k keys navigate up/down through editable properties
+   - ↓/↑ keys navigate up/down through editable properties
    - ">" marker shows which property is currently selected (only when Metadata pane is focused)
 
 2. **Enter key opens modals**
@@ -40,7 +40,7 @@ When the Metadata pane is focused in detail view, add a row marker that allows n
 
 1. Enter detail view with Enter key
 2. Use Tab to focus Metadata pane
-3. Use j/k to navigate through properties (Type, Status, Priority, Tags)
+3. Use ↓/↑ to navigate through properties (Type, Status, Priority, Tags)
 4. Press Enter to open editing modal for selected property
 5. For tags: type comma-separated values, press Enter to save
 
@@ -51,7 +51,7 @@ When the Metadata pane is focused in detail view, add a row marker that allows n
   - Added `tags_input: String` field
   - Added `InputMode::TagsModal`
   - Implemented `open_tags_modal()` and `apply_tags_modal()` methods
-  - Updated j/k handlers in DetailView mode for Metadata pane navigation
+  - Updated ↓/↑ handlers in DetailView mode for Metadata pane navigation
   - Updated Enter handler to open modals based on selection
   - Added TagsModal key handlers
 
@@ -65,7 +65,7 @@ When the Metadata pane is focused in detail view, add a row marker that allows n
 ## Acceptance Criteria
 
 - [x] Add metadata_selection field to App struct
-- [x] Implement j/k navigation in Metadata pane when focused
+- [x] Implement ↓/↑ navigation in Metadata pane when focused
 - [x] Show row marker for selected property
 - [x] Enter key opens appropriate modal
 - [x] Create TagsModal for editing tags
