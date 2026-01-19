@@ -2,7 +2,7 @@
 id = "peas-nubhi"
 title = "Property editing via hotkeys in detail view"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-6kl1g"
 created = "2026-01-19T00:21:55.313840200Z"

@@ -1343,6 +1343,38 @@ fn run_app(
                             execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
                             terminal.clear()?;
                             let _ = app.refresh();
+                            app.build_relations(); // Rebuild relations after edit
+                        }
+                    }
+                    // Property editing hotkeys (same as normal mode)
+                    KeyCode::Char('s') => {
+                        app.open_status_modal();
+                    }
+                    KeyCode::Char('P') => {
+                        app.open_priority_modal();
+                    }
+                    KeyCode::Char('t') => {
+                        app.open_type_modal();
+                    }
+                    KeyCode::Char('p') => {
+                        app.open_parent_modal();
+                    }
+                    KeyCode::Char('b') => {
+                        app.open_blocking_modal();
+                    }
+                    KeyCode::Char('y') => {
+                        // Copy ticket ID to clipboard
+                        if let Some(pea) = app.selected_pea() {
+                            let id = pea.id.clone();
+                            if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
+                                if ctx.set_contents(id.clone()).is_ok() {
+                                    app.message = Some(format!("Copied: {}", id));
+                                } else {
+                                    app.message = Some("Failed to copy to clipboard".to_string());
+                                }
+                            } else {
+                                app.message = Some("Clipboard not available".to_string());
+                            }
                         }
                     }
                     _ => {}
