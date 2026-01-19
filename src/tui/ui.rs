@@ -570,105 +570,133 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             None
         };
 
-        // Build metadata lines
+        // Build metadata as table with proper column alignment
         let t = theme();
         let is_metadata_focused = app.detail_pane == DetailPane::Metadata;
 
-        // Helper to add row marker span if this property is selected
-        // Always reserves space for the marker to prevent jumping
-        let row_marker = |index: usize| -> Span {
+        // Helper to create row marker for editable rows
+        let row_marker = |index: usize| -> String {
             if is_metadata_focused && app.metadata_selection == index {
-                Span::styled(
-                    format!("{} ", theme().row_marker),
-                    theme().selection_indicator_style(),
-                )
+                theme().row_marker.to_string()
             } else {
-                // Reserve same space when not selected (using the marker's width)
-                Span::raw(format!(
-                    "{} ",
-                    " ".repeat(theme().row_marker.chars().count())
-                ))
+                " ".to_string()
             }
         };
 
-        let mut lines = vec![
-            Line::from(vec![
-                Span::styled(
-                    &pea.id,
-                    Style::default().fg(t.id).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" "),
-                Span::styled(&pea.title, Style::default().add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(""),
-            Line::from(vec![
-                row_marker(0), // Type is index 0
-                Span::raw("Type:     "),
-                Span::styled(
-                    if tui_config().use_type_emojis {
-                        format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
-                    } else {
-                        format!("{}", pea.pea_type)
-                    },
-                    Style::default().fg(type_color(&pea.pea_type)),
-                ),
-            ]),
-            Line::from(vec![
-                row_marker(1), // Status is index 1
-                Span::raw("Status:   "),
-                Span::styled(format!("{}", pea.status), Style::default().fg(status_color)),
-            ]),
-            Line::from(vec![
-                row_marker(2), // Priority is index 2
-                Span::raw("Priority: "),
-                Span::styled(
-                    format!("{}", pea.priority),
-                    Style::default().fg(pea_priority_color),
-                ),
-            ]),
-        ];
+        // Build property values
+        let type_text = if tui_config().use_type_emojis {
+            format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
+        } else {
+            format!("{}", pea.pea_type)
+        };
 
-        // Always show tags field (index 3)
         let tags_display = if pea.tags.is_empty() {
             "(none)".to_string()
         } else {
             pea.tags.join(", ")
         };
-        lines.push(Line::from(vec![
-            row_marker(3), // Tags is index 3
-            Span::raw("Tags:     "),
-            Span::styled(tags_display, Style::default().fg(theme().tags)),
-        ]));
 
-        lines.push(Line::from(""));
-        lines.push(Line::from(vec![
-            Span::raw("Created:  "),
-            Span::styled(
-                pea.created.format("%Y-%m-%d %H:%M").to_string(),
-                Style::default().fg(theme().timestamp),
-            ),
-        ]));
-        lines.push(Line::from(vec![
-            Span::raw("Updated:  "),
-            Span::styled(
-                pea.updated.format("%Y-%m-%d %H:%M").to_string(),
-                Style::default().fg(theme().timestamp),
-            ),
-        ]));
+        // Build table rows
+        let mut metadata_rows = vec![
+            // Title row
+            Row::new(vec![
+                Cell::from(""),
+                Cell::from(""),
+                Cell::from(Span::styled(
+                    format!("{} {}", pea.id, pea.title),
+                    Style::default().fg(t.id).add_modifier(Modifier::BOLD),
+                )),
+            ]),
+            // Empty row
+            Row::new(vec![Cell::from(""), Cell::from(""), Cell::from("")]),
+            // Type
+            Row::new(vec![
+                Cell::from(Span::styled(
+                    row_marker(0),
+                    theme().selection_indicator_style(),
+                )),
+                Cell::from("Type:"),
+                Cell::from(Span::styled(
+                    type_text,
+                    Style::default().fg(type_color(&pea.pea_type)),
+                )),
+            ]),
+            // Status
+            Row::new(vec![
+                Cell::from(Span::styled(
+                    row_marker(1),
+                    theme().selection_indicator_style(),
+                )),
+                Cell::from("Status:"),
+                Cell::from(Span::styled(
+                    format!("{}", pea.status),
+                    Style::default().fg(status_color),
+                )),
+            ]),
+            // Priority
+            Row::new(vec![
+                Cell::from(Span::styled(
+                    row_marker(2),
+                    theme().selection_indicator_style(),
+                )),
+                Cell::from("Priority:"),
+                Cell::from(Span::styled(
+                    format!("{}", pea.priority),
+                    Style::default().fg(pea_priority_color),
+                )),
+            ]),
+            // Tags
+            Row::new(vec![
+                Cell::from(Span::styled(
+                    row_marker(3),
+                    theme().selection_indicator_style(),
+                )),
+                Cell::from("Tags:"),
+                Cell::from(Span::styled(
+                    tags_display,
+                    Style::default().fg(theme().tags),
+                )),
+            ]),
+            // Empty row
+            Row::new(vec![Cell::from(""), Cell::from(""), Cell::from("")]),
+            // Created
+            Row::new(vec![
+                Cell::from(""),
+                Cell::from("Created:"),
+                Cell::from(Span::styled(
+                    pea.created.format("%Y-%m-%d %H:%M").to_string(),
+                    Style::default().fg(theme().timestamp),
+                )),
+            ]),
+            // Updated
+            Row::new(vec![
+                Cell::from(""),
+                Cell::from("Updated:"),
+                Cell::from(Span::styled(
+                    pea.updated.format("%Y-%m-%d %H:%M").to_string(),
+                    Style::default().fg(theme().timestamp),
+                )),
+            ]),
+        ];
 
-        // Render metadata section
-        let is_metadata_focused = app.detail_pane == DetailPane::Metadata;
+        let widths = [
+            Constraint::Length(2),  // Row marker column
+            Constraint::Length(10), // Label column
+            Constraint::Min(0),     // Value column
+        ];
+
+        // Render metadata section as table
         let metadata_block = Block::default()
             .title(format!(" {} ", pea.id))
             .borders(Borders::ALL)
             .border_set(border::ROUNDED)
             .border_style(theme().border_style(is_metadata_focused));
 
-        let metadata = Paragraph::new(Text::from(lines))
+        let metadata_table = Table::new(metadata_rows, widths)
             .block(metadata_block)
-            .wrap(Wrap { trim: true });
+            .column_spacing(1);
 
-        f.render_widget(metadata, metadata_area);
+        f.render_widget(metadata_table, metadata_area);
 
         // Render relationships pane if there are any
         if let Some(rel_area) = relations_area {
