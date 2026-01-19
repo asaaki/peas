@@ -1271,20 +1271,33 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
     let area = centered_rect(50, 20, f.area());
     let t = theme();
 
-    let pea_info = if let Some(pea) = app.selected_pea() {
-        format!("{} - {}", pea.id, pea.title)
-    } else {
-        "No ticket selected".to_string()
+    let (question, item_info) = match app.view_mode {
+        super::app::ViewMode::Tickets => {
+            let pea_info = if let Some(pea) = app.selected_pea() {
+                format!("{} - {}", pea.id, pea.title)
+            } else {
+                "No ticket selected".to_string()
+            };
+            ("Are you sure you want to delete this ticket?", pea_info)
+        }
+        super::app::ViewMode::Memory => {
+            let memory_info = if let Some(memory) = app.all_memories.get(app.selected_index) {
+                memory.key.clone()
+            } else {
+                "No memory selected".to_string()
+            };
+            ("Are you sure you want to delete this memory?", memory_info)
+        }
     };
 
     let content = vec![
         Line::from(""),
         Line::from(Span::styled(
-            "Are you sure you want to delete this ticket?",
+            question,
             Style::default().add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(Span::styled(pea_info, Style::default().fg(t.id))),
+        Line::from(Span::styled(item_info, Style::default().fg(t.id))),
         Line::from(""),
         Line::from(vec![
             Span::styled(

@@ -906,23 +906,48 @@ impl App {
 
     /// Open delete confirmation dialog
     pub fn open_delete_confirm(&mut self) {
-        if self.selected_pea().is_some() {
-            self.input_mode = InputMode::DeleteConfirm;
+        match self.view_mode {
+            ViewMode::Tickets => {
+                if self.selected_pea().is_some() {
+                    self.input_mode = InputMode::DeleteConfirm;
+                }
+            }
+            ViewMode::Memory => {
+                if self.selected_index < self.all_memories.len() {
+                    self.input_mode = InputMode::DeleteConfirm;
+                }
+            }
         }
     }
 
-    /// Delete the currently selected pea
+    /// Delete the currently selected pea or memory
     pub fn delete_selected(&mut self) -> Result<()> {
-        if let Some(pea) = self.selected_pea().cloned() {
-            // Record undo before delete
-            let undo_manager = UndoManager::new(&self.data_path);
-            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                let _ = crate::undo::record_delete(&undo_manager, &pea.id, &path);
-            }
+        match self.view_mode {
+            ViewMode::Tickets => {
+                if let Some(pea) = self.selected_pea().cloned() {
+                    // Record undo before delete
+                    let undo_manager = UndoManager::new(&self.data_path);
+                    if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                        let _ = crate::undo::record_delete(&undo_manager, &pea.id, &path);
+                    }
 
-            self.repo.delete(&pea.id)?;
-            self.message = Some(format!("Deleted {}", pea.id));
-            self.refresh()?;
+                    self.repo.delete(&pea.id)?;
+                    self.message = Some(format!("Deleted {}", pea.id));
+                    self.refresh()?;
+                }
+            }
+            ViewMode::Memory => {
+                if let Some(memory) = self.all_memories.get(self.selected_index).cloned() {
+                    self.memory_repo.delete(&memory.key)?;
+                    self.message = Some(format!("Deleted memory '{}'", memory.key));
+                    self.refresh()?;
+
+                    // Adjust selection if needed
+                    if self.selected_index >= self.all_memories.len() && self.selected_index > 0 {
+                        self.selected_index -= 1;
+                    }
+                }
+            }
         }
         self.input_mode = InputMode::Normal;
         Ok(())
