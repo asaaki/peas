@@ -1,7 +1,6 @@
 {
-  "Update": {
-    "id": "peas-bbjsq",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-bbjsq--undo-last-operation.md",
-    "previous_content": "+++\nid = \"peas-bbjsq\"\ntitle = \"Undo last operation\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-up8r0\"\ncreated = \"2026-01-18T17:55:35.181025100Z\"\nupdated = \"2026-01-18T17:55:35.181025100Z\"\n+++\n\nAdd 'peas undo' command to revert the last mutation. Since peas is git-backed, this could leverage git to restore previous file state.\n\nConsiderations:\n- Track last operation in a .peas/.last_op file\n- Only undo mutations (create, update, delete, archive)\n- Show what will be undone before confirming\n"
+  "Create": {
+    "id": "peas-pzg66",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-pzg66--consolidate-styling-into-central-configurable-them.md"
   }
 }
