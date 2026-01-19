@@ -1063,6 +1063,7 @@ fn cmd_init(prefix: String, id_length: usize, peas_path: Option<String>) -> Resu
             default_type: "task".to_string(),
             frontmatter: "toml".to_string(),
         },
+        tui: Default::default(),
     };
 
     // Create data directory

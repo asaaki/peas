@@ -380,3 +380,11 @@ pub fn theme() -> &'static Theme {
 pub fn markers() -> &'static Markers {
     MARKERS.get_or_init(Markers::default)
 }
+
+/// Initialize markers with custom settings (must be called before first use)
+pub fn init_markers(use_type_emojis: bool) {
+    MARKERS.get_or_init(|| Markers {
+        use_type_emojis,
+        ..Markers::default()
+    });
+}

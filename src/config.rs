@@ -7,6 +7,9 @@ use std::path::{Path, PathBuf};
 pub struct PeasConfig {
     #[serde(default)]
     pub peas: PeasSettings,
+
+    #[serde(default)]
+    pub tui: TuiSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +55,24 @@ fn default_type() -> String {
 
 fn default_frontmatter() -> String {
     "toml".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TuiSettings {
+    #[serde(default = "default_use_type_emojis")]
+    pub use_type_emojis: bool,
+}
+
+fn default_use_type_emojis() -> bool {
+    false
+}
+
+impl Default for TuiSettings {
+    fn default() -> Self {
+        Self {
+            use_type_emojis: default_use_type_emojis(),
+        }
+    }
 }
 
 impl Default for PeasSettings {
