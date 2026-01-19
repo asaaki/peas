@@ -247,15 +247,15 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 
     let title_left = if selection_count > 0 {
         format!(
-            " peas ({}) [{} selected] ",
+            "┤ peas ({}) [{} selected] ├",
             app.tree_nodes.len(),
             selection_count
         )
     } else {
-        format!(" peas ({}) ", app.tree_nodes.len())
+        format!("┤ peas ({}) ├", app.tree_nodes.len())
     };
 
-    let title_right = format!(" {} ", datetime_str);
+    let title_right = format!("┤ {} ├", datetime_str);
 
     // Page dots for bottom of panel (recalculate after page_height is set)
     let total_pages = app.total_pages();
