@@ -1440,6 +1440,40 @@ peas search "<query>"              # Search peas
 peas roadmap                       # Show project roadmap
 ```
 
+## Memory System (Knowledge Base)
+
+**IMPORTANT FOR LLMs**: Use the memory system to capture important learnings, facts, decisions, and context as you work. This helps maintain continuity across sessions and builds institutional knowledge.
+
+```bash
+peas memory save <key> "<content>" --tag <tag1> --tag <tag2>  # Save a memory
+peas memory query <key>                                       # Retrieve a memory
+peas memory list                                             # List all memories
+peas memory list --tag <tag>                                 # Filter by tag
+peas memory edit <key>                                       # Edit in $EDITOR
+peas memory delete <key>                                     # Delete a memory
+```
+
+**When to create memories:**
+- Architecture decisions and their rationale
+- Important API patterns or conventions discovered
+- Tricky bugs and their solutions
+- Performance optimizations and benchmarks
+- Security considerations and threat models
+- Project-specific gotchas and learnings
+- Configuration details and environment setup
+- Third-party integration patterns
+- Testing strategies that work well
+
+**Memory best practices:**
+- Use descriptive keys (e.g., "auth-flow", "database-schema", "ci-pipeline")
+- Tag memories for easy discovery (e.g., "architecture", "security", "performance")
+- Keep memories focused and actionable
+- Update memories when learnings evolve
+- Reference ticket IDs when relevant
+
+**TUI**: Run `peas tui` and press Tab to switch to Memory view, then 'n' to create new memories.
+```
+
 ## GraphQL Interface
 
 For complex queries, use the GraphQL interface:
