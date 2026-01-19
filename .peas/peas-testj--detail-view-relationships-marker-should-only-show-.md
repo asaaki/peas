@@ -2,7 +2,7 @@
 id = "peas-testj"
 title = "Detail view: relationships: marker should only show if pane is in focus"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:21.261970100Z"

@@ -2,7 +2,7 @@
 id = "peas-ecqal"
 title = "Collect all special chars and markers into a central place"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:08.159312900Z"

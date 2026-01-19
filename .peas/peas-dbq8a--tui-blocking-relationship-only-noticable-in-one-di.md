@@ -2,7 +2,7 @@
 id = "peas-dbq8a"
 title = "TUI: blocking relationship only noticable in one direction"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:01.420302400Z"

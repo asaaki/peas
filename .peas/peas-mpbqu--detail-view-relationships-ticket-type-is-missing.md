@@ -2,7 +2,7 @@
 id = "peas-mpbqu"
 title = "Detail view: relationships: ticket type is missing"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:29.243629900Z"

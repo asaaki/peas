@@ -2,7 +2,7 @@
 id = "peas-j5sum"
 title = "Search should also consider tags"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:25.124821100Z"
