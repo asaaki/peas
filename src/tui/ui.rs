@@ -533,8 +533,8 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                     let prefix = super::theme::Theme::relation_prefix(rel_type);
                     let rel_color = theme().relation_color(rel_type);
 
-                    // Selection cursor
-                    let cursor = if is_selected {
+                    // Selection cursor (only show when pane is focused)
+                    let cursor = if is_selected && is_focused {
                         Span::styled("▐ ", theme().selection_indicator_style())
                     } else {
                         Span::raw("  ")

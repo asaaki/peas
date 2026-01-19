@@ -1,6 +1,7 @@
 {
-  "Create": {
-    "id": "peas-mpbqu",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-mpbqu--detail-view-relationships-ticket-type-is-missing.md"
+  "Update": {
+    "id": "peas-frjou",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-frjou--search-must-be-case-insensitive-doesn-t-seem-to-fi.md",
+    "previous_content": "+++\nid = \"peas-frjou\"\ntitle = \"Search: must be case insensitive / doesn't seem to find all\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-oaiwo\"\ncreated = \"2026-01-19T17:39:12.943157900Z\"\nupdated = \"2026-01-19T17:39:12.943157900Z\"\n+++\n\nSearch doesn't find all matches. Example: \"noice\" should find peas-naap4, but it doesn't right now. Must be case insensitive.\n"
   }
 }
