@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-beb7f",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-beb7f--inline-tui-editing-with-textarea-for-description.md",
-    "previous_content": "+++\nid = \"peas-beb7f\"\ntitle = \"Inline TUI editing with textarea for description\"\ntype = \"feature\"\nstatus = \"completed\"\npriority = \"critical\"\ntags = [\n    \"foo\",\n    \"bar\",\n    \"baz\",\n]\nparent = \"peas-6592j\"\ncreated = \"2026-01-19T16:11:18.839662500Z\"\nupdated = \"2026-01-19T21:55:59.900348500Z\"\n+++\n\nImplement inline editing in TUI using ratatui and relevant dependencies.\n\n## Requirements\n- Edit mode opens directly in detail view, jumping to description pane\n- Replace markdown rendering with simple textarea input\n- Ctrl+S to save\n- Ctrl+Arrow keys to switch between panes\n- Research dependencies on lib.rs and crates.io\n\n## Potentially useful dependency\n- https://lib.rs/crates/terminput\n"
+    "id": "peas-6592j",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-6592j--e7-3-inline-tui-editing.md",
+    "previous_content": "+++\nid = \"peas-6592j\"\ntitle = \"E7.3: Inline TUI Editing\"\ntype = \"epic\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-3h9f1\"\ncreated = \"2026-01-19T16:10:52.051468600Z\"\nupdated = \"2026-01-19T16:10:52.051468600Z\"\n+++\n"
   }
 }
