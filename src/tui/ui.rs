@@ -167,17 +167,27 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 let t = theme();
                 let muted_style = Style::default().fg(t.text_muted);
 
-                // Render each parent in the chain as a normal row (but muted and with ⋮ prefix)
-                for (idx, parent_node) in parent_chain.iter().enumerate() {
+                // Render each parent in the chain as a normal row (but muted and with ┊ prefix)
+                for parent_node in parent_chain.iter() {
                     let pea = &parent_node.pea;
                     let (status_icon, _) = status_indicator(&pea.status);
 
-                    // Build tree prefix with ⋮ indicator for context rows
-                    let prefix = if idx == 0 {
-                        "⋮  ".to_string()
-                    } else {
-                        "⋮  │  ".to_string()
-                    };
+                    // Build tree prefix using dotted lines (┊) instead of solid lines (│)
+                    let mut prefix = String::new();
+                    for &has_line in &parent_node.parent_lines {
+                        if has_line {
+                            prefix.push_str("┊  ");
+                        } else {
+                            prefix.push_str("   ");
+                        }
+                    }
+                    if parent_node.depth > 0 {
+                        if parent_node.is_last {
+                            prefix.push_str("╰─ ");
+                        } else {
+                            prefix.push_str("├─ ");
+                        }
+                    }
 
                     // Priority indicator
                     let pri = if let Some((ind, _)) = priority_indicator(pea) {
