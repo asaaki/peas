@@ -239,16 +239,20 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         })
         .collect();
 
-    // Title shows count and selection count if any
+    // Title shows count, selection count, and current date/time (ISO 8601)
     let selection_count = app.multi_select_count();
+    let now = chrono::Local::now();
+    let datetime_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
     let title = if selection_count > 0 {
         format!(
-            " peas ({}) [{} selected] ",
+            " peas ({}) [{} selected] │ {} ",
             app.tree_nodes.len(),
-            selection_count
+            selection_count,
+            datetime_str
         )
     } else {
-        format!(" peas ({}) ", app.tree_nodes.len())
+        format!(" peas ({}) │ {} ", app.tree_nodes.len(), datetime_str)
     };
 
     // Page dots for bottom of panel (recalculate after page_height is set)
