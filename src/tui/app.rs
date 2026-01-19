@@ -21,6 +21,7 @@ use std::{
     sync::mpsc,
     time::Duration,
 };
+use tui_textarea::{Input, TextArea};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
@@ -34,6 +35,7 @@ pub enum InputMode {
     BlockingModal,
     DetailView,
     CreateModal,
+    EditBody, // Inline body editing with textarea
 }
 
 /// Which pane is focused in detail view
@@ -89,6 +91,7 @@ pub struct App {
     pub create_title: String,        // Title input for create modal
     pub create_type: PeaType,        // Type selection for create modal
     pub multi_selected: HashSet<String>, // IDs of multi-selected tickets
+    pub body_textarea: Option<TextArea<'static>>, // TextArea for body editing
 }
 
 impl App {
@@ -133,6 +136,7 @@ impl App {
             create_title: String::new(),
             create_type: PeaType::Task,
             multi_selected: HashSet::new(),
+            body_textarea: None,
         };
         app.build_tree();
         // Note: page_table will be built when page_height is set during first draw
@@ -1065,6 +1069,55 @@ impl App {
         }
         Ok(())
     }
+
+    /// Start editing body inline with TextArea
+    pub fn start_body_edit(&mut self) {
+        if let Some(pea) = self.selected_pea().cloned() {
+            // Split body into lines for TextArea
+            let lines: Vec<String> = pea.body.lines().map(|s| s.to_string()).collect();
+            let mut textarea = TextArea::new(lines);
+
+            // Configure textarea
+            textarea.set_tab_length(2);
+            textarea.set_max_histories(100); // Undo/redo buffer
+
+            self.body_textarea = Some(textarea);
+            self.input_mode = InputMode::EditBody;
+            self.detail_pane = DetailPane::Body; // Force Body pane focus
+        }
+    }
+
+    /// Save body edit and update the pea
+    pub fn save_body_edit(&mut self) -> Result<()> {
+        if let (Some(textarea), Some(pea)) = (&self.body_textarea, self.selected_pea().cloned()) {
+            // Get edited content
+            let new_body = textarea.lines().join("\n");
+
+            // Record undo before update
+            let undo_manager = UndoManager::new(&self.data_path);
+            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
+                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            }
+
+            // Update pea
+            let mut updated = pea;
+            updated.body = new_body;
+            updated.touch();
+            self.repo.update(&updated)?;
+
+            // Cleanup
+            self.body_textarea = None;
+            self.input_mode = InputMode::DetailView;
+            self.refresh()?;
+        }
+        Ok(())
+    }
+
+    /// Cancel body edit without saving
+    pub fn cancel_body_edit(&mut self) {
+        self.body_textarea = None;
+        self.input_mode = InputMode::DetailView;
+    }
 }
 
 pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
@@ -1439,7 +1492,11 @@ fn run_app(
                         }
                     }
                     KeyCode::Char('e') => {
-                        // Allow editing from detail view
+                        // Start inline editing
+                        app.start_body_edit();
+                    }
+                    KeyCode::Char('E') => {
+                        // External editor (uppercase E)
                         if let Some(file_path) = app.selected_pea_file_path() {
                             disable_raw_mode()?;
                             execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
@@ -1545,6 +1602,29 @@ fn run_app(
                         }
                     }
                     _ => {}
+                },
+                InputMode::EditBody => match key.code {
+                    KeyCode::Esc => {
+                        app.cancel_body_edit();
+                    }
+                    KeyCode::Char('s')
+                        if key
+                            .modifiers
+                            .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                    {
+                        if let Err(e) = app.save_body_edit() {
+                            app.message = Some(format!("Save failed: {}", e));
+                        } else {
+                            app.message = Some("Saved successfully".to_string());
+                        }
+                    }
+                    _ => {
+                        // Pass all other events to textarea
+                        if let Some(ref mut textarea) = app.body_textarea {
+                            let event = Event::Key(key);
+                            textarea.input(Input::from(event));
+                        }
+                    }
                 },
             }
 

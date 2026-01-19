@@ -29,13 +29,13 @@ chrono = { version = "0.4.43", features = ["serde"] }
 clap = { version = "4.5.54", features = ["derive", "env"] }
 cli-clipboard = "0.4"
 colored = "3.1.1"
-crossterm = "0.29.0"
+crossterm = "0.28"
 notify = "8.2"
 notify-debouncer-mini = "0.7"
 directories = "6.0.0"
 nanoid = "0.4.0"
-ratatui = "0.30.0"
-ratatui-widgets = "0.3.0"
+ratatui = "0.29"
+ratatui-core = "0.1"
 regex = "1.12"
 tachyonfx = "0.8.0"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -46,6 +46,7 @@ thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["full"] }
 toml = "0.9.11"
 tui-markdown = "0.3"
+tui-textarea = "0.7"
 
 [dev-dependencies]
 assert_cmd = "2.1.2"

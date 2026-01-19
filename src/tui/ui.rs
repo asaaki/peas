@@ -7,9 +7,84 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols::border,
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Wrap},
+    widgets::{
+        Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, Table, Wrap,
+    },
 };
-use ratatui_widgets::scrollbar::{Scrollbar, ScrollbarOrientation, ScrollbarState};
+use ratatui_core;
+
+/// Convert ratatui_core::Color to ratatui::Color
+fn convert_color(core_color: ratatui_core::style::Color) -> Color {
+    match core_color {
+        ratatui_core::style::Color::Reset => Color::Reset,
+        ratatui_core::style::Color::Black => Color::Black,
+        ratatui_core::style::Color::Red => Color::Red,
+        ratatui_core::style::Color::Green => Color::Green,
+        ratatui_core::style::Color::Yellow => Color::Yellow,
+        ratatui_core::style::Color::Blue => Color::Blue,
+        ratatui_core::style::Color::Magenta => Color::Magenta,
+        ratatui_core::style::Color::Cyan => Color::Cyan,
+        ratatui_core::style::Color::Gray => Color::Gray,
+        ratatui_core::style::Color::DarkGray => Color::DarkGray,
+        ratatui_core::style::Color::LightRed => Color::LightRed,
+        ratatui_core::style::Color::LightGreen => Color::LightGreen,
+        ratatui_core::style::Color::LightYellow => Color::LightYellow,
+        ratatui_core::style::Color::LightBlue => Color::LightBlue,
+        ratatui_core::style::Color::LightMagenta => Color::LightMagenta,
+        ratatui_core::style::Color::LightCyan => Color::LightCyan,
+        ratatui_core::style::Color::White => Color::White,
+        ratatui_core::style::Color::Rgb(r, g, b) => Color::Rgb(r, g, b),
+        ratatui_core::style::Color::Indexed(i) => Color::Indexed(i),
+    }
+}
+
+/// Convert ratatui_core::Modifier to ratatui::Modifier
+fn convert_modifier(core_mod: ratatui_core::style::Modifier) -> Modifier {
+    let mut modifier = Modifier::empty();
+    if core_mod.contains(ratatui_core::style::Modifier::BOLD) {
+        modifier |= Modifier::BOLD;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::DIM) {
+        modifier |= Modifier::DIM;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::ITALIC) {
+        modifier |= Modifier::ITALIC;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::UNDERLINED) {
+        modifier |= Modifier::UNDERLINED;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::SLOW_BLINK) {
+        modifier |= Modifier::SLOW_BLINK;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::RAPID_BLINK) {
+        modifier |= Modifier::RAPID_BLINK;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::REVERSED) {
+        modifier |= Modifier::REVERSED;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::HIDDEN) {
+        modifier |= Modifier::HIDDEN;
+    }
+    if core_mod.contains(ratatui_core::style::Modifier::CROSSED_OUT) {
+        modifier |= Modifier::CROSSED_OUT;
+    }
+    modifier
+}
+
+/// Convert ratatui_core::Style to ratatui::Style
+fn convert_style(core_style: ratatui_core::style::Style) -> Style {
+    let mut style = Style::default();
+    if let Some(fg) = core_style.fg {
+        style = style.fg(convert_color(fg));
+    }
+    if let Some(bg) = core_style.bg {
+        style = style.bg(convert_color(bg));
+    }
+    style = style.add_modifier(convert_modifier(core_style.add_modifier));
+    style = style.remove_modifier(convert_modifier(core_style.sub_modifier));
+    style
+}
 
 /// Estimate the number of wrapped lines for a Text widget
 fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
@@ -636,45 +711,82 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             f.render_widget(list, inner);
         }
 
-        // Render body section with tui-markdown
+        // Render body section with tui-markdown or TextArea (if editing)
         if let Some(body_rect) = body_area {
             let body_focused = app.detail_pane == DetailPane::Body;
+
+            let title = if app.input_mode == InputMode::EditBody {
+                " Description [EDITING - Ctrl+S to save, Esc to cancel] "
+            } else {
+                " Description "
+            };
+
             let body_block = Block::default()
-                .title(" Description ")
+                .title(title)
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(theme().border_style(body_focused));
+                .border_style(if app.input_mode == InputMode::EditBody {
+                    Style::default().fg(theme().text_highlight) // Yellow/bright to indicate edit mode
+                } else {
+                    theme().border_style(body_focused)
+                });
 
             let inner = body_block.inner(body_rect);
             f.render_widget(body_block, body_rect);
 
-            // Render markdown using tui-markdown
-            let md_text = tui_markdown::from_str(&body_content);
+            // Render textarea if in edit mode, otherwise render markdown
+            if app.input_mode == InputMode::EditBody {
+                if let Some(textarea) = app.body_textarea.as_ref() {
+                    f.render_widget(textarea, inner);
+                }
+                // No scrolling in edit mode (textarea handles its own scrolling)
+                app.set_detail_max_scroll(0);
+            } else {
+                // Render markdown using tui-markdown
+                let md_text_core = tui_markdown::from_str(&body_content);
 
-            // Calculate content height for scroll limiting
-            let view_height = inner.height as u16;
-            let content_lines = estimate_wrapped_lines(&md_text, inner.width as usize);
-            let max_scroll = content_lines.saturating_sub(view_height);
-            app.set_detail_max_scroll(max_scroll);
+                // Convert from ratatui_core::Text to ratatui::Text by extracting lines
+                let lines: Vec<Line> = md_text_core
+                    .lines
+                    .into_iter()
+                    .map(|line_core| {
+                        let spans: Vec<Span> = line_core
+                            .spans
+                            .into_iter()
+                            .map(|span_core| {
+                                Span::styled(span_core.content, convert_style(span_core.style))
+                            })
+                            .collect();
+                        Line::from(spans)
+                    })
+                    .collect();
+                let md_text = Text::from(lines);
 
-            let md_paragraph = Paragraph::new(md_text)
-                .wrap(Wrap { trim: false })
-                .scroll((detail_scroll, 0));
-            f.render_widget(md_paragraph, inner);
+                // Calculate content height for scroll limiting
+                let view_height = inner.height as u16;
+                let content_lines = estimate_wrapped_lines(&md_text, inner.width as usize);
+                let max_scroll = content_lines.saturating_sub(view_height);
+                app.set_detail_max_scroll(max_scroll);
 
-            // Render scrollbar if content is scrollable
-            if max_scroll > 0 {
-                let mut scrollbar_state =
-                    ScrollbarState::new(max_scroll as usize).position(detail_scroll as usize);
+                let md_paragraph = Paragraph::new(md_text)
+                    .wrap(Wrap { trim: false })
+                    .scroll((detail_scroll, 0));
+                f.render_widget(md_paragraph, inner);
 
-                let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-                    .begin_symbol(Some("↑"))
-                    .end_symbol(Some("↓"))
-                    .track_symbol(Some("│"))
-                    .thumb_symbol("█")
-                    .style(Style::default().fg(theme().border));
+                // Render scrollbar if content is scrollable
+                if max_scroll > 0 {
+                    let mut scrollbar_state =
+                        ScrollbarState::new(max_scroll as usize).position(detail_scroll as usize);
 
-                f.render_stateful_widget(scrollbar, body_rect, &mut scrollbar_state);
+                    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                        .begin_symbol(Some("↑"))
+                        .end_symbol(Some("↓"))
+                        .track_symbol(Some("│"))
+                        .thumb_symbol("█")
+                        .style(Style::default().fg(theme().border));
+
+                    f.render_stateful_widget(scrollbar, body_rect, &mut scrollbar_state);
+                }
             }
         } else {
             // No body, no scrolling needed
@@ -732,6 +844,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             " CREATE ",
             Style::default().bg(t.mode_create.0).fg(t.mode_create.1),
         ),
+        InputMode::EditBody => Span::styled(
+            " EDIT ",
+            Style::default().bg(t.text_highlight).fg(Color::Black),
+        ),
     };
 
     let help_text = match app.input_mode {
@@ -747,6 +863,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         InputMode::DetailView => " j/k:scroll  e:edit  Esc/Enter/q:close ",
         InputMode::CreateModal => " Tab:next field  ←→:change type  Enter:create  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
+        InputMode::EditBody => " Ctrl+S:save  Esc:cancel ",
     };
 
     let mut footer_spans = vec![mode_indicator];
