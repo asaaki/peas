@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-7nozz",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7nozz--detail-view-relationships-pane-missing-row-selecti.md",
-    "previous_content": "+++\nid = \"peas-7nozz\"\ntitle = \"Detail view: relationships pane missing row selection marker and unclear relationship type\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kx50f\"\ncreated = \"2026-01-19T16:11:12.073010800Z\"\nupdated = \"2026-01-19T16:11:12.073010800Z\"\n+++\n"
+    "id": "peas-806q1",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-806q1--apply-monokai-color-scheme-as-default-theme.md",
+    "previous_content": "+++\nid = \"peas-806q1\"\ntitle = \"Apply Monokai color scheme as default theme\"\ntype = \"chore\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-2v2rx\"\ncreated = \"2026-01-19T16:11:32.342852600Z\"\nupdated = \"2026-01-19T16:11:32.342852600Z\"\n+++\n"
   }
 }

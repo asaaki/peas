@@ -101,94 +101,96 @@ pub struct Theme {
 
 impl Default for Theme {
     fn default() -> Self {
+        // Monokai color scheme
+        // Based on classic Monokai: https://monokai.pro/
         Self {
-            // General UI
-            border: Color::Gray,
-            border_focused: Color::Green,
-            selection_indicator: Color::Green,
+            // General UI - Monokai borders and focus
+            border: Color::Rgb(117, 113, 94), // Muted brownish-gray
+            border_focused: Color::Rgb(166, 226, 46), // Monokai green
+            selection_indicator: Color::Rgb(166, 226, 46), // Monokai green
             cursor_blink: true,
 
-            // Text
-            text: Color::White,
-            text_muted: Color::DarkGray,
-            text_highlight: Color::White,
+            // Text - Monokai foreground colors
+            text: Color::Rgb(248, 248, 242), // Monokai foreground
+            text_muted: Color::Rgb(117, 113, 94), // Muted comment color
+            text_highlight: Color::Rgb(248, 248, 242), // Bright foreground
 
-            // Status colors
-            status_draft: Color::DarkGray,
-            status_todo: Color::Green,
-            status_in_progress: Color::Yellow,
-            status_completed: Color::DarkGray,
-            status_scrapped: Color::DarkGray,
+            // Status colors - Monokai palette
+            status_draft: Color::Rgb(117, 113, 94), // Muted
+            status_todo: Color::Rgb(166, 226, 46),  // Green
+            status_in_progress: Color::Rgb(230, 219, 116), // Yellow
+            status_completed: Color::Rgb(117, 113, 94), // Muted (de-emphasized)
+            status_scrapped: Color::Rgb(117, 113, 94), // Muted
 
-            // Priority colors
-            priority_critical: Color::Red,
-            priority_high: Color::LightRed,
-            priority_normal: Color::White,
-            priority_low: Color::DarkGray,
-            priority_deferred: Color::DarkGray,
+            // Priority colors - Monokai vibrant colors
+            priority_critical: Color::Rgb(249, 38, 114), // Monokai pink/red
+            priority_high: Color::Rgb(253, 151, 31),     // Monokai orange
+            priority_normal: Color::Rgb(248, 248, 242),  // Normal foreground
+            priority_low: Color::Rgb(117, 113, 94),      // Muted
+            priority_deferred: Color::Rgb(117, 113, 94), // Muted
 
-            // Type colors
-            type_milestone: Color::Magenta,
-            type_epic: Color::Blue,
-            type_story: Color::Cyan,
-            type_feature: Color::Cyan,
-            type_bug: Color::Red,
-            type_chore: Color::Yellow,
-            type_research: Color::LightMagenta,
-            type_task: Color::White,
+            // Type colors - Monokai palette variety
+            type_milestone: Color::Rgb(174, 129, 255), // Monokai purple
+            type_epic: Color::Rgb(102, 217, 239),      // Monokai blue
+            type_story: Color::Rgb(102, 217, 239),     // Monokai blue
+            type_feature: Color::Rgb(166, 226, 46),    // Monokai green
+            type_bug: Color::Rgb(249, 38, 114),        // Monokai pink
+            type_chore: Color::Rgb(230, 219, 116),     // Monokai yellow
+            type_research: Color::Rgb(174, 129, 255),  // Monokai purple
+            type_task: Color::Rgb(248, 248, 242),      // Normal text
 
             // Relation colors
-            relation_parent: Color::Yellow,
-            relation_blocks: Color::LightRed,
-            relation_child: Color::Cyan,
+            relation_parent: Color::Rgb(230, 219, 116), // Yellow
+            relation_blocks: Color::Rgb(253, 151, 31),  // Orange
+            relation_child: Color::Rgb(102, 217, 239),  // Blue
 
-            // ID colors
-            id: Color::Green,
-            id_selected: Color::LightGreen,
+            // ID colors - Monokai green
+            id: Color::Rgb(166, 226, 46),          // Monokai green
+            id_selected: Color::Rgb(166, 226, 46), // Same green (bright already)
 
-            // Tags
-            tags: Color::Magenta,
+            // Tags - Monokai purple
+            tags: Color::Rgb(174, 129, 255),
 
             // Timestamps
-            timestamp: Color::DarkGray,
+            timestamp: Color::Rgb(117, 113, 94), // Muted
 
             // Modal colors
-            modal_border: Color::Yellow,
-            modal_border_delete: Color::Red,
-            modal_border_create: Color::Cyan,
+            modal_border: Color::Rgb(230, 219, 116), // Yellow
+            modal_border_delete: Color::Rgb(249, 38, 114), // Pink/red
+            modal_border_create: Color::Rgb(102, 217, 239), // Blue
 
             // Footer/Mode colors (bg, fg)
-            mode_normal: (Color::Blue, Color::White),
-            mode_search: (Color::Yellow, Color::Black),
-            mode_status: (Color::Green, Color::Black),
-            mode_priority: (Color::Red, Color::White),
-            mode_type: (Color::Magenta, Color::White),
-            mode_delete: (Color::Red, Color::White),
-            mode_parent: (Color::Blue, Color::White),
-            mode_blocking: (Color::LightRed, Color::Black),
-            mode_detail: (Color::Green, Color::Black),
-            mode_create: (Color::Cyan, Color::Black),
+            mode_normal: (Color::Rgb(102, 217, 239), Color::Rgb(39, 40, 34)), // Blue bg
+            mode_search: (Color::Rgb(230, 219, 116), Color::Rgb(39, 40, 34)), // Yellow bg
+            mode_status: (Color::Rgb(166, 226, 46), Color::Rgb(39, 40, 34)),  // Green bg
+            mode_priority: (Color::Rgb(249, 38, 114), Color::Rgb(248, 248, 242)), // Pink bg
+            mode_type: (Color::Rgb(174, 129, 255), Color::Rgb(248, 248, 242)), // Purple bg
+            mode_delete: (Color::Rgb(249, 38, 114), Color::Rgb(248, 248, 242)), // Pink bg
+            mode_parent: (Color::Rgb(102, 217, 239), Color::Rgb(39, 40, 34)), // Blue bg
+            mode_blocking: (Color::Rgb(253, 151, 31), Color::Rgb(39, 40, 34)), // Orange bg
+            mode_detail: (Color::Rgb(166, 226, 46), Color::Rgb(39, 40, 34)),  // Green bg
+            mode_create: (Color::Rgb(102, 217, 239), Color::Rgb(39, 40, 34)), // Blue bg
 
             // Checkbox colors
-            checkbox_checked: Color::Green,
-            checkbox_unchecked: Color::DarkGray,
+            checkbox_checked: Color::Rgb(166, 226, 46), // Green
+            checkbox_unchecked: Color::Rgb(117, 113, 94), // Muted
 
             // Multi-select
-            multi_select: Color::Cyan,
+            multi_select: Color::Rgb(102, 217, 239), // Blue
 
             // Tree lines
-            tree_lines: Color::DarkGray,
+            tree_lines: Color::Rgb(117, 113, 94), // Muted
 
             // Message
-            message: Color::Green,
+            message: Color::Rgb(166, 226, 46), // Green
 
             // Modal UI elements
-            modal_cursor: Color::Cyan,
-            modal_highlight_bg: Color::DarkGray,
+            modal_cursor: Color::Rgb(102, 217, 239), // Blue
+            modal_highlight_bg: Color::Rgb(73, 72, 62), // Slightly lighter than bg
 
             // Help popup
-            help_key: Color::Cyan,
-            help_border: Color::Yellow,
+            help_key: Color::Rgb(102, 217, 239),    // Blue
+            help_border: Color::Rgb(230, 219, 116), // Yellow
         }
     }
 }
