@@ -54,12 +54,20 @@ pub struct TreeNode {
     pub parent_lines: Vec<bool>, // Which parent levels need continuing lines
 }
 
+#[derive(Debug, Clone)]
+pub struct PageInfo {
+    pub start_index: usize,  // Starting index in tree_nodes
+    pub item_count: usize,   // Number of actual items on this page
+    pub parent_count: usize, // Number of parent context rows
+}
+
 pub struct App {
     pub repo: PeaRepository,
     pub data_path: PathBuf, // Path to .peas data directory
     pub all_peas: Vec<Pea>,
     pub filtered_peas: Vec<Pea>,
     pub tree_nodes: Vec<TreeNode>, // Flattened tree for display
+    pub page_table: Vec<PageInfo>, // Virtual page table accounting for parent rows
     pub selected_index: usize,     // Global index in tree_nodes
     pub page_height: usize,        // Number of items that fit on one page
     pub list_state: ListState,
@@ -103,6 +111,7 @@ impl App {
             all_peas,
             filtered_peas,
             tree_nodes: Vec::new(),
+            page_table: Vec::new(),
             selected_index: 0,
             page_height: 20, // Default, updated when drawing
             list_state,
@@ -125,6 +134,7 @@ impl App {
             multi_selected: HashSet::new(),
         };
         app.build_tree();
+        // Note: page_table will be built when page_height is set during first draw
         Ok(app)
     }
 
@@ -132,6 +142,9 @@ impl App {
         self.all_peas = self.repo.list()?;
         self.apply_filter();
         self.build_tree();
+        if self.page_height > 0 {
+            self.build_page_table();
+        }
         Ok(())
     }
 
@@ -237,27 +250,96 @@ impl App {
         add_children(None, 0, Vec::new(), &children_map, &mut self.tree_nodes);
     }
 
+    /// Build a virtual page table that accounts for parent context rows
+    pub fn build_page_table(&mut self) {
+        self.page_table.clear();
+
+        if self.tree_nodes.is_empty() || self.page_height == 0 {
+            return;
+        }
+
+        let mut current_index = 0;
+        while current_index < self.tree_nodes.len() {
+            // Calculate parent context count for this page
+            let parent_count = self.calculate_parent_count_at(current_index);
+
+            // Calculate how many items can fit on this page
+            let available_slots = self.page_height.saturating_sub(parent_count).max(1);
+            let remaining_items = self.tree_nodes.len() - current_index;
+            let item_count = available_slots.min(remaining_items);
+
+            self.page_table.push(PageInfo {
+                start_index: current_index,
+                item_count,
+                parent_count,
+            });
+
+            current_index += item_count;
+        }
+    }
+
+    /// Calculate how many parent context rows would appear at a given start index
+    fn calculate_parent_count_at(&self, start_index: usize) -> usize {
+        if start_index >= self.tree_nodes.len() {
+            return 0;
+        }
+
+        let first_node = &self.tree_nodes[start_index];
+        if let Some(parent_id) = &first_node.pea.parent {
+            // Build the parent chain
+            let mut count = 0;
+            let mut current_parent_id = Some(parent_id.clone());
+
+            while let Some(pid) = current_parent_id {
+                if let Some(parent_node) = self.tree_nodes.iter().find(|n| n.pea.id == pid) {
+                    // Check if this parent would be visible in items starting from start_index
+                    // A parent is visible if it appears at or after start_index
+                    let parent_index = self
+                        .tree_nodes
+                        .iter()
+                        .position(|n| n.pea.id == pid)
+                        .unwrap();
+                    if parent_index >= start_index {
+                        // Parent is on or after this page, no need for context
+                        break;
+                    }
+                    count += 1;
+                    current_parent_id = parent_node.pea.parent.clone();
+                } else {
+                    break;
+                }
+            }
+            return count;
+        }
+        0
+    }
+
     /// Returns the number of items in the current view
     pub fn display_count(&self) -> usize {
         self.tree_nodes.len()
     }
 
-    /// Returns the current page number (0-indexed)
+    /// Returns the current page number (0-indexed) using page table
     pub fn current_page(&self) -> usize {
-        if self.page_height == 0 {
-            0
-        } else {
-            self.selected_index / self.page_height
+        if self.page_table.is_empty() {
+            return 0;
         }
+
+        // Find which page contains selected_index
+        for (page_num, page_info) in self.page_table.iter().enumerate() {
+            let end = page_info.start_index + page_info.item_count;
+            if self.selected_index < end {
+                return page_num;
+            }
+        }
+
+        // If not found, return last page
+        self.page_table.len().saturating_sub(1)
     }
 
     /// Returns the total number of pages
     pub fn total_pages(&self) -> usize {
-        if self.page_height == 0 {
-            1
-        } else {
-            (self.display_count() + self.page_height - 1) / self.page_height
-        }
+        self.page_table.len().max(1)
     }
 
     /// Returns the index within the current page (0-indexed)
@@ -278,6 +360,51 @@ impl App {
     pub fn current_page_items(&self) -> &[TreeNode] {
         let start = self.page_start();
         let end = (start + self.page_height).min(self.tree_nodes.len());
+        &self.tree_nodes[start..end]
+    }
+
+    /// Calculate how many parent context rows would be shown for current page
+    pub fn parent_context_count(&self) -> usize {
+        let start = self.page_start();
+        let end = (start + self.page_height).min(self.tree_nodes.len());
+        if start >= self.tree_nodes.len() {
+            return 0;
+        }
+
+        let first_node = &self.tree_nodes[start];
+        if let Some(parent_id) = &first_node.pea.parent {
+            // Check if parent is visible on this page
+            let parent_visible = self.tree_nodes[start..end]
+                .iter()
+                .any(|n| &n.pea.id == parent_id);
+            if !parent_visible {
+                // Count the parent chain
+                let mut count = 0;
+                let mut current_parent_id = Some(parent_id.clone());
+                while let Some(pid) = current_parent_id {
+                    if let Some(parent_node) = self.tree_nodes.iter().find(|n| n.pea.id == pid) {
+                        count += 1;
+                        current_parent_id = parent_node.pea.parent.clone();
+                    } else {
+                        break;
+                    }
+                }
+                return count;
+            }
+        }
+        0
+    }
+
+    /// Returns the items for the current page, adjusted for parent context rows
+    pub fn current_page_items_with_context(&self, available_height: usize) -> &[TreeNode] {
+        let parent_count = self.parent_context_count();
+        let adjusted_height = available_height.saturating_sub(parent_count);
+        if adjusted_height == 0 {
+            return &[];
+        }
+
+        let start = self.page_start();
+        let end = (start + adjusted_height).min(self.tree_nodes.len());
         &self.tree_nodes[start..end]
     }
 
@@ -306,6 +433,9 @@ impl App {
 
         // Rebuild tree after filter changes
         self.build_tree();
+        if self.page_height > 0 {
+            self.build_page_table();
+        }
 
         let count = self.display_count();
         if count == 0 {
@@ -385,34 +515,40 @@ impl App {
         }
     }
 
-    /// Jump to next page
+    /// Jump to next page using page table
     pub fn next_page(&mut self) {
-        let count = self.display_count();
-        if count > 0 && self.page_height > 0 {
-            let next_page_start = (self.current_page() + 1) * self.page_height;
-            if next_page_start < count {
-                self.selected_index = next_page_start;
-            } else {
-                // Go to last item if no more pages
-                self.selected_index = count - 1;
-            }
-            self.list_state.select(Some(self.index_in_page()));
-            self.detail_scroll = 0;
+        if self.page_table.is_empty() {
+            return;
         }
+
+        let current_page = self.current_page();
+        if current_page + 1 < self.page_table.len() {
+            // Go to first item of next page
+            self.selected_index = self.page_table[current_page + 1].start_index;
+        } else {
+            // Already on last page, go to last item
+            self.selected_index = self.tree_nodes.len().saturating_sub(1);
+        }
+        self.list_state.select(Some(self.index_in_page()));
+        self.detail_scroll = 0;
     }
 
-    /// Jump to previous page
+    /// Jump to previous page using page table
     pub fn previous_page(&mut self) {
-        if self.display_count() > 0 && self.page_height > 0 {
-            let current_page = self.current_page();
-            if current_page > 0 {
-                self.selected_index = (current_page - 1) * self.page_height;
-            } else {
-                self.selected_index = 0;
-            }
-            self.list_state.select(Some(self.index_in_page()));
-            self.detail_scroll = 0;
+        if self.page_table.is_empty() {
+            return;
         }
+
+        let current_page = self.current_page();
+        if current_page > 0 {
+            // Go to first item of previous page
+            self.selected_index = self.page_table[current_page - 1].start_index;
+        } else {
+            // Already on first page, go to first item
+            self.selected_index = 0;
+        }
+        self.list_state.select(Some(self.index_in_page()));
+        self.detail_scroll = 0;
     }
 
     /// Jump to first item

@@ -132,13 +132,31 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         base_page_height
     };
-    app.page_height = page_height.max(1);
+    let new_page_height = page_height.max(1);
 
-    // Get the index within the current page for highlighting
-    let index_in_page = app.index_in_page();
+    // Rebuild page table if page_height changed
+    if app.page_height != new_page_height {
+        app.page_height = new_page_height;
+        app.build_page_table();
+    }
 
-    // Only render items for the current page
-    let page_items = app.current_page_items();
+    // Get current page info from page table
+    let current_page_num = app.current_page();
+    let page_info = app.page_table.get(current_page_num).cloned();
+
+    // Get the items for current page based on page table
+    let (page_items, _parent_context_count, page_start) = if let Some(info) = page_info {
+        let start = info.start_index;
+        let end = start + info.item_count;
+        let items = &app.tree_nodes[start..end.min(app.tree_nodes.len())];
+        (items, info.parent_count, start)
+    } else {
+        // Fallback if page table not ready
+        (&app.tree_nodes[..0], 0, 0)
+    };
+
+    // Calculate index within page for highlighting
+    let index_in_page = app.selected_index.saturating_sub(page_start);
 
     // Check if we need to show parent context (first item on page has parent not visible)
     let mut parent_context_rows: Vec<Row> = Vec::new();
