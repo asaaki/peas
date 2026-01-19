@@ -245,16 +245,17 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     let now = chrono::Local::now();
     let datetime_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
-    let title = if selection_count > 0 {
+    let title_left = if selection_count > 0 {
         format!(
-            " peas ({}) [{} selected] │ {} ",
+            " peas ({}) [{} selected] ",
             app.tree_nodes.len(),
-            selection_count,
-            datetime_str
+            selection_count
         )
     } else {
-        format!(" peas ({}) │ {} ", app.tree_nodes.len(), datetime_str)
+        format!(" peas ({}) ", app.tree_nodes.len())
     };
+
+    let title_right = format!(" {} ", datetime_str);
 
     // Page dots for bottom of panel (recalculate after page_height is set)
     let total_pages = app.total_pages();
@@ -273,8 +274,23 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
     ];
 
     // Render the outer block first and get inner area
+    // Combine left and right titles with spacing
+    let terminal_width = area.width.saturating_sub(2); // Account for borders
+    let left_len = title_left.len() as u16;
+    let right_len = title_right.len() as u16;
+    let spacing = terminal_width
+        .saturating_sub(left_len)
+        .saturating_sub(right_len);
+    let combined_title = format!(
+        "{}{:width$}{}",
+        title_left,
+        "",
+        title_right,
+        width = spacing as usize
+    );
+
     let block = Block::default()
-        .title(title)
+        .title(combined_title)
         .borders(Borders::ALL)
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(theme().border));
