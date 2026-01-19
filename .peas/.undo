@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-493ps",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-493ps--evaluate-tachyonfx-for-tui-effects.md",
-    "previous_content": "+++\nid = \"peas-493ps\"\ntitle = \"Evaluate tachyonfx for TUI effects\"\ntype = \"research\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-7z7f5\"\ncreated = \"2026-01-19T00:22:55.577970100Z\"\nupdated = \"2026-01-19T00:22:55.577970100Z\"\n+++\n\nEvaluate https://github.com/junkdog/tachyonfx for subtle TUI effects.\n\nNice to have. First idea: change row marker blinking.\n"
+    "id": "peas-vefhc",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-vefhc--implement-tab-to-switch-between-panes.md",
+    "previous_content": "+++\nid = \"peas-vefhc\"\ntitle = \"Implement Tab to switch between panes\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-6kl1g\"\ncreated = \"2026-01-18T17:47:46.381230400Z\"\nupdated = \"2026-01-18T17:47:46.381230400Z\"\n+++\n\nTab key should cycle focus between relationships pane and content pane\n"
   }
 }

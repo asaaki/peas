@@ -1,4 +1,4 @@
-use super::app::{App, InputMode};
+use super::app::{App, DetailPane, InputMode};
 use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
 use ratatui::{
     Frame,
@@ -450,11 +450,16 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
         // Render relationships pane if there are any
         if let Some(rel_area) = relations_area {
             let rel_count = app.relations_items.len();
+            let is_focused = app.detail_pane == DetailPane::Relations;
             let relations_block = Block::default()
                 .title(format!(" Relationships ({}) ", rel_count))
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(Color::DarkGray));
+                .border_style(Style::default().fg(if is_focused {
+                    Color::Green
+                } else {
+                    Color::DarkGray
+                }));
 
             let inner = relations_block.inner(rel_area);
             f.render_widget(relations_block, rel_area);
@@ -511,11 +516,16 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
 
         // Render body section with tui-markdown
         if let Some(body_rect) = body_area {
+            let body_focused = app.detail_pane == DetailPane::Body;
             let body_block = Block::default()
                 .title(" Description ")
                 .borders(Borders::ALL)
                 .border_set(border::ROUNDED)
-                .border_style(Style::default().fg(Color::DarkGray));
+                .border_style(Style::default().fg(if body_focused {
+                    Color::Green
+                } else {
+                    Color::DarkGray
+                }));
 
             let inner = body_block.inner(body_rect);
             f.render_widget(body_block, body_rect);

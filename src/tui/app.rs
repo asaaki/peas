@@ -36,6 +36,14 @@ pub enum InputMode {
     CreateModal,
 }
 
+/// Which pane is focused in detail view
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DetailPane {
+    #[default]
+    Body, // Description/markdown content
+    Relations, // Relationships pane
+}
+
 /// A node in the tree view representing a pea and its depth
 #[derive(Debug, Clone)]
 pub struct TreeNode {
@@ -59,6 +67,7 @@ pub struct App {
     pub relations_scroll: u16,      // Scroll offset for relationships pane (future use)
     pub relations_selection: usize, // Selected item in relationships pane
     pub relations_items: Vec<(String, String, String)>, // (type, id, title) for relationships
+    pub detail_pane: DetailPane,    // Which pane is focused in detail view
     pub input_mode: InputMode,
     pub search_query: String,
     pub show_help: bool,
@@ -98,6 +107,7 @@ impl App {
             relations_scroll: 0,
             relations_selection: 0,
             relations_items: Vec::new(),
+            detail_pane: DetailPane::default(),
             input_mode: InputMode::Normal,
             search_query: String::new(),
             show_help: false,
@@ -504,6 +514,20 @@ impl App {
             }
         }
         false
+    }
+
+    /// Toggle between detail view panes
+    pub fn toggle_detail_pane(&mut self) {
+        self.detail_pane = match self.detail_pane {
+            DetailPane::Body => {
+                if !self.relations_items.is_empty() {
+                    DetailPane::Relations
+                } else {
+                    DetailPane::Body
+                }
+            }
+            DetailPane::Relations => DetailPane::Body,
+        };
     }
 
     /// Returns the list of available statuses for the modal
@@ -1255,26 +1279,37 @@ fn run_app(
                 InputMode::DetailView => match key.code {
                     KeyCode::Esc | KeyCode::Char('q') => {
                         app.input_mode = InputMode::Normal;
+                        app.detail_pane = DetailPane::Body;
+                    }
+                    KeyCode::Tab => {
+                        app.toggle_detail_pane();
                     }
                     KeyCode::Enter => {
-                        // Jump to selected relationship or exit if none
-                        if !app.relations_items.is_empty() {
+                        // Jump to selected relationship if in relations pane
+                        if app.detail_pane == DetailPane::Relations
+                            && !app.relations_items.is_empty()
+                        {
                             app.jump_to_relation();
                         } else {
                             app.input_mode = InputMode::Normal;
+                            app.detail_pane = DetailPane::Body;
                         }
                     }
-                    KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
+                    KeyCode::Down | KeyCode::Char('j') => match app.detail_pane {
+                        DetailPane::Body => app.scroll_detail_down(),
+                        DetailPane::Relations => app.relations_next(),
+                    },
+                    KeyCode::Up | KeyCode::Char('k') => match app.detail_pane {
+                        DetailPane::Body => app.scroll_detail_up(),
+                        DetailPane::Relations => app.relations_previous(),
+                    },
+                    KeyCode::Char('J') => {
+                        // Always scroll body
                         app.scroll_detail_down();
                     }
-                    KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
+                    KeyCode::Char('K') => {
+                        // Always scroll body
                         app.scroll_detail_up();
-                    }
-                    KeyCode::Left | KeyCode::Char('h') => {
-                        app.relations_previous();
-                    }
-                    KeyCode::Right | KeyCode::Char('l') => {
-                        app.relations_next();
                     }
                     KeyCode::PageDown => {
                         for _ in 0..10 {
