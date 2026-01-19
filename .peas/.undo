@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-dxyxp",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-dxyxp--add-memory-search-filter-in-tui.md",
-    "previous_content": "+++\nid = \"peas-dxyxp\"\ntitle = \"Add memory search/filter in TUI\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-i0vo8\"\nblocking = [\"peas-xc13w\"]\ncreated = \"2026-01-19T22:40:21.164369300Z\"\nupdated = \"2026-01-19T22:40:21.164369300Z\"\n+++\n\nAdd search and filter functionality for memory view\n\n**Trigger:** Press '/' to enter filter mode\n\n**Behavior:**\n- Filter by key or content (fuzzy match)\n- Filter by tag\n- Update visible list in real-time\n- Show filter indicator in status bar\n\n**Follow pattern:** Similar to ticket filter functionality\n"
+    "id": "peas-g1gqo",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-g1gqo--e7-5-new-dependencies-integration.md",
+    "previous_content": "+++\nid = \"peas-g1gqo\"\ntitle = \"E7.5: New Dependencies Integration\"\ntype = \"epic\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-3h9f1\"\ncreated = \"2026-01-19T16:10:52.883444500Z\"\nupdated = \"2026-01-19T16:10:52.883444500Z\"\n+++\n"
   }
 }

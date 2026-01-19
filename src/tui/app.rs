@@ -207,10 +207,10 @@ impl App {
     pub fn handle_mouse_click(&mut self, _column: u16, row: u16) {
         // In Normal mode, clicking on list items should select them
         if self.input_mode == InputMode::Normal {
-            // Account for header rows (title bar, borders, etc.)
-            // Typically the list content starts at row 2 (0-indexed)
-            if row >= 2 {
-                let clicked_row = (row - 2) as usize;
+            // Account for header rows (top border, title, bottom border of header)
+            // The list content starts at row 3 (0-indexed: border=0, title=1, border=2, content=3+)
+            if row >= 3 {
+                let clicked_row = (row - 3) as usize;
 
                 match self.view_mode {
                     ViewMode::Tickets => {
