@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-7a2bk",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-7a2bk--detail-view-show-scrollbars-when-description-conte.md",
-    "previous_content": "+++\nid = \"peas-7a2bk\"\ntitle = \"Detail view: show scrollbars when description content is scrollable\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kx50f\"\ncreated = \"2026-01-19T16:11:12.451327200Z\"\nupdated = \"2026-01-19T16:11:12.451327200Z\"\n+++\n"
+    "id": "peas-2v2rx",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-2v2rx--e7-4-theme-and-visual-polish.md",
+    "previous_content": "+++\nid = \"peas-2v2rx\"\ntitle = \"E7.4: Theme and Visual Polish\"\ntype = \"epic\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-3h9f1\"\ncreated = \"2026-01-19T16:10:52.539721300Z\"\nupdated = \"2026-01-19T16:10:52.539721300Z\"\n+++\n"
   }
 }
