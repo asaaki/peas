@@ -2,7 +2,7 @@
 id = "peas-oex03"
 title = "M4: Memory System"
 type = "milestone"
-status = "todo"
+status = "completed"
 priority = "critical"
 tags = [
     "memory",
@@ -13,7 +13,7 @@ tags = [
     "scope",
 ]
 created = "2026-01-19T22:38:23.881858500Z"
-updated = "2026-01-19T22:42:58.860308200Z"
+updated = "2026-01-19T23:52:35.251593500Z"
 +++
 
 Add a memory feature to peas for storing general project knowledge, learnings, facts, ideas, and context that doesn't fit into individual tickets.
