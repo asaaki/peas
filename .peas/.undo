@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-4uri2",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-4uri2--jump-to-related-tickets-from-relationships-pane.md",
-    "previous_content": "+++\nid = \"peas-4uri2\"\ntitle = \"Jump to related tickets from relationships pane\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-6kl1g\"\ncreated = \"2026-01-19T00:22:30.025896200Z\"\nupdated = \"2026-01-19T00:22:30.025896200Z\"\n+++\n\nQuickly jump to related tickets (select -> Enter -> jump) for parents, children, and blocks.\n\nPartially blocked by: scrollable relationships pane\n"
+    "id": "peas-493ps",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-493ps--evaluate-tachyonfx-for-tui-effects.md",
+    "previous_content": "+++\nid = \"peas-493ps\"\ntitle = \"Evaluate tachyonfx for TUI effects\"\ntype = \"research\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-7z7f5\"\ncreated = \"2026-01-19T00:22:55.577970100Z\"\nupdated = \"2026-01-19T00:22:55.577970100Z\"\n+++\n\nEvaluate https://github.com/junkdog/tachyonfx for subtle TUI effects.\n\nNice to have. First idea: change row marker blinking.\n"
   }
 }
