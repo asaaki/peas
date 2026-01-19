@@ -97,6 +97,16 @@ pub struct Theme {
     // Help popup
     pub help_key: Color,
     pub help_border: Color,
+
+    // Type emojis
+    pub emoji_milestone: &'static str,
+    pub emoji_epic: &'static str,
+    pub emoji_story: &'static str,
+    pub emoji_feature: &'static str,
+    pub emoji_bug: &'static str,
+    pub emoji_chore: &'static str,
+    pub emoji_research: &'static str,
+    pub emoji_task: &'static str,
 }
 
 /// Special characters and markers used throughout the TUI
@@ -130,22 +140,9 @@ impl Default for Markers {
 }
 
 impl Markers {
-    /// Get emoji for ticket type (if enabled)
-    pub fn type_emoji(&self, pea_type: &PeaType) -> Option<&'static str> {
-        if !self.use_type_emojis {
-            return None;
-        }
-
-        match pea_type {
-            PeaType::Milestone => Some("🏁"),
-            PeaType::Epic => Some("🌟"),
-            PeaType::Story => Some("📖"),
-            PeaType::Feature => Some("✨"),
-            PeaType::Bug => Some("🐛"),
-            PeaType::Chore => Some("🧹"),
-            PeaType::Research => Some("🔬"),
-            PeaType::Task => Some("📄"),
-        }
+    /// Check if type emojis should be displayed
+    pub fn show_type_emojis(&self) -> bool {
+        self.use_type_emojis
     }
 }
 
@@ -241,6 +238,16 @@ impl Default for Theme {
             // Help popup
             help_key: Color::Rgb(102, 217, 239),    // Blue
             help_border: Color::Rgb(230, 219, 116), // Yellow
+
+            // Type emojis
+            emoji_milestone: "🏁",
+            emoji_epic: "🌟",
+            emoji_story: "📖",
+            emoji_feature: "✨",
+            emoji_bug: "🐛",
+            emoji_chore: "🧹",
+            emoji_research: "🔬",
+            emoji_task: "☑️",
         }
     }
 }
@@ -265,6 +272,20 @@ impl Theme {
             PeaPriority::Normal => self.priority_normal,
             PeaPriority::Low => self.priority_low,
             PeaPriority::Deferred => self.priority_deferred,
+        }
+    }
+
+    /// Get emoji for type (if enabled)
+    pub fn type_emoji(&self, pea_type: &PeaType) -> &'static str {
+        match pea_type {
+            PeaType::Milestone => self.emoji_milestone,
+            PeaType::Epic => self.emoji_epic,
+            PeaType::Story => self.emoji_story,
+            PeaType::Feature => self.emoji_feature,
+            PeaType::Bug => self.emoji_bug,
+            PeaType::Chore => self.emoji_chore,
+            PeaType::Research => self.emoji_research,
+            PeaType::Task => self.emoji_task,
         }
     }
 

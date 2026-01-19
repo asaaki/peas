@@ -266,8 +266,8 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         };
 
         // Build cells for each column
-        let type_text = if let Some(emoji) = markers().type_emoji(&pea.pea_type) {
-            format!("{} {}", emoji, pea.pea_type)
+        let type_text = if markers().show_type_emojis() {
+            format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
         } else {
             format!("{}", pea.pea_type)
         };
@@ -466,8 +466,8 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             Line::from(vec![
                 Span::raw("Type:     "),
                 Span::styled(
-                    if let Some(emoji) = markers().type_emoji(&pea.pea_type) {
-                        format!("{} {}", emoji, pea.pea_type)
+                    if markers().show_type_emojis() {
+                        format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
                     } else {
                         format!("{}", pea.pea_type)
                     },
@@ -558,8 +558,8 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                         Span::raw("  ")
                     };
 
-                    let type_text = if let Some(emoji) = markers().type_emoji(pea_type) {
-                        format!("{} {} ", emoji, pea_type)
+                    let type_text = if markers().show_type_emojis() {
+                        format!("{} {} ", theme().type_emoji(pea_type), pea_type)
                     } else {
                         format!("{} ", pea_type)
                     };
@@ -927,8 +927,12 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
             ),
             Span::styled("Type:  ", type_style.add_modifier(Modifier::BOLD)),
             Span::styled(
-                if let Some(emoji) = markers().type_emoji(&app.create_type) {
-                    format!("< {} {} >", emoji, app.create_type)
+                if markers().show_type_emojis() {
+                    format!(
+                        "< {} {} >",
+                        theme().type_emoji(&app.create_type),
+                        app.create_type
+                    )
                 } else {
                     format!("< {} >", app.create_type)
                 },
@@ -1099,8 +1103,8 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
             pea.title.clone()
         };
 
-        let type_text = if let Some(emoji) = markers().type_emoji(&pea.pea_type) {
-            format!("[{} {}]", emoji, pea.pea_type)
+        let type_text = if markers().show_type_emojis() {
+            format!("[{} {}]", theme().type_emoji(&pea.pea_type), pea.pea_type)
         } else {
             format!("[{}]", pea.pea_type)
         };
@@ -1151,8 +1155,8 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
                 Style::default()
             };
 
-            let type_text = if let Some(emoji) = markers().type_emoji(pea_type) {
-                format!("{} {}", emoji, pea_type)
+            let type_text = if markers().show_type_emojis() {
+                format!("{} {}", theme().type_emoji(pea_type), pea_type)
             } else {
                 format!("{}", pea_type)
             };

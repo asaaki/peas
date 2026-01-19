@@ -9,5 +9,5 @@ frontmatter = "toml"
 # TUI Configuration
 [tui]
 # Enable emoji icons for ticket types in TUI
-# 🏁 milestone, 🌟 epic, 📖 story, ✨ feature, 🐛 bug, 🧹 chore, 🔬 research, ☑️ task
+# 🏁 milestone, 🌟 epic, 📖 story, ✨ feature, 🐛 bug, 🧹 chore, 🔬 research, 📄 task
 use_type_emojis = false
