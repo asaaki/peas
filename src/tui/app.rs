@@ -1124,6 +1124,33 @@ impl App {
         Ok(())
     }
 
+    /// Extract first URL from ticket body
+    fn extract_url(text: &str) -> Option<String> {
+        // Simple regex pattern for http/https URLs
+        let url_pattern = regex::Regex::new(r"https?://[^\s)\]>]+").ok()?;
+        url_pattern.find(text).map(|m| m.as_str().to_string())
+    }
+
+    /// Open first URL found in current ticket body
+    pub fn open_url(&mut self) -> Result<()> {
+        if let Some(pea) = self.selected_pea() {
+            if let Some(url) = Self::extract_url(&pea.body) {
+                // Use open crate to open URL in default browser
+                match open::that(&url) {
+                    Ok(_) => {
+                        self.message = Some(format!("Opening: {}", url));
+                    }
+                    Err(e) => {
+                        self.message = Some(format!("Failed to open URL: {}", e));
+                    }
+                }
+            } else {
+                self.message = Some("No URL found in ticket body".to_string());
+            }
+        }
+        Ok(())
+    }
+
     /// Start editing body inline with TextArea
     pub fn start_body_edit(&mut self) {
         if let Some(pea) = self.selected_pea().cloned() {
@@ -1622,6 +1649,10 @@ fn run_app(
                                 app.message = Some("Clipboard not available".to_string());
                             }
                         }
+                    }
+                    KeyCode::Char('o') => {
+                        // Open first URL in ticket body
+                        let _ = app.open_url();
                     }
                     _ => {}
                 },

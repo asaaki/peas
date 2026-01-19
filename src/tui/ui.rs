@@ -913,7 +913,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         | InputMode::ParentModal => " ↓/↑:nav  Enter:select  Esc:cancel ",
         InputMode::BlockingModal => " ↓/↑:nav  Space:toggle  Enter:apply  Esc:cancel ",
         InputMode::DetailView => {
-            " ↓/↑:scroll  e:edit  s:status  P:priority  t:type  p:parent  b:blocking  y:copy-id  Esc/Enter/q:close "
+            " ↓/↑:scroll  e:edit  o:open-url  s:status  P:priority  t:type  p:parent  b:blocking  y:copy-id  Esc/q:close "
         }
         InputMode::CreateModal => " Tab:next field  ←→:change type  Enter:create  Esc:cancel ",
         InputMode::DeleteConfirm => " y/Enter:confirm  n/Esc:cancel ",
