@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-6592j",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-6592j--e7-3-inline-tui-editing.md",
-    "previous_content": "+++\nid = \"peas-6592j\"\ntitle = \"E7.3: Inline TUI Editing\"\ntype = \"epic\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-3h9f1\"\ncreated = \"2026-01-19T16:10:52.051468600Z\"\nupdated = \"2026-01-19T16:10:52.051468600Z\"\n+++\n"
+    "id": "peas-4xjob",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-4xjob--integrate-tachyonfx-for-cursor-blinking-effect.md",
+    "previous_content": "+++\nid = \"peas-4xjob\"\ntitle = \"Integrate tachyonfx for cursor blinking effect\"\ntype = \"feature\"\nstatus = \"in-progress\"\npriority = \"normal\"\nparent = \"peas-g1gqo\"\ncreated = \"2026-01-19T16:11:38.587749700Z\"\nupdated = \"2026-01-19T22:00:15.378765900Z\"\n+++\n\nIntegrate https://lib.rs/crates/tachyonfx for TUI effects.\n\nFirst use case: cursor blinking effect (replacing current Modifier::SLOW_BLINK).\n\nWe are committed to using this library - this is no longer research. Future effects will be explored later.\n"
   }
 }

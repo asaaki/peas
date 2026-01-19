@@ -323,10 +323,12 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
             }
         }
 
-        // Selection indicator (green, blinking)
+        // Selection indicator with pulsing effect
         let sel = if is_selected { theme().row_marker } else { " " };
         let sel_style = if is_selected {
-            theme().selection_indicator_style()
+            let elapsed_millis = app.start_time.elapsed().as_millis();
+            let pulsing_color = theme().selection_indicator_pulsing_color(elapsed_millis);
+            Style::default().fg(pulsing_color)
         } else {
             Style::default()
         };
@@ -583,6 +585,11 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             }
         };
 
+        // Compute pulsing style for row markers
+        let elapsed_millis = app.start_time.elapsed().as_millis();
+        let pulsing_color = theme().selection_indicator_pulsing_color(elapsed_millis);
+        let pulsing_style = Style::default().fg(pulsing_color);
+
         // Build property values
         let type_text = if tui_config().use_type_emojis {
             format!("{} {}", theme().type_emoji(&pea.pea_type), pea.pea_type)
@@ -611,10 +618,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             Row::new(vec![Cell::from(""), Cell::from(""), Cell::from("")]),
             // Type
             Row::new(vec![
-                Cell::from(Span::styled(
-                    row_marker(0),
-                    theme().selection_indicator_style(),
-                )),
+                Cell::from(Span::styled(row_marker(0), pulsing_style)),
                 Cell::from("Type:"),
                 Cell::from(Span::styled(
                     type_text,
@@ -623,10 +627,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
             // Status
             Row::new(vec![
-                Cell::from(Span::styled(
-                    row_marker(1),
-                    theme().selection_indicator_style(),
-                )),
+                Cell::from(Span::styled(row_marker(1), pulsing_style)),
                 Cell::from("Status:"),
                 Cell::from(Span::styled(
                     format!("{}", pea.status),
@@ -635,10 +636,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
             // Priority
             Row::new(vec![
-                Cell::from(Span::styled(
-                    row_marker(2),
-                    theme().selection_indicator_style(),
-                )),
+                Cell::from(Span::styled(row_marker(2), pulsing_style)),
                 Cell::from("Priority:"),
                 Cell::from(Span::styled(
                     format!("{}", pea.priority),
@@ -647,10 +645,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
             ]),
             // Tags
             Row::new(vec![
-                Cell::from(Span::styled(
-                    row_marker(3),
-                    theme().selection_indicator_style(),
-                )),
+                Cell::from(Span::styled(row_marker(3), pulsing_style)),
                 Cell::from("Tags:"),
                 Cell::from(Span::styled(
                     tags_display,
@@ -722,12 +717,9 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                     let rel_color = theme().relation_color(rel_type);
                     let type_color = type_color(pea_type);
 
-                    // Selection cursor (only show when pane is focused)
+                    // Selection cursor with pulsing effect (only show when pane is focused)
                     let cursor = if is_selected && is_focused {
-                        Span::styled(
-                            format!("{} ", theme().row_marker),
-                            theme().selection_indicator_style(),
-                        )
+                        Span::styled(format!("{} ", theme().row_marker), pulsing_style)
                     } else {
                         Span::raw("  ")
                     };

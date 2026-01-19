@@ -19,7 +19,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::mpsc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tui_textarea::{Input, TextArea};
 
@@ -96,6 +96,7 @@ pub struct App {
     pub tags_input: String,          // Tag input for tags modal
     pub multi_selected: HashSet<String>, // IDs of multi-selected tickets
     pub body_textarea: Option<TextArea<'static>>, // TextArea for body editing
+    pub start_time: Instant,         // App start time for pulsing effects
 }
 
 impl App {
@@ -144,6 +145,7 @@ impl App {
             tags_input: String::new(),
             multi_selected: HashSet::new(),
             body_textarea: None,
+            start_time: Instant::now(),
         };
         app.build_tree();
         // Note: page_table will be built when page_height is set during first draw

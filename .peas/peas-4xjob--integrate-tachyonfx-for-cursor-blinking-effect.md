@@ -6,7 +6,7 @@ status = "completed"
 priority = "normal"
 parent = "peas-g1gqo"
 created = "2026-01-19T16:11:38.587749700Z"
-updated = "2026-01-19T18:38:49.798721400Z"
+updated = "2026-01-19T22:05:28.765471600Z"
 +++
 
 Integrate https://lib.rs/crates/tachyonfx for TUI effects.

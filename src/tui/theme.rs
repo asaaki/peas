@@ -360,11 +360,31 @@ impl Theme {
 
     /// Style for selection indicator (blinking cursor)
     pub fn selection_indicator_style(&self) -> Style {
-        let style = Style::default().fg(self.selection_indicator);
-        if self.cursor_blink {
-            style.add_modifier(Modifier::SLOW_BLINK)
-        } else {
-            style
+        Style::default().fg(self.selection_indicator)
+    }
+
+    /// Get pulsing color for selection indicator based on elapsed time
+    /// Uses sine wave to smoothly pulse between dim and bright
+    pub fn selection_indicator_pulsing_color(&self, elapsed_millis: u128) -> Color {
+        if !self.cursor_blink {
+            return self.selection_indicator;
+        }
+
+        // Pulse period: 1000ms (1 second for full cycle)
+        let t = (elapsed_millis % 1000) as f32 / 1000.0;
+
+        // Sine wave for smooth pulsing (0.5 to 1.0 range for brightness)
+        let brightness = 0.5 + 0.5 * (t * 2.0 * std::f32::consts::PI).sin();
+
+        // Apply brightness to the base color
+        match self.selection_indicator {
+            Color::Rgb(r, g, b) => Color::Rgb(
+                (r as f32 * brightness) as u8,
+                (g as f32 * brightness) as u8,
+                (b as f32 * brightness) as u8,
+            ),
+            // For non-RGB colors, just return the base color
+            c => c,
         }
     }
 
