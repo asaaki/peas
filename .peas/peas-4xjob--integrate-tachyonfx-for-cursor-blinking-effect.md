@@ -2,11 +2,11 @@
 id = "peas-4xjob"
 title = "Integrate tachyonfx for cursor blinking effect"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-g1gqo"
 created = "2026-01-19T16:11:38.587749700Z"
-updated = "2026-01-19T16:11:50.102822800Z"
+updated = "2026-01-19T18:38:49.798721400Z"
 +++
 
 Integrate https://lib.rs/crates/tachyonfx for TUI effects.

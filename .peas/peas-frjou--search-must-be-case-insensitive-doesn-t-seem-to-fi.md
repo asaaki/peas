@@ -6,7 +6,7 @@ status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:12.943157900Z"
-updated = "2026-01-19T17:42:59.868698Z"
+updated = "2026-01-19T18:38:44.544741100Z"
 +++
 
 Search doesn't find all matches. Example: "noice" should find peas-naap4, but it doesn't right now. Must be case insensitive.

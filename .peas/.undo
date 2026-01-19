@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-pabgq",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-pabgq--refactor-move-all-markers-and-emojis-into-theme-st.md",
-    "previous_content": "+++\nid = \"peas-pabgq\"\ntitle = \"Refactor: move all markers and emojis into Theme struct\"\ntype = \"chore\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-oaiwo\"\ncreated = \"2026-01-19T18:34:53.069615700Z\"\nupdated = \"2026-01-19T18:34:53.069615700Z\"\n+++\n\nMoved all visual markers (logo, row_marker, pane_markers, page_marker) and type emojis into Theme struct. Renamed Markers to TuiConfig for behavioral flags only. Clean separation between visual styling (Theme) and configuration (TuiConfig).\n"
+    "id": "peas-2v2rx",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-2v2rx--e7-4-theme-and-visual-polish.md",
+    "previous_content": "+++\nid = \"peas-2v2rx\"\ntitle = \"E7.4: Theme and Visual Polish\"\ntype = \"epic\"\nstatus = \"completed\"\npriority = \"normal\"\nparent = \"peas-3h9f1\"\ncreated = \"2026-01-19T16:10:52.539721300Z\"\nupdated = \"2026-01-19T16:23:00.259301800Z\"\n+++\n"
   }
 }

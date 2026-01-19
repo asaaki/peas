@@ -6,7 +6,7 @@ status = "completed"
 priority = "normal"
 parent = "peas-oaiwo"
 created = "2026-01-19T17:39:21.261970100Z"
-updated = "2026-01-19T17:39:21.261970100Z"
+updated = "2026-01-19T18:38:45.579730200Z"
 +++
 
 The relationship marker (▐) should only be visible when the relationships pane is in focus, not always.

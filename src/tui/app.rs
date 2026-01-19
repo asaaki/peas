@@ -137,17 +137,30 @@ impl App {
 
     /// Build a flattened tree structure from the filtered peas
     pub fn build_tree(&mut self) {
-        use std::collections::HashMap;
+        use std::collections::{HashMap, HashSet};
 
         self.tree_nodes.clear();
+
+        // Build a set of IDs that exist in filtered_peas for quick lookup
+        let filtered_ids: HashSet<String> =
+            self.filtered_peas.iter().map(|p| p.id.clone()).collect();
 
         // Build a map of parent -> children
         let mut children_map: HashMap<Option<String>, Vec<&Pea>> = HashMap::new();
         for pea in &self.filtered_peas {
-            children_map
-                .entry(pea.parent.clone())
-                .or_default()
-                .push(pea);
+            // If the pea has a parent but that parent is not in the filtered set,
+            // treat it as a root item (orphaned)
+            let effective_parent = if let Some(ref parent_id) = pea.parent {
+                if filtered_ids.contains(parent_id) {
+                    pea.parent.clone()
+                } else {
+                    None // Parent not in filtered set, show as root
+                }
+            } else {
+                None
+            };
+
+            children_map.entry(effective_parent).or_default().push(pea);
         }
 
         // Sort children by status (in-progress first, then todo, then completed) then by type hierarchy
@@ -220,7 +233,7 @@ impl App {
             }
         }
 
-        // Start with root nodes (no parent)
+        // Start with root nodes (no parent or orphaned items)
         add_children(None, 0, Vec::new(), &children_map, &mut self.tree_nodes);
     }
 
