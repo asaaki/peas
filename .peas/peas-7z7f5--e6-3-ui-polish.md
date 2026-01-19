@@ -2,7 +2,7 @@
 id = "peas-7z7f5"
 title = "E6.3: UI Polish"
 type = "epic"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-b05su"
 created = "2026-01-18T17:47:03.004378400Z"
