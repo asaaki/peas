@@ -57,7 +57,14 @@ impl AssetManager {
         fs::copy(source_path, &dest_path).context("Failed to copy asset file")?;
 
         // Return the filename (relative to ticket directory)
-        Ok(dest_path.file_name().unwrap().to_str().unwrap().to_string())
+        let filename = dest_path
+            .file_name()
+            .context("Failed to get filename from destination path")?
+            .to_str()
+            .context("Filename contains invalid UTF-8")?
+            .to_string();
+
+        Ok(filename)
     }
 
     /// List all assets for a ticket
@@ -75,7 +82,15 @@ impl AssetManager {
 
             if path.is_file() {
                 let metadata = fs::metadata(&path)?;
-                let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+
+                // Skip files with invalid names (shouldn't happen but be safe)
+                let filename = match path.file_name().and_then(|n| n.to_str()) {
+                    Some(name) => name.to_string(),
+                    None => {
+                        eprintln!("Warning: Skipping asset with invalid filename: {:?}", path);
+                        continue;
+                    }
+                };
 
                 assets.push(AssetInfo {
                     filename,

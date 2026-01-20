@@ -2,11 +2,12 @@
 id = "peas-p6iec"
 title = "Critical: Fix unsafe unwraps in assets.rs"
 type = "bug"
-status = "todo"
+status = "in-progress"
 priority = "critical"
 parent = "peas-w51zp"
+assets = ["test-unwrap-fix.txt"]
 created = "2026-01-20T15:10:30.178611100Z"
-updated = "2026-01-20T15:12:35.072854900Z"
+updated = "2026-01-20T15:26:53.711772200Z"
 +++
 
 ## Problem

@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-anmim",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-anmim--add-asset-cleanup-on-pea-deletion.md",
-    "previous_content": "+++\nid = \"peas-anmim\"\ntitle = \"Add asset cleanup on pea deletion\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\ncreated = \"2026-01-20T15:12:13.150164600Z\"\nupdated = \"2026-01-20T15:12:13.150164600Z\"\n+++\n\n## Problem\nWhen a pea is deleted, its assets directory remains:\n- .peas/assets/{ticket-id}/ not removed\n- Orphaned files accumulate\n- Wasted disk space\n\n## Impact\n- Disk bloat over time\n- Confusing when browsing .peas/assets/\n- No cleanup mechanism exists\n\n## Solution\nIn delete/archive operations:\n1. Check if .peas/assets/{id}/ exists\n2. Prompt user: \"Also delete N assets?\"\n3. Remove directory if confirmed\n4. Add --keep-assets flag for retention\n\n## Files\n- src/cli/handlers/delete.rs\n- src/cli/handlers/archive.rs\n- src/assets.rs (add cleanup method)\n"
+    "id": "peas-p6iec",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-p6iec--critical-fix-unsafe-unwraps-in-assets-rs.md",
+    "previous_content": "+++\nid = \"peas-p6iec\"\ntitle = \"Critical: Fix unsafe unwraps in assets.rs\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"critical\"\nparent = \"peas-w51zp\"\ncreated = \"2026-01-20T15:10:30.178611100Z\"\nupdated = \"2026-01-20T15:12:35.072854900Z\"\n+++\n\n## Problem\nMultiple unsafe .unwrap() calls in assets.rs can panic if file paths are invalid:\n- Line 60: dest_path.file_name().unwrap().to_str().unwrap()\n- Line 78: path.file_name().unwrap().to_str().unwrap()\n- Line 131: path.extension().unwrap_or()\n\n## Impact\n- Data loss on asset operations\n- Poor user experience\n- Silent panics\n\n## Solution\nReplace with proper error handling using .context() with anyhow\n\n## Files\n- src/assets.rs\n"
   }
 }
