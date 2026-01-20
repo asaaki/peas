@@ -3,6 +3,7 @@ use colored::Colorize;
 
 use super::CommandContext;
 use super::utils::{format_priority, format_status};
+use crate::assets::AssetManager;
 
 pub fn handle_show(ctx: &CommandContext, id: String, json: bool) -> Result<()> {
     let pea = ctx.repo.get(&id)?;
@@ -49,6 +50,24 @@ fn print_pea_with_refs(pea: &crate::model::Pea, ctx: &CommandContext) {
 
     if !pea.tags.is_empty() {
         println!("Tags:     {}", pea.tags.join(", ").magenta());
+    }
+
+    // Show assets if any
+    if !pea.assets.is_empty() {
+        let asset_manager = AssetManager::new(&ctx.root);
+        match asset_manager.list_assets(&pea.id) {
+            Ok(assets) => {
+                let asset_summary: Vec<String> = assets
+                    .iter()
+                    .map(|a| format!("{} ({})", a.filename, a.size_string()))
+                    .collect();
+                println!("Assets:   {}", asset_summary.join(", ").yellow());
+            }
+            Err(_) => {
+                // If we can't list assets, just show the filenames from frontmatter
+                println!("Assets:   {}", pea.assets.join(", ").yellow());
+            }
+        }
     }
 
     println!(

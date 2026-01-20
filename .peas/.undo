@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-atl56",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-atl56--asset-storage-foundation-and-directory-structure.md",
-    "previous_content": "+++\nid = \"peas-atl56\"\ntitle = \"Asset storage foundation and directory structure\"\ntype = \"story\"\nstatus = \"todo\"\npriority = \"high\"\nparent = \"peas-1le6t\"\ncreated = \"2026-01-20T14:22:36.046145300Z\"\nupdated = \"2026-01-20T14:22:36.046145300Z\"\n+++\n"
+    "id": "peas-ov8lj",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-ov8lj--cli-asset-management-commands-add-list-remove-open.md",
+    "previous_content": "+++\nid = \"peas-ov8lj\"\ntitle = \"CLI asset management commands (add, list, remove, open)\"\ntype = \"story\"\nstatus = \"todo\"\npriority = \"high\"\nparent = \"peas-1le6t\"\ncreated = \"2026-01-20T14:22:37.089390300Z\"\nupdated = \"2026-01-20T14:22:37.089390300Z\"\n+++\n"
   }
 }

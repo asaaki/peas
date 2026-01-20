@@ -1,4 +1,5 @@
 mod archive;
+mod asset;
 mod bulk;
 mod context;
 mod create;
@@ -23,6 +24,7 @@ mod update;
 mod utils;
 
 pub use archive::handle_archive;
+pub use asset::handle_asset;
 pub use bulk::handle_bulk;
 pub use context::handle_context;
 pub use create::handle_create;

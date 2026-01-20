@@ -101,6 +101,7 @@ fn main() -> Result<()> {
                 }
                 Commands::Bulk { action } => peas::cli::handlers::handle_bulk(&ctx, action),
                 Commands::Memory { action } => peas::cli::handlers::handle_memory(&ctx, action),
+                Commands::Asset { action } => peas::cli::handlers::handle_asset(&ctx, action),
                 Commands::Undo { json } => peas::cli::handlers::handle_undo(&ctx, json),
             }
         }

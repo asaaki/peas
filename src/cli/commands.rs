@@ -309,6 +309,12 @@ pub enum Commands {
         action: MemoryAction,
     },
 
+    /// Manage ticket assets (files, images, documents)
+    Asset {
+        #[command(subcommand)]
+        action: AssetAction,
+    },
+
     /// Undo the last operation
     Undo {
         /// Output as JSON
@@ -470,6 +476,58 @@ pub enum MemoryAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum AssetAction {
+    /// Add an asset to a ticket
+    Add {
+        /// Ticket ID
+        ticket_id: String,
+
+        /// Path to the asset file
+        file: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// List all assets for a ticket
+    List {
+        /// Ticket ID
+        ticket_id: String,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Remove an asset from a ticket
+    Remove {
+        /// Ticket ID
+        ticket_id: String,
+
+        /// Asset filename to remove
+        filename: String,
+
+        /// Skip confirmation
+        #[arg(short, long)]
+        force: bool,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Open an asset in the default application
+    Open {
+        /// Ticket ID
+        ticket_id: String,
+
+        /// Asset filename to open
+        filename: String,
     },
 }
 
