@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-jxy81",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jxy81--implement-concurrent-edit-detection.md",
-    "previous_content": "+++\nid = \"peas-jxy81\"\ntitle = \"Implement concurrent edit detection\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"high\"\nparent = \"peas-w51zp\"\ncreated = \"2026-01-20T15:10:37.571817500Z\"\nupdated = \"2026-01-20T15:12:35.422674200Z\"\n+++\n\n## Problem\nMultiple TUI instances can clobber each other's changes. File watcher exists but no conflict resolution.\n\n## Impact\n- Data loss when multiple users/instances edit same pea\n- Silent overwrites\n\n## Solution\nImplement one of:\n1. File locking mechanism (flock/LockFile)\n2. Conflict detection on write (check timestamp)\n3. Last-write-wins with warning\n\n## Files\n- src/storage/repository.rs\n- src/tui/ handlers\n"
+    "id": "peas-anmim",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-anmim--add-asset-cleanup-on-pea-deletion.md",
+    "previous_content": "+++\nid = \"peas-anmim\"\ntitle = \"Add asset cleanup on pea deletion\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-w51zp\"\ncreated = \"2026-01-20T15:12:13.150164600Z\"\nupdated = \"2026-01-20T15:12:40.075171900Z\"\n+++\n\n## Problem\nWhen a pea is deleted, its assets directory remains:\n- .peas/assets/{ticket-id}/ not removed\n- Orphaned files accumulate\n- Wasted disk space\n\n## Impact\n- Disk bloat over time\n- Confusing when browsing .peas/assets/\n- No cleanup mechanism exists\n\n## Solution\nIn delete/archive operations:\n1. Check if .peas/assets/{id}/ exists\n2. Prompt user: \"Also delete N assets?\"\n3. Remove directory if confirmed\n4. Add --keep-assets flag for retention\n\n## Files\n- src/cli/handlers/delete.rs\n- src/cli/handlers/archive.rs\n- src/assets.rs (add cleanup method)\n"
   }
 }

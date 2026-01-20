@@ -4,6 +4,7 @@ pub mod filter;
 pub mod modal_blocking;
 pub mod modal_create;
 pub mod modal_delete;
+pub mod modal_enum;
 pub mod modal_memory_create;
 pub mod modal_parent;
 pub mod modal_priority;
