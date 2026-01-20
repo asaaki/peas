@@ -20,7 +20,7 @@
 //! - `?`: Help
 //! - `q`: Quit
 
-mod app;
+pub mod app;
 mod body_editor;
 mod handlers;
 mod modal_operations;
