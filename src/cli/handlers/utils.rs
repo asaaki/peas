@@ -98,20 +98,6 @@ pub fn print_pea_list(peas: &[Pea]) {
     }
 }
 
-/// Output JSON or formatted text based on flag
-pub fn output_json_or_text<T: serde::Serialize>(
-    json: bool,
-    value: &T,
-    text_fn: impl FnOnce(),
-) -> Result<()> {
-    if json {
-        println!("{}", serde_json::to_string_pretty(value)?);
-    } else {
-        text_fn();
-    }
-    Ok(())
-}
-
 /// Record create operation with undo manager
 pub fn record_undo_create(ctx: &CommandContext, id: &str, path: &Path) {
     let undo_manager = UndoManager::new(&ctx.config.data_path(&ctx.root));
