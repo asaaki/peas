@@ -2,10 +2,10 @@
 id = "peas-22n9f"
 title = "Extract CLI command handlers from main.rs to cli/handlers/ module"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "high"
 created = "2026-01-20T10:25:03.335299100Z"
-updated = "2026-01-20T10:25:03.335299100Z"
+updated = "2026-01-20T11:15:56.512694600Z"
 +++
 
 ## Problem

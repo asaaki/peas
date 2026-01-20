@@ -1,6 +1,7 @@
 {
-  "Create": {
-    "id": "peas-oezjr",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-oezjr--consolidate-modal-application-logic-in-app-rs.md"
+  "Update": {
+    "id": "peas-0ktvu",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-0ktvu--decompose-tui-app-god-object-app-rs-2107-loc.md",
+    "previous_content": "+++\nid = \"peas-0ktvu\"\ntitle = \"Decompose TUI App god object (app.rs 2107 LOC)\"\ntype = \"chore\"\nstatus = \"in-progress\"\npriority = \"high\"\ncreated = \"2026-01-20T10:25:04.413446300Z\"\nupdated = \"2026-01-20T11:24:36.637082400Z\"\n+++\n"
   }
 }
