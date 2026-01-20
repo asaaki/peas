@@ -8,6 +8,11 @@ use std::path::PathBuf;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Initialize logging system
+    let log_file = cli.log_file.as_ref().map(PathBuf::from);
+    peas::logging::init(cli.verbose, log_file);
+
     let config_opt = cli.config;
     let peas_path_opt = cli.peas_path;
 

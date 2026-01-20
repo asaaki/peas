@@ -84,6 +84,7 @@ pub mod validation;
 pub mod import_export;
 
 pub mod assets;
+pub mod logging;
 pub mod search;
 /// Undo functionality for reverting operations.
 ///

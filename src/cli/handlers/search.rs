@@ -11,6 +11,7 @@ pub fn handle_search(ctx: &CommandContext, query: String, json: bool) -> Result<
     let search_query = match SearchQuery::parse(&query) {
         Ok(q) => q,
         Err(e) => {
+            tracing::error!(query = %query, error = %e, "Invalid search query");
             eprintln!("Invalid search query: {}", e);
             eprintln!("Examples:");
             eprintln!("  peas search bug              # Simple search");

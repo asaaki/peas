@@ -112,6 +112,8 @@ impl PeaRepository {
     }
 
     pub fn create(&self, pea: &Pea) -> Result<PathBuf> {
+        tracing::info!(id = %pea.id, title = %pea.title, "Creating pea");
+
         // Validate input
         validation::validate_id(&pea.id)?;
         validation::validate_title(&pea.title)?;
@@ -185,6 +187,8 @@ impl PeaRepository {
     }
 
     pub fn update(&self, pea: &mut Pea) -> Result<PathBuf> {
+        tracing::info!(id = %pea.id, title = %pea.title, "Updating pea");
+
         // Validate input
         validation::validate_title(&pea.title)?;
         validation::validate_body(&pea.body)?;
@@ -241,6 +245,8 @@ impl PeaRepository {
     }
 
     pub fn delete(&self, id: &str) -> Result<()> {
+        tracing::info!(id = %id, "Deleting pea");
+
         let file_path = self.find_file_by_id(id)?;
         std::fs::remove_file(&file_path)?;
 
@@ -251,6 +257,8 @@ impl PeaRepository {
     }
 
     pub fn archive(&self, id: &str) -> Result<PathBuf> {
+        tracing::info!(id = %id, "Archiving pea");
+
         std::fs::create_dir_all(&self.archive_path)?;
 
         let old_path = self.find_file_by_id(id)?;
@@ -313,10 +321,18 @@ impl PeaRepository {
                         Ok(content) => match parse_markdown(&content) {
                             Ok(pea) => peas.push(pea),
                             Err(e) => {
-                                eprintln!("Warning: Failed to parse {}: {}", path.display(), e)
+                                tracing::warn!(
+                                    path = %path.display(),
+                                    error = %e,
+                                    "Failed to parse pea file"
+                                )
                             }
                         },
-                        Err(e) => eprintln!("Warning: Failed to read {}: {}", path.display(), e),
+                        Err(e) => tracing::warn!(
+                            path = %path.display(),
+                            error = %e,
+                            "Failed to read pea file"
+                        ),
                     }
                 }
             }

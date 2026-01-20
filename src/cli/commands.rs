@@ -20,6 +20,14 @@ pub struct Cli {
     /// Path to data directory (overrides config)
     #[arg(long, global = true)]
     pub peas_path: Option<String>,
+
+    /// Enable verbose logging (DEBUG level)
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
+    /// Log to file (optional)
+    #[arg(long, global = true)]
+    pub log_file: Option<String>,
 }
 
 #[derive(Subcommand)]
