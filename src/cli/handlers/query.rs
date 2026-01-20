@@ -1,0 +1,20 @@
+use anyhow::Result;
+use peas::graphql::build_schema;
+
+use super::CommandContext;
+
+pub fn handle_query(ctx: CommandContext, query: String, variables: Option<String>) -> Result<()> {
+    let schema = build_schema(ctx.config, ctx.root);
+
+    let vars: async_graphql::Variables = if let Some(v) = variables {
+        serde_json::from_str(&v)?
+    } else {
+        async_graphql::Variables::default()
+    };
+
+    let request = async_graphql::Request::new(&query).variables(vars);
+    let response = tokio::runtime::Runtime::new()?.block_on(schema.execute(request));
+
+    println!("{}", serde_json::to_string_pretty(&response)?);
+    Ok(())
+}
