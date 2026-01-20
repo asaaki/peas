@@ -60,20 +60,56 @@ impl UndoManager {
     }
 
     /// Record an operation for potential undo
+    /// Supports multiple undo levels by maintaining a stack
     pub fn record(&self, op: UndoOperation) -> Result<()> {
-        let content = serde_json::to_string_pretty(&op)?;
+        let mut stack = self.get_stack()?;
+
+        // Limit stack size to prevent unbounded growth (keep last 50 operations)
+        const MAX_UNDO_LEVELS: usize = 50;
+        if stack.len() >= MAX_UNDO_LEVELS {
+            stack.remove(0); // Remove oldest operation
+        }
+
+        stack.push(op);
+        self.save_stack(&stack)?;
+        Ok(())
+    }
+
+    /// Get the entire undo stack
+    fn get_stack(&self) -> Result<Vec<UndoOperation>> {
+        if !self.undo_file.exists() {
+            return Ok(Vec::new());
+        }
+        let content = std::fs::read_to_string(&self.undo_file)?;
+        let stack: Vec<UndoOperation> = serde_json::from_str(&content)?;
+        Ok(stack)
+    }
+
+    /// Save the undo stack to disk
+    fn save_stack(&self, stack: &[UndoOperation]) -> Result<()> {
+        let content = serde_json::to_string_pretty(&stack)?;
         std::fs::write(&self.undo_file, content)?;
         Ok(())
     }
 
     /// Get the last recorded operation
     pub fn last_operation(&self) -> Result<Option<UndoOperation>> {
-        if !self.undo_file.exists() {
-            return Ok(None);
-        }
-        let content = std::fs::read_to_string(&self.undo_file)?;
-        let op: UndoOperation = serde_json::from_str(&content)?;
-        Ok(Some(op))
+        let stack = self.get_stack()?;
+        Ok(stack.last().cloned())
+    }
+
+    /// Get the number of operations that can be undone
+    pub fn undo_count(&self) -> usize {
+        self.get_stack().map(|s| s.len()).unwrap_or(0)
+    }
+
+    /// Get descriptions of all operations in the undo stack
+    pub fn undo_stack_descriptions(&self) -> Vec<String> {
+        self.get_stack()
+            .unwrap_or_default()
+            .iter()
+            .map(|op| op.description())
+            .collect()
     }
 
     /// Clear the undo state
@@ -86,8 +122,10 @@ impl UndoManager {
 
     /// Execute undo of the last operation
     pub fn undo(&self) -> Result<String> {
-        let op = self
-            .last_operation()?
+        let mut stack = self.get_stack()?;
+
+        let op = stack
+            .pop()
             .ok_or_else(|| PeasError::Storage("Nothing to undo".to_string()))?;
 
         let description = op.description();
@@ -130,8 +168,12 @@ impl UndoManager {
             }
         }
 
-        // Clear the undo state after successful undo
-        self.clear()?;
+        // Save the updated stack (with the operation removed)
+        if stack.is_empty() {
+            self.clear()?;
+        } else {
+            self.save_stack(&stack)?;
+        }
 
         Ok(format!("Undone: {}", description))
     }
@@ -177,4 +219,165 @@ pub fn record_archive(
         original_path: original_path.to_path_buf(),
         archive_path: archive_path.to_path_buf(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_multi_level_undo() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        // Record multiple operations
+        let file1 = temp_dir.path().join("test1.txt");
+        let file2 = temp_dir.path().join("test2.txt");
+        let file3 = temp_dir.path().join("test3.txt");
+
+        std::fs::write(&file1, "content1").unwrap();
+        std::fs::write(&file2, "content2").unwrap();
+        std::fs::write(&file3, "content3").unwrap();
+
+        undo_manager
+            .record(UndoOperation::Create {
+                id: "id1".to_string(),
+                file_path: file1.clone(),
+            })
+            .unwrap();
+
+        undo_manager
+            .record(UndoOperation::Create {
+                id: "id2".to_string(),
+                file_path: file2.clone(),
+            })
+            .unwrap();
+
+        undo_manager
+            .record(UndoOperation::Create {
+                id: "id3".to_string(),
+                file_path: file3.clone(),
+            })
+            .unwrap();
+
+        // Should have 3 operations
+        assert_eq!(undo_manager.undo_count(), 3);
+
+        // Undo third operation
+        let result = undo_manager.undo().unwrap();
+        assert!(result.contains("id3"));
+        assert!(!file3.exists());
+        assert_eq!(undo_manager.undo_count(), 2);
+
+        // Undo second operation
+        let result = undo_manager.undo().unwrap();
+        assert!(result.contains("id2"));
+        assert!(!file2.exists());
+        assert_eq!(undo_manager.undo_count(), 1);
+
+        // Undo first operation
+        let result = undo_manager.undo().unwrap();
+        assert!(result.contains("id1"));
+        assert!(!file1.exists());
+        assert_eq!(undo_manager.undo_count(), 0);
+
+        // No more undos available
+        assert!(undo_manager.undo().is_err());
+    }
+
+    #[test]
+    fn test_undo_stack_descriptions() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        let file1 = temp_dir.path().join("test1.txt");
+        let file2 = temp_dir.path().join("test2.txt");
+
+        std::fs::write(&file1, "content1").unwrap();
+        std::fs::write(&file2, "content2").unwrap();
+
+        undo_manager
+            .record(UndoOperation::Create {
+                id: "peas-abc".to_string(),
+                file_path: file1,
+            })
+            .unwrap();
+
+        undo_manager
+            .record(UndoOperation::Update {
+                id: "peas-def".to_string(),
+                file_path: file2,
+                previous_content: "old content".to_string(),
+            })
+            .unwrap();
+
+        let descriptions = undo_manager.undo_stack_descriptions();
+        assert_eq!(descriptions.len(), 2);
+        assert_eq!(descriptions[0], "Create peas-abc");
+        assert_eq!(descriptions[1], "Update peas-def");
+    }
+
+    #[test]
+    fn test_undo_stack_limit() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        // Record 51 operations (exceeds the 50 limit)
+        for i in 0..51 {
+            let file = temp_dir.path().join(format!("test{}.txt", i));
+            std::fs::write(&file, format!("content{}", i)).unwrap();
+            undo_manager
+                .record(UndoOperation::Create {
+                    id: format!("id{}", i),
+                    file_path: file,
+                })
+                .unwrap();
+        }
+
+        // Should only have 50 (oldest removed)
+        assert_eq!(undo_manager.undo_count(), 50);
+
+        // Oldest operation (id0) should be gone
+        let descriptions = undo_manager.undo_stack_descriptions();
+        assert!(!descriptions[0].contains("id0"));
+        assert!(descriptions[0].contains("id1")); // First one should be id1
+    }
+
+    #[test]
+    fn test_undo_update_operation() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        let file = temp_dir.path().join("test.txt");
+        std::fs::write(&file, "original content").unwrap();
+
+        // Record update with previous content
+        undo_manager
+            .record(UndoOperation::Update {
+                id: "test-id".to_string(),
+                file_path: file.clone(),
+                previous_content: "original content".to_string(),
+            })
+            .unwrap();
+
+        // Modify file
+        std::fs::write(&file, "new content").unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "new content");
+
+        // Undo should restore original content
+        undo_manager.undo().unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "original content");
+    }
+
+    #[test]
+    fn test_empty_undo_stack() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        assert_eq!(undo_manager.undo_count(), 0);
+        assert_eq!(undo_manager.undo_stack_descriptions().len(), 0);
+        assert!(undo_manager.last_operation().unwrap().is_none());
+        assert!(undo_manager.undo().is_err());
+    }
 }

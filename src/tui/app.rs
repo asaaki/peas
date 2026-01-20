@@ -1121,6 +1121,12 @@ impl App {
         Ok(())
     }
 
+    /// Get the number of operations that can be undone
+    pub fn undo_count(&self) -> usize {
+        let undo_manager = UndoManager::new(&self.data_path);
+        undo_manager.undo_count()
+    }
+
     /// Open URL modal showing all URLs found in ticket body
     pub fn open_url_modal(&mut self) {
         if let Some(pea) = self.selected_pea() {

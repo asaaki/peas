@@ -1041,6 +1041,16 @@ pub fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         footer_spans.push(Span::raw(" "));
     }
 
+    // Show undo count if available
+    let undo_count = app.undo_count();
+    if undo_count > 0 {
+        footer_spans.push(Span::raw(" "));
+        footer_spans.push(Span::styled(
+            format!("[u:undo×{}]", undo_count),
+            Style::default().fg(t.text_muted),
+        ));
+    }
+
     if let Some(ref msg) = app.message {
         footer_spans.push(Span::raw(" "));
         footer_spans.push(Span::styled(
@@ -1144,6 +1154,10 @@ pub fn draw_help_popup(f: &mut Frame) {
         Line::from(vec![
             Span::styled("r       ", key_style),
             Span::raw("Refresh list"),
+        ]),
+        Line::from(vec![
+            Span::styled("u       ", key_style),
+            Span::raw("Undo last operation (multi-level)"),
         ]),
         Line::from(""),
         Line::from(vec![
