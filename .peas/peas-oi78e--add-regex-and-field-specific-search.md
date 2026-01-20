@@ -2,11 +2,11 @@
 id = "peas-oi78e"
 title = "Add regex and field-specific search"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:43.019560400Z"
-updated = "2026-01-20T15:12:38.673042100Z"
+updated = "2026-01-20T21:24:17.795200500Z"
 +++
 
 ## Problem

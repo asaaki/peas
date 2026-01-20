@@ -1,13 +1,16 @@
+use regex::Regex;
 use std::collections::HashSet;
+use std::sync::LazyLock;
+
+/// Compiled URL regex pattern - initialized once and reused
+static URL_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"https?://[^\s<>]+").expect("URL regex pattern should be valid"));
 
 /// Extract all URLs from text with smart punctuation handling
 pub fn extract_urls(text: &str) -> Vec<String> {
     let mut urls = Vec::new();
 
-    // Find potential URLs with regex
-    let url_pattern = regex::Regex::new(r"https?://[^\s<>]+").unwrap();
-
-    for matched in url_pattern.find_iter(text) {
+    for matched in URL_PATTERN.find_iter(text) {
         let mut url_str = matched.as_str();
 
         // Trim trailing punctuation that's likely not part of the URL
