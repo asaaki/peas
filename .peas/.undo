@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-g1gqo",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-g1gqo--e7-5-new-dependencies-integration.md",
-    "previous_content": "+++\nid = \"peas-g1gqo\"\ntitle = \"E7.5: New Dependencies Integration\"\ntype = \"epic\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-3h9f1\"\ncreated = \"2026-01-19T16:10:52.883444500Z\"\nupdated = \"2026-01-19T16:10:52.883444500Z\"\n+++\n"
+    "id": "peas-unx69",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-unx69--add-tests-for-memory-model-and-repository.md",
+    "previous_content": "+++\nid = \"peas-unx69\"\ntitle = \"Add tests for Memory model and repository\"\ntype = \"task\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kgp6m\"\nblocking = [\"peas-1uu22\"]\ncreated = \"2026-01-19T22:40:41.816202900Z\"\nupdated = \"2026-01-19T22:40:41.816202900Z\"\n+++\n\nWrite unit and integration tests for memory functionality\n\n**Test coverage:**\n- Memory struct creation and serialization\n- MemoryRepository CRUD operations\n- File format validation (frontmatter + body)\n- Tag filtering and search\n- Error handling (missing files, invalid keys)\n\n**Location:** tests/ directory or inline tests in src/storage/memory_repository.rs\n"
   }
 }

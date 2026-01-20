@@ -1,4 +1,4 @@
-use crate::model::{self, Pea as ModelPea};
+use crate::model::{self, Memory as ModelMemory, Pea as ModelPea};
 use async_graphql::{Enum, InputObject, SimpleObject};
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
@@ -210,4 +210,41 @@ pub struct TypeCounts {
     pub chore: usize,
     pub research: usize,
     pub task: usize,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct Memory {
+    pub key: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    #[graphql(name = "created")]
+    pub created: String,
+    #[graphql(name = "updated")]
+    pub updated: String,
+}
+
+impl From<ModelMemory> for Memory {
+    fn from(m: ModelMemory) -> Self {
+        Memory {
+            key: m.key,
+            content: m.content,
+            tags: m.tags,
+            created: m.created.to_rfc3339(),
+            updated: m.updated.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(InputObject)]
+pub struct CreateMemoryInput {
+    pub key: String,
+    pub content: String,
+    pub tags: Option<Vec<String>>,
+}
+
+#[derive(InputObject)]
+pub struct UpdateMemoryInput {
+    pub key: String,
+    pub content: String,
+    pub tags: Option<Vec<String>>,
 }

@@ -1,5 +1,9 @@
 use super::types::*;
-use crate::{config::PeasConfig, model::Pea as ModelPea, storage::PeaRepository};
+use crate::{
+    config::PeasConfig,
+    model::{Memory as ModelMemory, Pea as ModelPea},
+    storage::{MemoryRepository, PeaRepository},
+};
 use async_graphql::{Context, EmptySubscription, Object, Schema};
 use std::{path::PathBuf, sync::Arc};
 
@@ -26,6 +30,13 @@ fn get_repo(ctx: &Context<'_>) -> async_graphql::Result<PeaRepository> {
         .data::<Arc<AppState>>()
         .map_err(|_| async_graphql::Error::new("AppState not found in context"))?;
     Ok(PeaRepository::new(&state.config, &state.project_root))
+}
+
+fn get_memory_repo(ctx: &Context<'_>) -> async_graphql::Result<MemoryRepository> {
+    let state = ctx
+        .data::<Arc<AppState>>()
+        .map_err(|_| async_graphql::Error::new("AppState not found in context"))?;
+    Ok(MemoryRepository::new(&state.config, &state.project_root))
 }
 
 pub struct QueryRoot;
@@ -159,6 +170,31 @@ impl QueryRoot {
                 task: peas.iter().filter(|p| p.pea_type == MT::Task).count(),
             },
         })
+    }
+
+    /// Get a single memory by key
+    async fn memory(
+        &self,
+        ctx: &Context<'_>,
+        key: String,
+    ) -> async_graphql::Result<Option<Memory>> {
+        let repo = get_memory_repo(ctx)?;
+        match repo.get(&key) {
+            Ok(memory) => Ok(Some(memory.into())),
+            Err(crate::error::PeasError::NotFound(_)) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// List memories with optional tag filter
+    async fn memories(
+        &self,
+        ctx: &Context<'_>,
+        tag: Option<String>,
+    ) -> async_graphql::Result<Vec<Memory>> {
+        let repo = get_memory_repo(ctx)?;
+        let memories = repo.list(tag.as_deref())?;
+        Ok(memories.into_iter().map(|m| m.into()).collect())
     }
 }
 
@@ -312,5 +348,47 @@ impl MutationRoot {
         pea.touch();
         repo.update(&pea)?;
         Ok(pea.into())
+    }
+
+    /// Create a new memory
+    async fn create_memory(
+        &self,
+        ctx: &Context<'_>,
+        input: CreateMemoryInput,
+    ) -> async_graphql::Result<Memory> {
+        let repo = get_memory_repo(ctx)?;
+
+        let memory = ModelMemory::new(input.key)
+            .with_content(input.content)
+            .with_tags(input.tags.unwrap_or_default());
+
+        repo.create(&memory)?;
+        Ok(memory.into())
+    }
+
+    /// Update an existing memory
+    async fn update_memory(
+        &self,
+        ctx: &Context<'_>,
+        input: UpdateMemoryInput,
+    ) -> async_graphql::Result<Memory> {
+        let repo = get_memory_repo(ctx)?;
+
+        let mut memory = repo.get(&input.key)?;
+        memory.content = input.content;
+        if let Some(tags) = input.tags {
+            memory.tags = tags;
+        }
+        memory.touch();
+
+        repo.update(&memory)?;
+        Ok(memory.into())
+    }
+
+    /// Delete a memory by key
+    async fn delete_memory(&self, ctx: &Context<'_>, key: String) -> async_graphql::Result<bool> {
+        let repo = get_memory_repo(ctx)?;
+        repo.delete(&key)?;
+        Ok(true)
     }
 }
