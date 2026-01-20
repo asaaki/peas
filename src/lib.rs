@@ -87,3 +87,4 @@ pub mod import_export;
 ///
 /// Tracks the last mutation and allows undoing it.
 pub mod undo;
+pub mod assets;

@@ -25,6 +25,9 @@ pub struct Pea {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub blocking: Vec<String>,
 
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub assets: Vec<String>,
+
     #[serde(default)]
     pub created: DateTime<Utc>,
 
@@ -47,6 +50,7 @@ impl Pea {
             tags: Vec::new(),
             parent: None,
             blocking: Vec::new(),
+            assets: Vec::new(),
             created: now,
             updated: now,
             body: String::new(),
