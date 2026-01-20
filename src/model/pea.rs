@@ -2,7 +2,7 @@ use super::types::{PeaPriority, PeaStatus, PeaType};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Pea {
     pub id: String,
     pub title: String,

@@ -2,11 +2,11 @@
 id = "peas-6zje7"
 title = "Add undo support to TUI"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:49.898382300Z"
-updated = "2026-01-20T15:12:39.028623400Z"
+updated = "2026-01-20T21:17:05.155539600Z"
 +++
 
 ## Problem

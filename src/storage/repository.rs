@@ -8,14 +8,71 @@ use crate::{
     validation,
 };
 use slug::slugify;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
+
+/// In-memory cache for pea data
+#[derive(Default)]
+struct PeaCache {
+    /// Cached list of all peas (None = not cached)
+    list: Option<Vec<Pea>>,
+    /// Cached individual peas by ID for O(1) lookups
+    by_id: HashMap<String, Pea>,
+}
+
+impl PeaCache {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn invalidate(&mut self) {
+        self.list = None;
+        self.by_id.clear();
+    }
+
+    fn set_list(&mut self, peas: Vec<Pea>) {
+        // Update both list and by_id map
+        self.by_id = peas.iter().map(|p| (p.id.clone(), p.clone())).collect();
+        self.list = Some(peas);
+    }
+
+    fn get_list(&self) -> Option<&Vec<Pea>> {
+        self.list.as_ref()
+    }
+
+    fn get_by_id(&self, id: &str) -> Option<&Pea> {
+        self.by_id.get(id)
+    }
+
+    fn update_pea(&mut self, pea: &Pea) {
+        self.by_id.insert(pea.id.clone(), pea.clone());
+        // Update in list if present, otherwise invalidate list
+        if let Some(ref mut list) = self.list {
+            if let Some(pos) = list.iter().position(|p| p.id == pea.id) {
+                list[pos] = pea.clone();
+            } else {
+                // Pea not in list (new pea) - invalidate list cache
+                self.list = None;
+            }
+        }
+    }
+
+    fn remove_pea(&mut self, id: &str) {
+        self.by_id.remove(id);
+        if let Some(ref mut list) = self.list {
+            list.retain(|p| p.id != id);
+        }
+    }
+}
 
 pub struct PeaRepository {
     data_path: PathBuf,
     archive_path: PathBuf,
     prefix: String,
     frontmatter_format: FrontmatterFormat,
+    cache: RefCell<PeaCache>,
 }
 
 impl PeaRepository {
@@ -25,7 +82,13 @@ impl PeaRepository {
             archive_path: config.archive_path(project_root),
             prefix: config.peas.prefix.clone(),
             frontmatter_format: config.peas.frontmatter_format(),
+            cache: RefCell::new(PeaCache::new()),
         }
+    }
+
+    /// Invalidate the cache (call after external file changes)
+    pub fn invalidate_cache(&self) {
+        self.cache.borrow_mut().invalidate();
     }
 
     pub fn generate_id(&self) -> String {
@@ -83,17 +146,41 @@ impl PeaRepository {
         // Atomic write: write to temp file, then rename
         self.atomic_write(&file_path, &content)?;
 
+        // Update cache with new pea
+        self.cache.borrow_mut().update_pea(pea);
+
         Ok(file_path)
     }
 
     pub fn get(&self, id: &str) -> Result<Pea> {
+        // Check cache first for O(1) lookup
+        let cache = self.cache.borrow();
+        if let Some(pea) = cache.get_by_id(id) {
+            return Ok(pea.clone());
+        }
+        drop(cache); // Release borrow before disk read
+
+        // Cache miss - load from disk
         let file_path = self.find_file_by_id(id)?;
         let content = std::fs::read_to_string(&file_path)?;
-        parse_markdown(&content)
+        let pea = parse_markdown(&content)?;
+
+        // Update cache with loaded pea
+        self.cache.borrow_mut().update_pea(&pea);
+
+        Ok(pea)
     }
 
     /// Check if a pea exists by ID
     pub fn exists(&self, id: &str) -> bool {
+        // Check cache first for O(1) lookup
+        let cache = self.cache.borrow();
+        if cache.get_by_id(id).is_some() {
+            return true;
+        }
+        drop(cache);
+
+        // Cache miss - check disk
         self.find_file_by_id(id).is_ok()
     }
 
@@ -147,12 +234,19 @@ impl PeaRepository {
             std::fs::remove_file(&old_path)?;
         }
 
+        // Update cache with modified pea
+        self.cache.borrow_mut().update_pea(pea);
+
         Ok(new_path)
     }
 
     pub fn delete(&self, id: &str) -> Result<()> {
         let file_path = self.find_file_by_id(id)?;
         std::fs::remove_file(&file_path)?;
+
+        // Remove from cache
+        self.cache.borrow_mut().remove_pea(id);
+
         Ok(())
     }
 
@@ -168,11 +262,28 @@ impl PeaRepository {
         let new_path = self.archive_path.join(&filename);
 
         std::fs::rename(&old_path, &new_path)?;
+
+        // Remove from cache (it's now in archive, not active list)
+        self.cache.borrow_mut().remove_pea(id);
+
         Ok(new_path)
     }
 
     pub fn list(&self) -> Result<Vec<Pea>> {
-        self.list_in_path(&self.data_path)
+        // Check cache first
+        let cache = self.cache.borrow();
+        if let Some(cached_list) = cache.get_list() {
+            return Ok(cached_list.clone());
+        }
+        drop(cache); // Release borrow before disk read
+
+        // Cache miss - load from disk
+        let peas = self.list_in_path(&self.data_path)?;
+
+        // Update cache with loaded list
+        self.cache.borrow_mut().set_list(peas.clone());
+
+        Ok(peas)
     }
 
     pub fn list_archived(&self) -> Result<Vec<Pea>> {
@@ -422,5 +533,200 @@ mod tests {
         // Second update should also succeed
         let result = repo.update(&mut pea);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_cache_list_caching() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create some peas
+        for i in 0..3 {
+            let mut pea = Pea::new(format!("test-{}", i), format!("Pea {}", i), PeaType::Task);
+            pea.body = format!("Body {}", i);
+            repo.create(&pea).unwrap();
+        }
+
+        // First call should read from disk and populate cache
+        let list1 = repo.list().unwrap();
+        assert_eq!(list1.len(), 3);
+
+        // Second call should use cache (no disk I/O)
+        let list2 = repo.list().unwrap();
+        assert_eq!(list2.len(), 3);
+        assert_eq!(list1, list2);
+
+        // Verify cache is working by checking we get the same results
+        for i in 0..3 {
+            assert_eq!(list2[i].title, format!("Pea {}", i));
+        }
+    }
+
+    #[test]
+    fn test_cache_get_by_id_o1_lookup() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let mut pea = Pea::new(
+            "test-cache".to_string(),
+            "Cached Pea".to_string(),
+            PeaType::Task,
+        );
+        pea.body = "Test body".to_string();
+        repo.create(&pea).unwrap();
+
+        // First get() populates cache
+        let pea1 = repo.get("test-cache").unwrap();
+        assert_eq!(pea1.title, "Cached Pea");
+
+        // Second get() should use cache (O(1) HashMap lookup)
+        let pea2 = repo.get("test-cache").unwrap();
+        assert_eq!(pea2.title, "Cached Pea");
+        assert_eq!(pea1.id, pea2.id);
+    }
+
+    #[test]
+    fn test_cache_exists_check() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let pea = Pea::new(
+            "test-exists".to_string(),
+            "Exists Pea".to_string(),
+            PeaType::Task,
+        );
+        repo.create(&pea).unwrap();
+
+        // First exists() check might hit cache from create()
+        assert!(repo.exists("test-exists"));
+
+        // Load into cache explicitly
+        let _cached = repo.get("test-exists").unwrap();
+
+        // Second exists() should use cache (O(1) lookup)
+        assert!(repo.exists("test-exists"));
+        assert!(!repo.exists("test-nonexistent"));
+    }
+
+    #[test]
+    fn test_cache_update_maintains_consistency() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let mut pea = Pea::new(
+            "test-update".to_string(),
+            "Original Title".to_string(),
+            PeaType::Task,
+        );
+        pea.body = "Original body".to_string();
+        repo.create(&pea).unwrap();
+
+        // Load to populate cache
+        let mut pea = repo.get("test-update").unwrap();
+        assert_eq!(pea.title, "Original Title");
+
+        // Update should invalidate and update cache
+        pea.title = "Updated Title".to_string();
+        repo.update(&mut pea).unwrap();
+
+        // Get should return updated version from cache
+        let updated_pea = repo.get("test-update").unwrap();
+        assert_eq!(updated_pea.title, "Updated Title");
+
+        // List should also reflect the update
+        let list = repo.list().unwrap();
+        let found = list.iter().find(|p| p.id == "test-update").unwrap();
+        assert_eq!(found.title, "Updated Title");
+    }
+
+    #[test]
+    fn test_cache_delete_removes_from_cache() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let pea = Pea::new(
+            "test-delete".to_string(),
+            "To Delete".to_string(),
+            PeaType::Task,
+        );
+        repo.create(&pea).unwrap();
+
+        // Load to populate cache
+        let _loaded = repo.get("test-delete").unwrap();
+        assert!(repo.exists("test-delete"));
+
+        // Delete should remove from cache
+        repo.delete("test-delete").unwrap();
+
+        // Should not exist in cache or on disk
+        assert!(!repo.exists("test-delete"));
+
+        // List should not include deleted pea
+        let list = repo.list().unwrap();
+        assert!(!list.iter().any(|p| p.id == "test-delete"));
+    }
+
+    #[test]
+    fn test_cache_archive_removes_from_active_cache() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let pea = Pea::new(
+            "test-archive".to_string(),
+            "To Archive".to_string(),
+            PeaType::Task,
+        );
+        repo.create(&pea).unwrap();
+
+        // Load to populate cache
+        let _loaded = repo.get("test-archive").unwrap();
+
+        // Verify it's in active list
+        let list_before = repo.list().unwrap();
+        assert!(list_before.iter().any(|p| p.id == "test-archive"));
+
+        // Archive should remove from active cache
+        repo.archive("test-archive").unwrap();
+
+        // Should not be in active list
+        let list_after = repo.list().unwrap();
+        assert!(!list_after.iter().any(|p| p.id == "test-archive"));
+
+        // Should be in archived list
+        let archived = repo.list_archived().unwrap();
+        assert!(archived.iter().any(|p| p.id == "test-archive"));
+    }
+
+    #[test]
+    fn test_cache_invalidate_clears_all() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create some peas
+        for i in 0..3 {
+            let pea = Pea::new(
+                format!("test-inv-{}", i),
+                format!("Pea {}", i),
+                PeaType::Task,
+            );
+            repo.create(&pea).unwrap();
+        }
+
+        // Load list to populate cache
+        let list_before = repo.list().unwrap();
+        assert_eq!(list_before.len(), 3);
+
+        // Load individual peas
+        for i in 0..3 {
+            let _pea = repo.get(&format!("test-inv-{}", i)).unwrap();
+        }
+
+        // Invalidate cache
+        repo.invalidate_cache();
+
+        // List should reload from disk (cache miss)
+        let list_after = repo.list().unwrap();
+        assert_eq!(list_after.len(), 3);
+
+        // Data should still be consistent
+        assert_eq!(list_before, list_after);
     }
 }

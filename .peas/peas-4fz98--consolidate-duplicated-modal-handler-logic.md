@@ -2,11 +2,11 @@
 id = "peas-4fz98"
 title = "Consolidate duplicated modal handler logic"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:22.840533300Z"
-updated = "2026-01-20T15:12:37.610491100Z"
+updated = "2026-01-20T21:17:09.164722900Z"
 +++
 
 ## Problem
