@@ -2,11 +2,11 @@
 id = "peas-1le6t"
 title = "E7.6: Asset Support"
 type = "epic"
-status = "in-progress"
+status = "completed"
 priority = "normal"
 parent = "peas-3h9f1"
 created = "2026-01-19T16:10:53.228835100Z"
-updated = "2026-01-20T14:22:13.309171900Z"
+updated = "2026-01-20T14:42:08.321516600Z"
 +++
 
 # Asset Support Epic
