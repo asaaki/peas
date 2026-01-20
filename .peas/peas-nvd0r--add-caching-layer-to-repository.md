@@ -2,11 +2,11 @@
 id = "peas-nvd0r"
 title = "Add caching layer to repository"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:29.699098600Z"
-updated = "2026-01-20T15:12:37.977217100Z"
+updated = "2026-01-20T21:21:32.143169200Z"
 +++
 
 ## Problem

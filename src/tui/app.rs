@@ -273,15 +273,22 @@ impl App {
             .all_peas
             .iter()
             .filter(|p| {
-                // Search filter (searches in id, title, body, and tags)
+                // Search filter (supports field-specific and regex)
                 if self.search_query.is_empty() {
                     true
                 } else {
-                    let query = self.search_query.to_lowercase();
-                    p.title.to_lowercase().contains(&query)
-                        || p.id.to_lowercase().contains(&query)
-                        || p.body.to_lowercase().contains(&query)
-                        || p.tags.iter().any(|tag| tag.to_lowercase().contains(&query))
+                    // Parse search query and apply
+                    match crate::search::SearchQuery::parse(&self.search_query) {
+                        Ok(query) => query.matches_pea(p),
+                        Err(_) => {
+                            // If parse fails, fall back to simple substring search
+                            let query = self.search_query.to_lowercase();
+                            p.title.to_lowercase().contains(&query)
+                                || p.id.to_lowercase().contains(&query)
+                                || p.body.to_lowercase().contains(&query)
+                                || p.tags.iter().any(|tag| tag.to_lowercase().contains(&query))
+                        }
+                    }
                 }
             })
             .cloned()
@@ -292,14 +299,21 @@ impl App {
             .all_memories
             .iter()
             .filter(|m| {
-                // Search filter (searches in key, content, and tags)
+                // Search filter (supports field-specific and regex)
                 if self.search_query.is_empty() {
                     true
                 } else {
-                    let query = self.search_query.to_lowercase();
-                    m.key.to_lowercase().contains(&query)
-                        || m.content.to_lowercase().contains(&query)
-                        || m.tags.iter().any(|tag| tag.to_lowercase().contains(&query))
+                    // Parse search query and apply
+                    match crate::search::SearchQuery::parse(&self.search_query) {
+                        Ok(query) => query.matches_memory(m),
+                        Err(_) => {
+                            // If parse fails, fall back to simple substring search
+                            let query = self.search_query.to_lowercase();
+                            m.key.to_lowercase().contains(&query)
+                                || m.content.to_lowercase().contains(&query)
+                                || m.tags.iter().any(|tag| tag.to_lowercase().contains(&query))
+                        }
+                    }
                 }
             })
             .cloned()
