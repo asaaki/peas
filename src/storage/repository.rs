@@ -56,6 +56,15 @@ impl PeaRepository {
             validation::validate_tag(tag)?;
         }
 
+        // Validate relationships
+        validation::validate_no_self_parent(&pea.id, &pea.parent)?;
+        validation::validate_no_self_blocking(&pea.id, &pea.blocking)?;
+        validation::validate_parent_exists(&pea.parent, |id| self.exists(id))?;
+        validation::validate_blocking_exist(&pea.blocking, |id| self.exists(id))?;
+        validation::validate_no_circular_parent(&pea.id, &pea.parent, |id| {
+            self.get(id).ok().and_then(|p| p.parent)
+        })?;
+
         std::fs::create_dir_all(&self.data_path)?;
 
         let filename = self.generate_filename(&pea.id, &pea.title);
@@ -80,6 +89,11 @@ impl PeaRepository {
         parse_markdown(&content)
     }
 
+    /// Check if a pea exists by ID
+    pub fn exists(&self, id: &str) -> bool {
+        self.find_file_by_id(id).is_ok()
+    }
+
     pub fn update(&self, pea: &Pea) -> Result<PathBuf> {
         // Validate input
         validation::validate_title(&pea.title)?;
@@ -87,6 +101,15 @@ impl PeaRepository {
         for tag in &pea.tags {
             validation::validate_tag(tag)?;
         }
+
+        // Validate relationships
+        validation::validate_no_self_parent(&pea.id, &pea.parent)?;
+        validation::validate_no_self_blocking(&pea.id, &pea.blocking)?;
+        validation::validate_parent_exists(&pea.parent, |id| self.exists(id))?;
+        validation::validate_blocking_exist(&pea.blocking, |id| self.exists(id))?;
+        validation::validate_no_circular_parent(&pea.id, &pea.parent, |id| {
+            self.get(id).ok().and_then(|p| p.parent)
+        })?;
 
         let old_path = self.find_file_by_id(&pea.id)?;
         let new_filename = self.generate_filename(&pea.id, &pea.title);
