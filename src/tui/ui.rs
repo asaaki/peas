@@ -1,6 +1,7 @@
 use super::app::{App, DetailPane, InputMode};
 use super::theme::{theme, tui_config};
-use crate::model::{Pea, PeaPriority, PeaStatus, PeaType};
+use super::ui_utils;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -12,144 +13,6 @@ use ratatui::{
         ScrollbarOrientation, ScrollbarState, Table, Wrap,
     },
 };
-use ratatui_core;
-
-/// Convert ratatui_core::Color to ratatui::Color
-fn convert_color(core_color: ratatui_core::style::Color) -> Color {
-    match core_color {
-        ratatui_core::style::Color::Reset => Color::Reset,
-        ratatui_core::style::Color::Black => Color::Black,
-        ratatui_core::style::Color::Red => Color::Red,
-        ratatui_core::style::Color::Green => Color::Green,
-        ratatui_core::style::Color::Yellow => Color::Yellow,
-        ratatui_core::style::Color::Blue => Color::Blue,
-        ratatui_core::style::Color::Magenta => Color::Magenta,
-        ratatui_core::style::Color::Cyan => Color::Cyan,
-        ratatui_core::style::Color::Gray => Color::Gray,
-        ratatui_core::style::Color::DarkGray => Color::DarkGray,
-        ratatui_core::style::Color::LightRed => Color::LightRed,
-        ratatui_core::style::Color::LightGreen => Color::LightGreen,
-        ratatui_core::style::Color::LightYellow => Color::LightYellow,
-        ratatui_core::style::Color::LightBlue => Color::LightBlue,
-        ratatui_core::style::Color::LightMagenta => Color::LightMagenta,
-        ratatui_core::style::Color::LightCyan => Color::LightCyan,
-        ratatui_core::style::Color::White => Color::White,
-        ratatui_core::style::Color::Rgb(r, g, b) => Color::Rgb(r, g, b),
-        ratatui_core::style::Color::Indexed(i) => Color::Indexed(i),
-    }
-}
-
-/// Convert ratatui_core::Modifier to ratatui::Modifier
-fn convert_modifier(core_mod: ratatui_core::style::Modifier) -> Modifier {
-    let mut modifier = Modifier::empty();
-    if core_mod.contains(ratatui_core::style::Modifier::BOLD) {
-        modifier |= Modifier::BOLD;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::DIM) {
-        modifier |= Modifier::DIM;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::ITALIC) {
-        modifier |= Modifier::ITALIC;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::UNDERLINED) {
-        modifier |= Modifier::UNDERLINED;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::SLOW_BLINK) {
-        modifier |= Modifier::SLOW_BLINK;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::RAPID_BLINK) {
-        modifier |= Modifier::RAPID_BLINK;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::REVERSED) {
-        modifier |= Modifier::REVERSED;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::HIDDEN) {
-        modifier |= Modifier::HIDDEN;
-    }
-    if core_mod.contains(ratatui_core::style::Modifier::CROSSED_OUT) {
-        modifier |= Modifier::CROSSED_OUT;
-    }
-    modifier
-}
-
-/// Convert ratatui_core::Style to ratatui::Style
-fn convert_style(core_style: ratatui_core::style::Style) -> Style {
-    let mut style = Style::default();
-    if let Some(fg) = core_style.fg {
-        style = style.fg(convert_color(fg));
-    }
-    if let Some(bg) = core_style.bg {
-        style = style.bg(convert_color(bg));
-    }
-    style = style.add_modifier(convert_modifier(core_style.add_modifier));
-    style = style.remove_modifier(convert_modifier(core_style.sub_modifier));
-    style
-}
-
-/// Estimate the number of wrapped lines for a Text widget
-fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
-    if width == 0 {
-        return 0;
-    }
-    let mut total_lines = 0u16;
-    for line in &text.lines {
-        let line_width: usize = line.spans.iter().map(|s| s.content.len()).sum();
-        let wrapped = if line_width == 0 {
-            1 // Empty line still takes 1 line
-        } else {
-            ((line_width + width - 1) / width) as u16 // Ceiling division
-        };
-        total_lines = total_lines.saturating_add(wrapped);
-    }
-    total_lines
-}
-
-/// Highlight search term in text by splitting into spans
-fn highlight_search<'a>(text: &str, query: &str, base_style: Style) -> Vec<Span<'a>> {
-    if query.is_empty() {
-        return vec![Span::styled(text.to_string(), base_style)];
-    }
-
-    let t = theme();
-    let lower_text = text.to_lowercase();
-    let lower_query = query.to_lowercase();
-    let mut spans = Vec::new();
-    let mut last_end = 0;
-
-    for (idx, _) in lower_text.match_indices(&lower_query) {
-        // Add text before match
-        if idx > last_end {
-            spans.push(Span::styled(text[last_end..idx].to_string(), base_style));
-        }
-        // Add highlighted match
-        spans.push(Span::styled(
-            text[idx..idx + query.len()].to_string(),
-            base_style
-                .fg(t.modal_border_create) // Blue highlight
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        ));
-        last_end = idx + query.len();
-    }
-
-    // Add remaining text
-    if last_end < text.len() {
-        spans.push(Span::styled(text[last_end..].to_string(), base_style));
-    }
-
-    spans
-}
-
-/// Returns priority indicator and color for a pea
-fn priority_indicator(pea: &Pea) -> Option<(String, Color)> {
-    theme()
-        .priority_indicator(&pea.priority)
-        .map(|(s, c)| (s.to_string(), c))
-}
-
-/// Returns status icon and color
-fn status_indicator(status: &PeaStatus) -> (&'static str, Color) {
-    theme().status_indicator(status)
-}
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     // Full-screen detail view when in DetailView or EditBody mode
@@ -258,7 +121,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         for &parent_index in &parent_indices {
             if let Some(parent_node) = app.tree_nodes.get(parent_index) {
                 let pea = &parent_node.pea;
-                let (status_icon, _) = status_indicator(&pea.status);
+                let (status_icon, _) = ui_utils::status_indicator(&pea.status);
 
                 // Build tree prefix using dotted lines (┊) instead of solid lines (│)
                 let mut prefix = String::new();
@@ -278,7 +141,7 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 }
 
                 // Priority indicator
-                let pri = if let Some((ind, _)) = priority_indicator(pea) {
+                let pri = if let Some((ind, _)) = ui_utils::priority_indicator(pea) {
                     ind
                 } else {
                     String::new()
@@ -315,8 +178,8 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         let pea = &node.pea;
         let is_selected = idx == index_in_page;
         let is_multi_selected = app.is_multi_selected(&pea.id);
-        let (status_icon, status_color) = status_indicator(&pea.status);
-        let pea_type_color = type_color(&pea.pea_type);
+        let (status_icon, status_color) = ui_utils::status_indicator(&pea.status);
+        let pea_type_color = ui_utils::type_color(&pea.pea_type);
 
         // Build the tree prefix with rounded corners
         let mut prefix = String::new();
@@ -350,12 +213,12 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         let checkbox_style = Style::default().fg(theme().multi_select);
 
         // Priority indicator
-        let pri = if let Some((ind, _)) = priority_indicator(pea) {
+        let pri = if let Some((ind, _)) = ui_utils::priority_indicator(pea) {
             ind
         } else {
             String::new()
         };
-        let pri_color = priority_indicator(pea)
+        let pri_color = ui_utils::priority_indicator(pea)
             .map(|(_, c)| c)
             .unwrap_or(Color::Reset);
 
@@ -367,14 +230,14 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         };
 
         // Highlight search terms in title
-        let title_spans = highlight_search(&pea.title, &app.search_query, title_style);
+        let title_spans = ui_utils::highlight_search(&pea.title, &app.search_query, title_style);
 
         // Tree + ID combined in one cell (so tree connects to ID visually)
         // ID is bold and bright green when selected
         let id_style = theme().id_style(is_selected);
 
         // Highlight search terms in ID
-        let id_spans = highlight_search(&pea.id, &app.search_query, id_style);
+        let id_spans = ui_utils::highlight_search(&pea.id, &app.search_query, id_style);
         let mut tree_id_spans = vec![Span::styled(
             prefix,
             Style::default().fg(theme().tree_lines),
@@ -527,9 +390,6 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 /// Get color for type (without the indicator character)
-fn type_color(pea_type: &PeaType) -> Color {
-    theme().type_color(pea_type)
-}
 
 fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
     use ratatui::{
@@ -739,7 +599,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
 
     if let Some(pea) = app.selected_pea().cloned() {
         let status_color = theme().status_color(&pea.status);
-        let pea_priority_color = priority_color(&pea.priority);
+        let pea_priority_color = ui_utils::priority_color(&pea.priority);
 
         // Check if we have body content
         let has_body = !pea.body.is_empty();
@@ -833,7 +693,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                 Cell::from("Type:"),
                 Cell::from(Span::styled(
                     type_text,
-                    Style::default().fg(type_color(&pea.pea_type)),
+                    Style::default().fg(ui_utils::type_color(&pea.pea_type)),
                 )),
             ]),
             // Status
@@ -926,7 +786,7 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                     let is_selected = i == app.relations_selection;
                     let prefix = super::theme::Theme::relation_prefix(rel_type);
                     let rel_color = theme().relation_color(rel_type);
-                    let type_color = type_color(pea_type);
+                    let type_color = ui_utils::type_color(pea_type);
 
                     // Selection cursor with pulsing effect (only show when pane is focused)
                     let cursor = if is_selected && is_focused {
@@ -1013,7 +873,10 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
                             .spans
                             .into_iter()
                             .map(|span_core| {
-                                Span::styled(span_core.content, convert_style(span_core.style))
+                                Span::styled(
+                                    span_core.content,
+                                    ui_utils::convert_style(span_core.style),
+                                )
                             })
                             .collect();
                         Line::from(spans)
@@ -1023,7 +886,8 @@ fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_scrol
 
                 // Calculate content height for scroll limiting
                 let view_height = inner.height as u16;
-                let content_lines = estimate_wrapped_lines(&md_text, inner.width as usize);
+                let content_lines =
+                    ui_utils::estimate_wrapped_lines(&md_text, inner.width as usize);
                 let max_scroll = content_lines.saturating_sub(view_height);
                 app.set_detail_max_scroll(max_scroll);
 
@@ -1176,12 +1040,9 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 }
 
 /// Get color for priority
-fn priority_color(priority: &PeaPriority) -> Color {
-    theme().priority_color(priority)
-}
 
 fn draw_status_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(30, 30, f.area());
+    let area = ui_utils::centered_rect(30, 30, f.area());
     let t = theme();
 
     let options = App::status_options();
@@ -1190,7 +1051,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
         .enumerate()
         .map(|(idx, status)| {
             let is_selected = idx == app.modal_selection;
-            let (icon, color) = status_indicator(status);
+            let (icon, color) = ui_utils::status_indicator(status);
 
             let selection_indicator = if is_selected {
                 Span::styled(theme().row_marker, Style::default().fg(t.modal_cursor))
@@ -1225,7 +1086,7 @@ fn draw_status_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_priority_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(30, 30, f.area());
+    let area = ui_utils::centered_rect(30, 30, f.area());
     let t = theme();
 
     let options = App::priority_options();
@@ -1234,7 +1095,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
         .enumerate()
         .map(|(idx, priority)| {
             let is_selected = idx == app.modal_selection;
-            let color = priority_color(priority);
+            let color = ui_utils::priority_color(priority);
 
             let selection_indicator = if is_selected {
                 Span::styled(theme().row_marker, Style::default().fg(t.modal_cursor))
@@ -1268,7 +1129,7 @@ fn draw_priority_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_delete_confirm(f: &mut Frame, app: &App) {
-    let area = centered_rect(50, 20, f.area());
+    let area = ui_utils::centered_rect(50, 20, f.area());
     let t = theme();
 
     let (question, item_info) = match app.view_mode {
@@ -1332,7 +1193,7 @@ fn draw_delete_confirm(f: &mut Frame, app: &App) {
 }
 
 fn draw_tags_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(60, 20, f.area());
+    let area = ui_utils::centered_rect(60, 20, f.area());
     let t = theme();
 
     let content = vec![
@@ -1367,7 +1228,7 @@ fn draw_tags_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_url_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(80, 60, f.area());
+    let area = ui_utils::centered_rect(80, 60, f.area());
     let t = theme();
 
     // Compute pulsing color for row marker
@@ -1437,7 +1298,7 @@ fn draw_url_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_create_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(50, 25, f.area());
+    let area = ui_utils::centered_rect(50, 25, f.area());
     let t = theme();
 
     let title_active = app.modal_selection == 0;
@@ -1462,7 +1323,7 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
         Style::default().fg(t.text)
     };
 
-    let pea_type_color = type_color(&app.create_type);
+    let pea_type_color = ui_utils::type_color(&app.create_type);
 
     let content = vec![
         Line::from(""),
@@ -1543,7 +1404,7 @@ fn draw_create_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_memory_create_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(60, 40, f.area());
+    let area = ui_utils::centered_rect(60, 40, f.area());
     let t = theme();
 
     let key_active = app.memory_modal_selection == 0;
@@ -1652,7 +1513,7 @@ fn draw_memory_create_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_blocking_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(60, 50, f.area());
+    let area = ui_utils::centered_rect(60, 50, f.area());
     let t = theme();
 
     let items: Vec<ListItem> = app
@@ -1677,7 +1538,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
                 Span::styled("[ ] ", Style::default().fg(t.checkbox_unchecked))
             };
 
-            let (status_icon, status_color) = status_indicator(&pea.status);
+            let (status_icon, status_color) = ui_utils::status_indicator(&pea.status);
 
             let style = if is_cursor {
                 Style::default().add_modifier(Modifier::BOLD)
@@ -1724,7 +1585,7 @@ fn draw_blocking_modal(f: &mut Frame, app: &App) {
 
 fn draw_parent_modal(f: &mut Frame, app: &App) {
     // Use a larger area for parent modal since it can have many options
-    let area = centered_rect(60, 50, f.area());
+    let area = ui_utils::centered_rect(60, 50, f.area());
     let t = theme();
 
     // Build items: first is "(none)", then all candidates
@@ -1762,7 +1623,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
             Style::default()
         };
 
-        let type_col = type_color(&pea.pea_type);
+        let type_col = ui_utils::type_color(&pea.pea_type);
 
         // Truncate title if too long
         let max_title_len = 35;
@@ -1801,7 +1662,7 @@ fn draw_parent_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_type_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(30, 35, f.area());
+    let area = ui_utils::centered_rect(30, 35, f.area());
     let t = theme();
 
     let options = App::type_options();
@@ -1810,7 +1671,7 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
         .enumerate()
         .map(|(idx, pea_type)| {
             let is_selected = idx == app.modal_selection;
-            let color = type_color(pea_type);
+            let color = ui_utils::type_color(pea_type);
 
             let selection_indicator = if is_selected {
                 Span::styled(theme().row_marker, Style::default().fg(t.modal_cursor))
@@ -1850,7 +1711,7 @@ fn draw_type_modal(f: &mut Frame, app: &App) {
 }
 
 fn draw_help_popup(f: &mut Frame) {
-    let area = centered_rect(60, 70, f.area());
+    let area = ui_utils::centered_rect(60, 70, f.area());
     let t = theme();
     let key_style = Style::default().fg(t.help_key);
 
@@ -1961,24 +1822,4 @@ fn draw_help_popup(f: &mut Frame) {
 
     f.render_widget(Clear, area);
     f.render_widget(help, area);
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
 }

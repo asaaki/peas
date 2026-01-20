@@ -28,6 +28,7 @@ mod relations;
 pub mod theme;
 mod tree_builder;
 mod ui;
+mod ui_utils;
 mod url_utils;
 
 pub use app::run_tui;
