@@ -1,3 +1,30 @@
+//! TUI Application State Machine
+//!
+//! This module implements the core state management for the Peas TUI.
+//! See `docs/tui-state-machine.md` for comprehensive documentation.
+//!
+//! # State Machine Overview
+//!
+//! The TUI operates as a modal state machine with the following primary modes:
+//! - **Normal**: Browse, navigate, and trigger actions
+//! - **Filter**: Search/filter tickets
+//! - **EditBody**: Multi-line body editing
+//! - **Modal***: Various modal dialogs (Status, Priority, Type, Parent, etc.)
+//! - **Create***: Ticket/Memory creation workflows
+//!
+//! # State Invariants
+//!
+//! The following invariants must be maintained:
+//! - `selected_index` must be < `tree_nodes.len()` in Normal mode
+//! - `modal_selection` must be < options count in Modal modes
+//! - `body_textarea` must be Some() when `input_mode == EditBody`
+//! - `filtered_peas` must be a subset of `all_peas`
+//!
+//! # Concurrency
+//!
+//! The TUI implements concurrent edit detection to prevent lost updates when
+//! multiple instances are running or when CLI commands modify files.
+
 use super::{body_editor, handlers, modal_operations, relations, tree_builder, ui, url_utils};
 use crate::{
     config::PeasConfig,
@@ -24,83 +51,199 @@ use std::{
 use tree_builder::{PageInfo, TreeNode};
 use tui_textarea::TextArea;
 
+/// Top-level view mode for the TUI
+///
+/// Determines which data set is displayed and which operations are available.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewMode {
-    Tickets, // Ticket tree view
-    Memory,  // Memory list view
+    /// Ticket tree view - hierarchical display of peas
+    Tickets,
+    /// Memory list view - key-value session data
+    Memory,
 }
 
+/// Input mode state machine
+///
+/// Determines how keyboard input is processed and which UI elements are displayed.
+/// All modal modes can return to Normal via Esc or Enter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
+    /// Default browsing mode - navigate list, view details, trigger actions
     Normal,
+    /// Search/filter mode - type to filter tickets
     Filter,
+    /// Status selection modal
     StatusModal,
+    /// Priority selection modal
     PriorityModal,
+    /// Type selection modal
     TypeModal,
+    /// Delete confirmation modal
     DeleteConfirm,
+    /// Parent ticket selection modal
     ParentModal,
+    /// Blocking tickets multi-selection modal
     BlockingModal,
+    /// Detail view mode (deprecated, use Normal with detail_pane instead)
     DetailView,
+    /// Create new ticket modal (3-field form)
     CreateModal,
-    MemoryCreateModal, // Memory creation modal
-    EditBody,          // Inline body editing with textarea
-    TagsModal,         // Tag editing modal
-    UrlModal,          // URL selection modal
+    /// Create new memory modal (3-field form)
+    MemoryCreateModal,
+    /// Multi-line body editing with textarea
+    EditBody,
+    /// Tag editing modal (comma-separated input)
+    TagsModal,
+    /// URL selection modal (choose URL from ticket body)
+    UrlModal,
 }
 
-/// Which pane is focused in detail view
+/// Detail pane selection in Normal mode
+///
+/// Determines which information is displayed in the detail area when viewing a ticket.
+/// Switch between panes with number keys 1-4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DetailPane {
-    Metadata, // Ticket properties/metadata
+    /// Ticket metadata: type, status, priority, tags
+    Metadata,
+    /// Description/markdown content (default)
     #[default]
-    Body, // Description/markdown content
-    Relations, // Relationships pane
-    Assets,   // Asset files pane
+    Body,
+    /// Parent and blocking relationships
+    Relations,
+    /// Attached asset files
+    Assets,
 }
 
+/// Main TUI application state
+///
+/// This struct contains all state for the terminal user interface.
+/// See module documentation and `docs/tui-state-machine.md` for details.
+///
+/// # Invariants
+///
+/// The following must always hold:
+/// - `selected_index < tree_nodes.len()` when `input_mode == Normal` and `view_mode == Tickets`
+/// - `modal_selection < options.len()` in any modal mode
+/// - `body_textarea.is_some()` if and only if `input_mode == EditBody`
+/// - `filtered_peas` is a subset of `all_peas`
+/// - `filtered_memories` is a subset of `all_memories`
 pub struct App {
-    pub view_mode: ViewMode, // Current view (Tickets or Memory)
+    // ========== View State ==========
+    /// Current view mode (Tickets or Memory)
+    pub view_mode: ViewMode,
+
+    // ========== Data Sources ==========
+    /// Repository for ticket operations
     pub repo: PeaRepository,
+    /// Repository for memory operations
     pub memory_repo: MemoryRepository,
-    pub data_path: PathBuf, // Path to .peas data directory
+    /// Path to .peas data directory
+    pub data_path: PathBuf,
+
+    // ========== Ticket Data ==========
+    /// All tickets (unfiltered)
     pub all_peas: Vec<Pea>,
+    /// Filtered/searched tickets (displayed)
     pub filtered_peas: Vec<Pea>,
-    pub all_memories: Vec<Memory>,      // All memories
-    pub filtered_memories: Vec<Memory>, // Filtered memories
-    pub tree_nodes: Vec<TreeNode>,      // Flattened tree for display
-    pub page_table: Vec<PageInfo>,      // Virtual page table accounting for parent rows
-    pub selected_index: usize,          // Global index in tree_nodes
-    pub page_height: usize,             // Number of items that fit on one page
+    /// Tree structure for hierarchical display
+    pub tree_nodes: Vec<TreeNode>,
+    /// Virtual page table for navigation
+    pub page_table: Vec<PageInfo>,
+
+    // ========== Memory Data ==========
+    /// All memories (unfiltered)
+    pub all_memories: Vec<Memory>,
+    /// Filtered/searched memories (displayed)
+    pub filtered_memories: Vec<Memory>,
+
+    // ========== Selection & Navigation ==========
+    /// Selected index in tree_nodes (Tickets) or filtered_memories (Memory)
+    pub selected_index: usize,
+    /// Number of items visible per page
+    pub page_height: usize,
+    /// Ratatui list state for rendering
     pub list_state: ListState,
-    pub detail_scroll: u16,         // Scroll offset for body/description
-    pub detail_max_scroll: u16,     // Maximum scroll offset (0 means no scrolling)
-    pub relations_scroll: u16,      // Scroll offset for relationships pane (future use)
-    pub relations_selection: usize, // Selected item in relationships pane
-    pub relations_items: Vec<(String, String, String, PeaType)>, // (rel_type, id, title, pea_type) for relationships
-    pub assets_selection: usize,                                 // Selected item in assets pane
-    pub assets_items: Vec<crate::assets::AssetInfo>,             // Asset files for current ticket
-    pub metadata_selection: usize, // Selected property in metadata pane (0=type, 1=status, 2=priority, 3=tags)
-    pub detail_pane: DetailPane,   // Which pane is focused in detail view
+    /// Multi-selected ticket IDs (for bulk operations)
+    pub multi_selected: HashSet<String>,
+
+    // ========== Detail Pane State ==========
+    /// Which detail pane is active
+    pub detail_pane: DetailPane,
+    /// Scroll offset for body/description pane
+    pub detail_scroll: u16,
+    /// Maximum scroll for body (0 = no scrolling needed)
+    pub detail_max_scroll: u16,
+
+    // ========== Relations Pane State ==========
+    /// Scroll offset for relationships pane
+    pub relations_scroll: u16,
+    /// Selected item in relationships list
+    pub relations_selection: usize,
+    /// Relationship items: (type, id, title, pea_type)
+    pub relations_items: Vec<(String, String, String, PeaType)>,
+
+    // ========== Assets Pane State ==========
+    /// Selected item in assets list
+    pub assets_selection: usize,
+    /// Asset file information for current ticket
+    pub assets_items: Vec<crate::assets::AssetInfo>,
+
+    // ========== Metadata Pane State ==========
+    /// Selected property (0=type, 1=status, 2=priority, 3=tags)
+    pub metadata_selection: usize,
+
+    // ========== Input Mode ==========
+    /// Current input mode (state machine state)
     pub input_mode: InputMode,
-    pub previous_mode: InputMode, // Mode to return to after closing modal
+    /// Previous mode (for modal return)
+    pub previous_mode: InputMode,
+
+    // ========== Filter State ==========
+    /// Search query text (supports regex and field-specific search)
     pub search_query: String,
+
+    // ========== UI State ==========
+    /// Whether help overlay is shown
     pub show_help: bool,
+    /// Status message to display
     pub message: Option<String>,
-    pub modal_selection: usize,      // Current selection in modal dialogs
-    pub parent_candidates: Vec<Pea>, // Candidates for parent selection modal
-    pub blocking_candidates: Vec<Pea>, // Candidates for blocking selection modal
-    pub blocking_selected: Vec<bool>, // Which candidates are selected (multi-select)
-    pub create_title: String,        // Title input for create modal
-    pub create_type: PeaType,        // Type selection for create modal
-    pub tags_input: String,          // Tag input for tags modal
-    pub multi_selected: HashSet<String>, // IDs of multi-selected tickets
-    pub body_textarea: Option<TextArea<'static>>, // TextArea for body editing
-    pub start_time: Instant,         // App start time for pulsing effects
-    pub url_candidates: Vec<String>, // URLs found in current ticket
-    pub memory_create_key: String,   // Key input for memory create modal
-    pub memory_create_tags: String,  // Tags input for memory create modal
-    pub memory_create_content: String, // Content input for memory create modal
-    pub memory_modal_selection: usize, // Current field in memory create modal (0=key, 1=tags, 2=content)
+    /// App start time (for animations)
+    pub start_time: Instant,
+
+    // ========== Modal State ==========
+    /// Current selection in modal dialogs
+    pub modal_selection: usize,
+    /// Candidates for parent selection modal
+    pub parent_candidates: Vec<Pea>,
+    /// Candidates for blocking selection modal
+    pub blocking_candidates: Vec<Pea>,
+    /// Which blocking candidates are selected (multi-select)
+    pub blocking_selected: Vec<bool>,
+    /// URLs extracted from current ticket body
+    pub url_candidates: Vec<String>,
+
+    // ========== Create Modal State ==========
+    /// Title input for create modal
+    pub create_title: String,
+    /// Type selection for create modal
+    pub create_type: PeaType,
+    /// Tag input for tags modal (comma-separated)
+    pub tags_input: String,
+
+    // ========== Memory Create Modal State ==========
+    /// Key input for memory create modal
+    pub memory_create_key: String,
+    /// Tags input for memory create modal
+    pub memory_create_tags: String,
+    /// Content input for memory create modal
+    pub memory_create_content: String,
+    /// Current field in memory create modal (0=key, 1=tags, 2=content)
+    pub memory_modal_selection: usize,
+
+    // ========== Body Editor State ==========
+    /// TextArea for multi-line body editing (Some when input_mode == EditBody)
+    pub body_textarea: Option<TextArea<'static>>,
 }
 
 impl App {
