@@ -2,12 +2,12 @@
 id = "peas-xfu2a"
 title = "Add memory support to GraphQL API"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "low"
 parent = "peas-oex03"
 blocking = ["peas-1uu22"]
 created = "2026-01-19T22:40:35.274470100Z"
-updated = "2026-01-19T22:40:35.274470100Z"
+updated = "2026-01-20T00:06:00.069650200Z"
 +++
 
 Extend GraphQL schema to query and mutate memories
