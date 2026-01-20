@@ -85,6 +85,7 @@ pub fn handle_bulk(ctx: &CommandContext, action: BulkAction) -> Result<()> {
 }
 
 /// Generic bulk update handler for simple mutations
+/// Uses validate-then-apply strategy: loads all peas and validates before writing any
 fn bulk_update<F, M>(
     ctx: &CommandContext,
     ids: &[String],
@@ -96,7 +97,8 @@ where
     F: FnMut(&mut Pea) -> bool,
     M: Fn(&str) -> String,
 {
-    let mut updated_peas = Vec::new();
+    // Phase 1: Load and validate all peas
+    let mut peas_to_update: Vec<Pea> = Vec::new();
     let mut errors_list: Vec<serde_json::Value> = Vec::new();
 
     for id in ids {
@@ -104,25 +106,44 @@ where
             Ok(mut pea) => {
                 if mutate(&mut pea) {
                     pea.touch();
-                    if let Err(e) = ctx.repo.update(&pea) {
-                        if !json {
-                            eprintln!("{} {}: {}", "Error".red(), id, e);
-                        }
-                        errors_list.push(serde_json::json!({"id": id, "error": e.to_string()}));
-                    } else {
-                        if !json {
-                            println!("{}", message_fn(id));
-                        }
-                        updated_peas.push(pea);
-                    }
+                    peas_to_update.push(pea);
                 }
             }
             Err(e) => {
                 if !json {
-                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                    eprintln!("{} {}: {}", "Error loading".red(), id, e);
                 }
                 errors_list.push(serde_json::json!({"id": id, "error": e.to_string()}));
             }
+        }
+    }
+
+    // If any pea failed to load, abort before writing
+    if !errors_list.is_empty() {
+        if !json {
+            eprintln!(
+                "\n{} Failed to load {} pea(s). Aborting bulk operation (no changes made).",
+                "Error:".red(),
+                errors_list.len()
+            );
+        }
+        return Ok(());
+    }
+
+    // Phase 2: Apply all updates (now that we know all peas are valid)
+    let mut updated_peas = Vec::new();
+
+    for pea in peas_to_update {
+        if let Err(e) = ctx.repo.update(&pea) {
+            if !json {
+                eprintln!("{} {}: {}", "Error updating".red(), pea.id, e);
+            }
+            errors_list.push(serde_json::json!({"id": pea.id, "error": e.to_string()}));
+        } else {
+            if !json {
+                println!("{}", message_fn(&pea.id));
+            }
+            updated_peas.push(pea);
         }
     }
 
@@ -135,16 +156,26 @@ where
             }))?
         );
     } else {
-        println!(
-            "\nUpdated {} peas, {} errors",
-            updated_peas.len(),
-            errors_list.len()
-        );
+        if errors_list.is_empty() {
+            println!(
+                "\n{} {} peas",
+                "Successfully updated".green(),
+                updated_peas.len()
+            );
+        } else {
+            println!(
+                "\n{} {} peas, {} errors",
+                "Partially completed:".yellow(),
+                updated_peas.len(),
+                errors_list.len()
+            );
+        }
     }
     Ok(())
 }
 
 /// Bulk update with skip capability (for operations like tag that might be no-op)
+/// Uses validate-then-apply strategy: loads all peas and validates before writing any
 fn bulk_update_with_skip<F, M>(
     ctx: &CommandContext,
     ids: &[String],
@@ -156,7 +187,8 @@ where
     F: FnMut(&mut Pea) -> (bool, Option<String>),
     M: Fn(&str) -> String,
 {
-    let mut updated_peas = Vec::new();
+    // Phase 1: Load and validate all peas
+    let mut peas_to_update: Vec<Pea> = Vec::new();
     let mut errors_list: Vec<serde_json::Value> = Vec::new();
     let mut skipped = 0;
 
@@ -166,17 +198,7 @@ where
                 let (should_update, skip_reason) = mutate(&mut pea);
                 if should_update {
                     pea.touch();
-                    if let Err(e) = ctx.repo.update(&pea) {
-                        if !json {
-                            eprintln!("{} {}: {}", "Error".red(), id, e);
-                        }
-                        errors_list.push(serde_json::json!({"id": id, "error": e.to_string()}));
-                    } else {
-                        if !json {
-                            println!("{}", message_fn(id));
-                        }
-                        updated_peas.push(pea);
-                    }
+                    peas_to_update.push(pea);
                 } else {
                     if !json {
                         let reason = skip_reason.unwrap_or_else(|| "no change".to_string());
@@ -187,10 +209,39 @@ where
             }
             Err(e) => {
                 if !json {
-                    eprintln!("{} {}: {}", "Error".red(), id, e);
+                    eprintln!("{} {}: {}", "Error loading".red(), id, e);
                 }
                 errors_list.push(serde_json::json!({"id": id, "error": e.to_string()}));
             }
+        }
+    }
+
+    // If any pea failed to load, abort before writing
+    if !errors_list.is_empty() {
+        if !json {
+            eprintln!(
+                "\n{} Failed to load {} pea(s). Aborting bulk operation (no changes made).",
+                "Error:".red(),
+                errors_list.len()
+            );
+        }
+        return Ok(());
+    }
+
+    // Phase 2: Apply all updates (now that we know all peas are valid)
+    let mut updated_peas = Vec::new();
+
+    for pea in peas_to_update {
+        if let Err(e) = ctx.repo.update(&pea) {
+            if !json {
+                eprintln!("{} {}: {}", "Error updating".red(), pea.id, e);
+            }
+            errors_list.push(serde_json::json!({"id": pea.id, "error": e.to_string()}));
+        } else {
+            if !json {
+                println!("{}", message_fn(&pea.id));
+            }
+            updated_peas.push(pea);
         }
     }
 
