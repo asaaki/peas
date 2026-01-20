@@ -30,6 +30,7 @@ mod tree_builder;
 mod ui;
 mod ui_modals;
 mod ui_utils;
+mod ui_views;
 mod url_utils;
 
 pub use app::run_tui;
