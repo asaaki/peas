@@ -23,6 +23,7 @@
 mod app;
 mod handlers;
 pub mod theme;
+mod tree_builder;
 mod ui;
 
 pub use app::run_tui;
