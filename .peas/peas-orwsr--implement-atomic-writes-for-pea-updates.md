@@ -2,11 +2,11 @@
 id = "peas-orwsr"
 title = "Implement atomic writes for pea updates"
 type = "bug"
-status = "todo"
+status = "in-progress"
 priority = "high"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:12.013063Z"
-updated = "2026-01-20T15:12:37.256780500Z"
+updated = "2026-01-20T16:07:02.239585200Z"
 +++
 
 ## Problem

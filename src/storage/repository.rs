@@ -9,6 +9,7 @@ use crate::{
 };
 use slug::slugify;
 use std::path::{Path, PathBuf};
+use tempfile::NamedTempFile;
 
 pub struct PeaRepository {
     data_path: PathBuf,
@@ -78,7 +79,9 @@ impl PeaRepository {
         }
 
         let content = render_markdown_with_format(pea, self.frontmatter_format)?;
-        std::fs::write(&file_path, content)?;
+
+        // Atomic write: write to temp file, then rename
+        self.atomic_write(&file_path, &content)?;
 
         Ok(file_path)
     }
@@ -120,11 +123,14 @@ impl PeaRepository {
         let format = detect_format(&original_content).unwrap_or(self.frontmatter_format);
         let content = render_markdown_with_format(pea, format)?;
 
+        // Atomic write: write to new file first, then remove old
+        self.atomic_write(&new_path, &content)?;
+
+        // Only remove old file if it's different from new (title changed)
         if old_path != new_path {
             std::fs::remove_file(&old_path)?;
         }
 
-        std::fs::write(&new_path, content)?;
         Ok(new_path)
     }
 
@@ -234,5 +240,38 @@ impl PeaRepository {
             .into_iter()
             .filter(|p| p.parent.as_deref() == Some(parent_id))
             .collect())
+    }
+
+    /// Atomically write content to a file using temp file + rename
+    /// This ensures we never have a partially written file or lose data on crash
+    fn atomic_write(&self, target_path: &Path, content: &str) -> Result<()> {
+        // Get the directory for the temp file (same as target for atomic rename)
+        let target_dir = target_path
+            .parent()
+            .ok_or_else(|| PeasError::Storage("Target path has no parent directory".to_string()))?;
+
+        // Create temp file in same directory as target (required for atomic rename)
+        let mut temp_file = NamedTempFile::new_in(target_dir)
+            .map_err(|e| PeasError::Storage(format!("Failed to create temp file: {}", e)))?;
+
+        // Write content to temp file
+        use std::io::Write;
+        temp_file
+            .write_all(content.as_bytes())
+            .map_err(|e| PeasError::Storage(format!("Failed to write to temp file: {}", e)))?;
+
+        // Sync to disk to ensure durability
+        temp_file
+            .as_file()
+            .sync_all()
+            .map_err(|e| PeasError::Storage(format!("Failed to sync temp file: {}", e)))?;
+
+        // Atomically rename temp file to target (overwrites if exists)
+        // This is atomic on Unix and Windows (when in same directory)
+        temp_file
+            .persist(target_path)
+            .map_err(|e| PeasError::Storage(format!("Failed to persist temp file: {}", e)))?;
+
+        Ok(())
     }
 }

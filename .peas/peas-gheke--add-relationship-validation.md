@@ -2,11 +2,11 @@
 id = "peas-gheke"
 title = "Add relationship validation"
 type = "feature"
-status = "in-progress"
+status = "completed"
 priority = "high"
 parent = "peas-w51zp"
 created = "2026-01-20T15:10:44.782056400Z"
-updated = "2026-01-20T15:27:22.681146300Z"
+updated = "2026-01-20T15:30:17.517469400Z"
 +++
 
 ## Problem

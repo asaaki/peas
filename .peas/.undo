@@ -1,6 +1,7 @@
 {
-  "Create": {
-    "id": "peas-jcage",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jcage--test-blocking-validation.md"
+  "Update": {
+    "id": "peas-n8o6l",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-n8o6l--test-atomic-write.md",
+    "previous_content": "+++\nid = \"peas-n8o6l\"\ntitle = \"Test atomic write\"\ntype = \"task\"\nstatus = \"todo\"\npriority = \"normal\"\ncreated = \"2026-01-20T16:08:41.979579700Z\"\nupdated = \"2026-01-20T16:08:41.979579700Z\"\n+++\n"
   }
 }
