@@ -1438,7 +1438,10 @@ peas start <id>                    # Mark as in-progress
 peas done <id>                     # Mark as completed
 peas search "<query>"              # Search peas
 peas roadmap                       # Show project roadmap
+peas suggest                       # Get next suggested ticket to work on
 ```
+
+**For LLMs working on multiple tasks:** Use `peas suggest` to get the next recommended ticket based on priority, blocking relationships, and work queue. This helps maintain focus during longer work sessions.
 
 ## Memory System (Knowledge Base)
 

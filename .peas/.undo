@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-unx69",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-unx69--add-tests-for-memory-model-and-repository.md",
-    "previous_content": "+++\nid = \"peas-unx69\"\ntitle = \"Add tests for Memory model and repository\"\ntype = \"task\"\nstatus = \"todo\"\npriority = \"normal\"\nparent = \"peas-kgp6m\"\nblocking = [\"peas-1uu22\"]\ncreated = \"2026-01-19T22:40:41.816202900Z\"\nupdated = \"2026-01-19T22:40:41.816202900Z\"\n+++\n\nWrite unit and integration tests for memory functionality\n\n**Test coverage:**\n- Memory struct creation and serialization\n- MemoryRepository CRUD operations\n- File format validation (frontmatter + body)\n- Tag filtering and search\n- Error handling (missing files, invalid keys)\n\n**Location:** tests/ directory or inline tests in src/storage/memory_repository.rs\n"
+    "id": "peas-xfu2a",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-xfu2a--add-memory-support-to-graphql-api.md",
+    "previous_content": "+++\nid = \"peas-xfu2a\"\ntitle = \"Add memory support to GraphQL API\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"low\"\nparent = \"peas-oex03\"\nblocking = [\"peas-1uu22\"]\ncreated = \"2026-01-19T22:40:35.274470100Z\"\nupdated = \"2026-01-19T22:40:35.274470100Z\"\n+++\n\nExtend GraphQL schema to query and mutate memories\n\n**Types:**\n```graphql\ntype Memory {\n  key: String!\n  content: String!\n  tags: [String!]!\n  created: DateTime!\n  updated: DateTime!\n}\n\ntype Query {\n  memory(key: String!): Memory\n  memories(tag: String): [Memory!]!\n}\n\ntype Mutation {\n  createMemory(key: String!, content: String!, tags: [String!]): Memory!\n  updateMemory(key: String!, content: String!, tags: [String!]): Memory!\n  deleteMemory(key: String!): Boolean!\n}\n```\n\n**Files:** src/graphql/types.rs, src/graphql/schema.rs\n"
   }
 }
