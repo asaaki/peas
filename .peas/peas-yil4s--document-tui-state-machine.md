@@ -2,11 +2,11 @@
 id = "peas-yil4s"
 title = "Document TUI state machine"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-w51zp"
 created = "2026-01-20T15:12:05.449160300Z"
-updated = "2026-01-20T15:12:39.727005500Z"
+updated = "2026-01-20T21:47:38.906907300Z"
 +++
 
 ## Problem
