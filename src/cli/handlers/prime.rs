@@ -1,5 +1,5 @@
+use crate::model::PeaStatus;
 use anyhow::Result;
-use peas::model::PeaStatus;
 
 use super::CommandContext;
 

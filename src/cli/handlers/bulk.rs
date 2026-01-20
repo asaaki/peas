@@ -1,7 +1,7 @@
+use crate::cli::commands::{BulkAction, PeaPriorityArg, PeaStatusArg, PeaTypeArg};
+use crate::model::{Pea, PeaStatus};
 use anyhow::Result;
 use colored::Colorize;
-use peas::cli::BulkAction;
-use peas::model::{Pea, PeaStatus};
 use std::io::{self, Read};
 
 use super::CommandContext;
@@ -217,11 +217,11 @@ where
 /// Handle bulk create from stdin
 fn handle_bulk_create(
     ctx: &CommandContext,
-    r#type: peas::cli::PeaTypeArg,
+    r#type: PeaTypeArg,
     parent: Option<String>,
     tag: Vec<String>,
-    priority: Option<peas::cli::PeaPriorityArg>,
-    status: Option<peas::cli::PeaStatusArg>,
+    priority: Option<PeaPriorityArg>,
+    status: Option<PeaStatusArg>,
     json: bool,
     dry_run: bool,
 ) -> Result<()> {
@@ -252,8 +252,8 @@ fn handle_bulk_create(
     }
 
     let pea_type = r#type.into();
-    let pea_status: Option<PeaStatus> = status.map(|s| s.into());
-    let pea_priority = priority.map(|p| p.into());
+    let pea_status: Option<PeaStatus> = status.map(|s: PeaStatusArg| s.into());
+    let pea_priority = priority.map(|p: PeaPriorityArg| p.into());
 
     // Dry-run mode: just show what would be created
     if dry_run {

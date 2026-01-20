@@ -1,8 +1,8 @@
+use crate::cli::MemoryAction;
+use crate::model::Memory;
+use crate::storage::MemoryRepository;
 use anyhow::Result;
 use colored::Colorize;
-use peas::cli::MemoryAction;
-use peas::model::Memory;
-use peas::storage::MemoryRepository;
 
 use super::CommandContext;
 

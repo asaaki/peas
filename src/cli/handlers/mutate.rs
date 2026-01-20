@@ -1,5 +1,5 @@
+use crate::graphql::build_schema;
 use anyhow::Result;
-use peas::graphql::build_schema;
 
 use super::CommandContext;
 

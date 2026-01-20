@@ -1,6 +1,6 @@
+use crate::model::PeaStatus;
 use anyhow::Result;
 use colored::Colorize;
-use peas::model::PeaStatus;
 
 use super::CommandContext;
 use super::utils::record_undo_update;

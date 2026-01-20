@@ -1,6 +1,6 @@
+use crate::model::{PeaPriority, PeaStatus, PeaType};
 use anyhow::Result;
 use colored::Colorize;
-use peas::model::{PeaPriority, PeaStatus, PeaType};
 use std::collections::HashMap;
 
 use super::CommandContext;

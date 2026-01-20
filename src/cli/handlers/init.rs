@@ -1,6 +1,6 @@
+use crate::config::{PeasConfig, PeasSettings};
 use anyhow::Result;
 use colored::Colorize;
-use peas::config::{PeasConfig, PeasSettings};
 
 pub fn handle_init(prefix: String, id_length: usize, peas_path: Option<String>) -> Result<()> {
     let cwd = std::env::current_dir()?;

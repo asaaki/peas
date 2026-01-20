@@ -1,14 +1,15 @@
+use crate::cli::commands::{PeaPriorityArg, PeaStatusArg, PeaTypeArg};
+use crate::model::PeaStatus;
 use anyhow::Result;
-use peas::model::PeaStatus;
 
 use super::CommandContext;
 use super::utils::print_pea_list;
 
 pub fn handle_list(
     ctx: &CommandContext,
-    r#type: Option<peas::cli::PeaTypeArg>,
-    status: Option<peas::cli::PeaStatusArg>,
-    priority: Option<peas::cli::PeaPriorityArg>,
+    r#type: Option<PeaTypeArg>,
+    status: Option<PeaStatusArg>,
+    priority: Option<PeaPriorityArg>,
     parent: Option<String>,
     tag: Option<String>,
     archived: bool,

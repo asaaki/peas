@@ -1,6 +1,7 @@
+use crate::cli::commands::{PeaPriorityArg, PeaStatusArg, PeaTypeArg, TemplateArg};
+use crate::model::Pea;
 use anyhow::Result;
 use colored::Colorize;
-use peas::model::Pea;
 
 use super::CommandContext;
 use super::utils::{record_undo_create, resolve_body};
@@ -9,15 +10,15 @@ use super::utils::{record_undo_create, resolve_body};
 pub fn handle_create(
     ctx: &CommandContext,
     title: String,
-    r#type: peas::cli::PeaTypeArg,
-    status: Option<peas::cli::PeaStatusArg>,
-    priority: Option<peas::cli::PeaPriorityArg>,
+    r#type: PeaTypeArg,
+    status: Option<PeaStatusArg>,
+    priority: Option<PeaPriorityArg>,
     body: Option<String>,
     body_file: Option<String>,
     parent: Option<String>,
     blocking: Vec<String>,
     tag: Vec<String>,
-    template: Option<peas::cli::TemplateArg>,
+    template: Option<TemplateArg>,
     json: bool,
     dry_run: bool,
 ) -> Result<()> {
@@ -55,7 +56,7 @@ pub fn handle_create(
     }
 
     // Merge template tags with CLI tags (CLI tags take precedence/add to)
-    let mut all_tags = default_tags;
+    let mut all_tags: Vec<String> = default_tags;
     for t in tag {
         if !all_tags.contains(&t) {
             all_tags.push(t);

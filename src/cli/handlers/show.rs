@@ -15,14 +15,14 @@ pub fn handle_show(ctx: &CommandContext, id: String, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn print_pea_with_refs(pea: &peas::model::Pea, ctx: &CommandContext) {
+fn print_pea_with_refs(pea: &crate::model::Pea, ctx: &CommandContext) {
     println!("{} {}", pea.id.cyan().bold(), pea.title.bold());
     println!("Type:     {}", format!("{}", pea.pea_type).blue());
     println!("Status:   {}", format_status(pea.status));
     println!("Priority: {}", format_priority(pea.priority));
 
     // Show parent with title if available
-    if let Some(ref parent_id) = pea.parent {
+    if let Some(parent_id) = &pea.parent {
         let parent_info = if let Ok(parent_pea) = ctx.repo.get(parent_id) {
             format!("{} ({})", parent_id.cyan(), parent_pea.title.dimmed())
         } else {

@@ -46,7 +46,7 @@ pub use undo::handle_undo;
 pub use update::handle_update;
 
 use crate::config::PeasConfig;
-use crate::error::Result;
+
 use crate::storage::PeaRepository;
 use std::path::PathBuf;
 

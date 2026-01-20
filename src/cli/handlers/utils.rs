@@ -1,9 +1,9 @@
+use crate::model::{Pea, PeaPriority, PeaStatus};
+use crate::undo::UndoManager;
 use anyhow::{Context, Result};
 use colored::Colorize;
-use peas::model::{Pea, PeaPriority, PeaStatus};
-use peas::undo::UndoManager;
 use std::io::{self, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::CommandContext;
 
@@ -115,23 +115,23 @@ pub fn output_json_or_text<T: serde::Serialize>(
 /// Record create operation with undo manager
 pub fn record_undo_create(ctx: &CommandContext, id: &str, path: &Path) {
     let undo_manager = UndoManager::new(&ctx.config.data_path(&ctx.root));
-    let _ = peas::undo::record_create(&undo_manager, id, path);
+    let _ = crate::undo::record_create(&undo_manager, id, path);
 }
 
 /// Record update operation with undo manager
 pub fn record_undo_update(ctx: &CommandContext, id: &str, old_path: &Path) {
     let undo_manager = UndoManager::new(&ctx.config.data_path(&ctx.root));
-    let _ = peas::undo::record_update(&undo_manager, id, old_path);
+    let _ = crate::undo::record_update(&undo_manager, id, old_path);
 }
 
 /// Record delete operation with undo manager
 pub fn record_undo_delete(ctx: &CommandContext, id: &str, file_path: &Path) {
     let undo_manager = UndoManager::new(&ctx.config.data_path(&ctx.root));
-    let _ = peas::undo::record_delete(&undo_manager, id, file_path);
+    let _ = crate::undo::record_delete(&undo_manager, id, file_path);
 }
 
 /// Record archive operation with undo manager
 pub fn record_undo_archive(ctx: &CommandContext, id: &str, original: &Path, archive: &Path) {
     let undo_manager = UndoManager::new(&ctx.config.data_path(&ctx.root));
-    let _ = peas::undo::record_archive(&undo_manager, id, original, archive);
+    let _ = crate::undo::record_archive(&undo_manager, id, original, archive);
 }

@@ -1,3 +1,4 @@
+use crate::cli::commands::{PeaPriorityArg, PeaStatusArg, PeaTypeArg};
 use anyhow::Result;
 use colored::Colorize;
 
@@ -9,9 +10,9 @@ pub fn handle_update(
     ctx: &CommandContext,
     id: String,
     title: Option<String>,
-    r#type: Option<peas::cli::PeaTypeArg>,
-    status: Option<peas::cli::PeaStatusArg>,
-    priority: Option<peas::cli::PeaPriorityArg>,
+    r#type: Option<PeaTypeArg>,
+    status: Option<PeaStatusArg>,
+    priority: Option<PeaPriorityArg>,
     body: Option<String>,
     parent: Option<String>,
     add_tag: Vec<String>,

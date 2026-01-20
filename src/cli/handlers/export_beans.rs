@@ -15,8 +15,8 @@ pub fn handle_export_beans(ctx: &CommandContext, output: String) -> Result<()> {
 
     let mut exported = 0;
     for pea in &peas {
-        let content = peas::import_export::export_to_beans(pea)?;
-        let filename = peas::import_export::beans_filename(pea);
+        let content = crate::import_export::export_to_beans(pea)?;
+        let filename = crate::import_export::beans_filename(pea);
         let file_path = output_path.join(&filename);
         std::fs::write(&file_path, content)?;
         exported += 1;

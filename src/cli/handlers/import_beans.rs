@@ -5,7 +5,7 @@ use super::CommandContext;
 pub fn handle_import_beans(ctx: &CommandContext, path: String, dry_run: bool) -> Result<()> {
     let beans_path = std::path::Path::new(&path);
 
-    let peas = peas::import_export::import_beans_directory(beans_path)?;
+    let peas = crate::import_export::import_beans_directory(beans_path)?;
 
     if peas.is_empty() {
         println!("No beans files found to import in {}", path);
