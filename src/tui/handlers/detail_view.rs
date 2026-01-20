@@ -24,7 +24,7 @@ pub fn handle_detail_view(
             app.toggle_detail_pane();
         }
         KeyCode::Enter => {
-            // Open modal for selected metadata property or jump to relation
+            // Open modal for selected metadata property, jump to relation, or open asset
             if app.detail_pane == DetailPane::Metadata {
                 match app.metadata_selection {
                     0 => app.open_type_modal(),     // Type
@@ -35,6 +35,8 @@ pub fn handle_detail_view(
                 }
             } else if app.detail_pane == DetailPane::Relations && !app.relations_items.is_empty() {
                 app.jump_to_relation();
+            } else if app.detail_pane == DetailPane::Assets && !app.assets_items.is_empty() {
+                let _ = app.open_selected_asset();
             } else {
                 app.input_mode = InputMode::Normal;
                 app.detail_pane = DetailPane::Body;
@@ -49,6 +51,7 @@ pub fn handle_detail_view(
             }
             DetailPane::Body => app.scroll_detail_down(),
             DetailPane::Relations => app.relations_next(),
+            DetailPane::Assets => app.assets_next(),
         },
         KeyCode::Up | KeyCode::Char('k') => match app.detail_pane {
             DetailPane::Metadata => {
@@ -59,6 +62,7 @@ pub fn handle_detail_view(
             }
             DetailPane::Body => app.scroll_detail_up(),
             DetailPane::Relations => app.relations_previous(),
+            DetailPane::Assets => app.assets_previous(),
         },
         KeyCode::Char('J') => {
             // Always scroll body

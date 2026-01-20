@@ -55,6 +55,7 @@ pub enum DetailPane {
     #[default]
     Body, // Description/markdown content
     Relations, // Relationships pane
+    Assets,   // Asset files pane
 }
 
 pub struct App {
@@ -76,6 +77,8 @@ pub struct App {
     pub relations_scroll: u16,      // Scroll offset for relationships pane (future use)
     pub relations_selection: usize, // Selected item in relationships pane
     pub relations_items: Vec<(String, String, String, PeaType)>, // (rel_type, id, title, pea_type) for relationships
+    pub assets_selection: usize,                                 // Selected item in assets pane
+    pub assets_items: Vec<crate::assets::AssetInfo>,             // Asset files for current ticket
     pub metadata_selection: usize, // Selected property in metadata pane (0=type, 1=status, 2=priority, 3=tags)
     pub detail_pane: DetailPane,   // Which pane is focused in detail view
     pub input_mode: InputMode,
@@ -137,6 +140,8 @@ impl App {
             relations_scroll: 0,
             relations_selection: 0,
             relations_items: Vec::new(),
+            assets_selection: 0,
+            assets_items: Vec::new(),
             metadata_selection: 0,
             detail_pane: DetailPane::default(),
             input_mode: InputMode::Normal,
@@ -482,6 +487,9 @@ impl App {
         } else {
             self.relations_items.clear();
         }
+
+        // Also rebuild assets when updating relations
+        self.rebuild_assets();
     }
 
     /// Navigate down in relationships pane
@@ -518,18 +526,96 @@ impl App {
         false
     }
 
-    /// Toggle between detail view panes (Metadata -> Body -> Relations -> Metadata)
+    /// Navigate down in assets pane
+    pub fn assets_next(&mut self) {
+        if !self.assets_items.is_empty() {
+            self.assets_selection = (self.assets_selection + 1) % self.assets_items.len();
+        }
+    }
+
+    /// Navigate up in assets pane
+    pub fn assets_previous(&mut self) {
+        if !self.assets_items.is_empty() {
+            self.assets_selection = if self.assets_selection == 0 {
+                self.assets_items.len() - 1
+            } else {
+                self.assets_selection - 1
+            };
+        }
+    }
+
+    /// Open the selected asset
+    pub fn open_selected_asset(&self) -> std::io::Result<()> {
+        if let Some(asset) = self.assets_items.get(self.assets_selection) {
+            // Open with platform-specific command
+            #[cfg(target_os = "windows")]
+            {
+                std::process::Command::new("cmd")
+                    .args(["/C", "start", "", asset.path.to_str().unwrap()])
+                    .spawn()?;
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                std::process::Command::new("open")
+                    .arg(&asset.path)
+                    .spawn()?;
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                std::process::Command::new("xdg-open")
+                    .arg(&asset.path)
+                    .spawn()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Rebuild assets list for the current ticket
+    pub fn rebuild_assets(&mut self) {
+        self.assets_selection = 0;
+        if let Some(pea) = self.selected_pea() {
+            // Get project root from data_path (parent of .peas)
+            if let Some(project_root) = self.data_path.parent() {
+                let asset_manager = crate::assets::AssetManager::new(project_root);
+                match asset_manager.list_assets(&pea.id) {
+                    Ok(assets) => {
+                        self.assets_items = assets;
+                    }
+                    Err(_) => {
+                        self.assets_items.clear();
+                    }
+                }
+            } else {
+                self.assets_items.clear();
+            }
+        } else {
+            self.assets_items.clear();
+        }
+    }
+
+    /// Toggle between detail view panes (Metadata -> Body -> Relations -> Assets -> Metadata)
     pub fn toggle_detail_pane(&mut self) {
         self.detail_pane = match self.detail_pane {
             DetailPane::Metadata => DetailPane::Body,
             DetailPane::Body => {
                 if !self.relations_items.is_empty() {
                     DetailPane::Relations
+                } else if !self.assets_items.is_empty() {
+                    DetailPane::Assets
                 } else {
                     DetailPane::Metadata
                 }
             }
-            DetailPane::Relations => DetailPane::Metadata,
+            DetailPane::Relations => {
+                if !self.assets_items.is_empty() {
+                    DetailPane::Assets
+                } else {
+                    DetailPane::Metadata
+                }
+            }
+            DetailPane::Assets => DetailPane::Metadata,
         };
     }
 

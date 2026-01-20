@@ -2,6 +2,6 @@
   "Update": {
     "id": "peas-ov8lj",
     "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-ov8lj--cli-asset-management-commands-add-list-remove-open.md",
-    "previous_content": "+++\nid = \"peas-ov8lj\"\ntitle = \"CLI asset management commands (add, list, remove, open)\"\ntype = \"story\"\nstatus = \"todo\"\npriority = \"high\"\nparent = \"peas-1le6t\"\ncreated = \"2026-01-20T14:22:37.089390300Z\"\nupdated = \"2026-01-20T14:22:37.089390300Z\"\n+++\n"
+    "previous_content": "+++\nid = \"peas-ov8lj\"\ntitle = \"CLI asset management commands (add, list, remove, open)\"\ntype = \"story\"\nstatus = \"in-progress\"\npriority = \"high\"\nparent = \"peas-1le6t\"\nassets = [\"test-asset.txt\"]\ncreated = \"2026-01-20T14:22:37.089390300Z\"\nupdated = \"2026-01-20T14:36:43.903529200Z\"\n+++\n"
   }
 }

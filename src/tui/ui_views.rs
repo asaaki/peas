@@ -546,14 +546,15 @@ pub fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_s
         // Check if we have body content
         let has_body = !pea.body.is_empty();
         let has_relations = !app.relations_items.is_empty();
+        let has_assets = !app.assets_items.is_empty();
         let body_content = pea.body.clone();
 
-        // Layout: Top section (metadata + relations) | Bottom section (body)
+        // Layout: Top section (metadata + relations + assets) | Bottom section (body)
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(if has_body {
                 vec![
-                    Constraint::Length(12), // Top section (metadata + relations)
+                    Constraint::Length(12), // Top section (metadata + relations + assets)
                     Constraint::Min(5),     // Body
                 ]
             } else {
@@ -568,19 +569,31 @@ pub fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_s
             None
         };
 
-        // Split top area horizontally: metadata (left) | relations (right)
+        // Split top area horizontally: metadata | relations | assets
+        let num_columns =
+            1 + (if has_relations { 1 } else { 0 }) + (if has_assets { 1 } else { 0 });
         let top_chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints(if has_relations {
-                vec![Constraint::Percentage(50), Constraint::Percentage(50)]
-            } else {
-                vec![Constraint::Percentage(100)]
+            .constraints(match num_columns {
+                1 => vec![Constraint::Percentage(100)],
+                2 => vec![Constraint::Percentage(50), Constraint::Percentage(50)],
+                3 => vec![
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(34),
+                ],
+                _ => vec![Constraint::Percentage(100)],
             })
             .split(top_area);
 
         let metadata_area = top_chunks[0];
         let relations_area = if has_relations {
             Some(top_chunks[1])
+        } else {
+            None
+        };
+        let assets_area = if has_assets {
+            Some(top_chunks[if has_relations { 2 } else { 1 }])
         } else {
             None
         };
@@ -756,6 +769,67 @@ pub fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_s
                             } else {
                                 title.clone()
                             },
+                            Style::default().fg(theme().text_muted),
+                        ),
+                    ]);
+
+                    if is_selected {
+                        ListItem::new(content).style(Style::default().add_modifier(Modifier::BOLD))
+                    } else {
+                        ListItem::new(content)
+                    }
+                })
+                .collect();
+
+            let list = List::new(items);
+            f.render_widget(list, inner);
+        }
+
+        // Render assets pane if there are any
+        if let Some(assets_area) = assets_area {
+            let asset_count = app.assets_items.len();
+            let is_focused = app.detail_pane == DetailPane::Assets;
+            let assets_block = Block::default()
+                .title(format!(" Assets ({}) ", asset_count))
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED)
+                .border_style(theme().border_style(is_focused));
+
+            let inner = assets_block.inner(assets_area);
+            f.render_widget(assets_block, assets_area);
+
+            // Build list items for assets
+            let items: Vec<ListItem> = app
+                .assets_items
+                .iter()
+                .enumerate()
+                .map(|(i, asset)| {
+                    let is_selected = i == app.assets_selection;
+
+                    // Selection cursor with pulsing effect (only show when pane is focused)
+                    let cursor = if is_selected && is_focused {
+                        Span::styled(format!("{} ", theme().row_marker), pulsing_style)
+                    } else {
+                        Span::raw("  ")
+                    };
+
+                    let file_type = asset.file_type();
+                    let type_color = match file_type {
+                        "Image" => Color::Magenta,
+                        "PDF" => Color::Red,
+                        "Text" | "Document" => Color::Blue,
+                        "Code" => Color::Green,
+                        "Archive" => Color::Yellow,
+                        _ => Color::Gray,
+                    };
+
+                    let content = Line::from(vec![
+                        cursor,
+                        Span::styled(format!("[{}] ", file_type), Style::default().fg(type_color)),
+                        Span::styled(&asset.filename, Style::default().fg(theme().text)),
+                        Span::raw(" "),
+                        Span::styled(
+                            format!("({})", asset.size_string()),
                             Style::default().fg(theme().text_muted),
                         ),
                     ]);
