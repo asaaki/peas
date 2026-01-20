@@ -2,10 +2,10 @@
 id = "peas-w51zp"
 title = "E8.1: Quality and Robustness Improvements"
 type = "epic"
-status = "todo"
+status = "completed"
 priority = "high"
 created = "2026-01-20T15:12:23.093761700Z"
-updated = "2026-01-20T15:12:23.093761700Z"
+updated = "2026-01-20T23:27:46.251321300Z"
 +++
 
 ## Overview
