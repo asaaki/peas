@@ -266,6 +266,9 @@ pub enum Commands {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+        /// Number of suggestions to show (default: 1)
+        #[arg(long, short, default_value = "1")]
+        limit: usize,
     },
 
     /// Generate a Markdown roadmap from milestones and epics

@@ -1,7 +1,6 @@
 {
-  "Update": {
-    "id": "peas-xfu2a",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-xfu2a--add-memory-support-to-graphql-api.md",
-    "previous_content": "+++\nid = \"peas-xfu2a\"\ntitle = \"Add memory support to GraphQL API\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"low\"\nparent = \"peas-oex03\"\nblocking = [\"peas-1uu22\"]\ncreated = \"2026-01-19T22:40:35.274470100Z\"\nupdated = \"2026-01-19T22:40:35.274470100Z\"\n+++\n\nExtend GraphQL schema to query and mutate memories\n\n**Types:**\n```graphql\ntype Memory {\n  key: String!\n  content: String!\n  tags: [String!]!\n  created: DateTime!\n  updated: DateTime!\n}\n\ntype Query {\n  memory(key: String!): Memory\n  memories(tag: String): [Memory!]!\n}\n\ntype Mutation {\n  createMemory(key: String!, content: String!, tags: [String!]): Memory!\n  updateMemory(key: String!, content: String!, tags: [String!]): Memory!\n  deleteMemory(key: String!): Boolean!\n}\n```\n\n**Files:** src/graphql/types.rs, src/graphql/schema.rs\n"
+  "Create": {
+    "id": "peas-inh2t",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-inh2t--m8-test-milestone.md"
   }
 }
