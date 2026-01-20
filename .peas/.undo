@@ -1,7 +1,7 @@
 {
   "Update": {
-    "id": "peas-ljtmi",
-    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-ljtmi--implement-rollback-for-bulk-operations.md",
-    "previous_content": "+++\nid = \"peas-ljtmi\"\ntitle = \"Implement rollback for bulk operations\"\ntype = \"bug\"\nstatus = \"todo\"\npriority = \"high\"\nparent = \"peas-w51zp\"\ncreated = \"2026-01-20T15:10:51.329595700Z\"\nupdated = \"2026-01-20T15:12:36.130819800Z\"\n+++\n\n## Problem\nBulk operations can partially fail without rollback. If item 5/10 fails, items 1-4 are committed but 6-10 aren't attempted.\n\n## Impact\n- Inconsistent state after failures\n- No way to recover\n- Confusing error messages\n\n## Solution\nImplement transaction-like behavior:\n1. Validate all items before any modifications\n2. Apply changes in memory first\n3. Write all to disk only if all succeed\n4. Or provide clear 'continue on error' flag with summary\n\n## Files\n- src/cli/handlers/bulk.rs\n"
+    "id": "peas-jxy81",
+    "file_path": "D:\\Development\\Shared\\PROJECT_LAB\\peas\\.peas\\peas-jxy81--implement-concurrent-edit-detection.md",
+    "previous_content": "+++\nid = \"peas-jxy81\"\ntitle = \"Implement concurrent edit detection\"\ntype = \"feature\"\nstatus = \"todo\"\npriority = \"high\"\nparent = \"peas-w51zp\"\ncreated = \"2026-01-20T15:10:37.571817500Z\"\nupdated = \"2026-01-20T15:12:35.422674200Z\"\n+++\n\n## Problem\nMultiple TUI instances can clobber each other's changes. File watcher exists but no conflict resolution.\n\n## Impact\n- Data loss when multiple users/instances edit same pea\n- Silent overwrites\n\n## Solution\nImplement one of:\n1. File locking mechanism (flock/LockFile)\n2. Conflict detection on write (check timestamp)\n3. Last-write-wins with warning\n\n## Files\n- src/storage/repository.rs\n- src/tui/ handlers\n"
   }
 }

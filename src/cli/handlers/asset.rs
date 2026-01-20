@@ -52,8 +52,8 @@ fn handle_asset_add(
     // Update the pea's assets list
     if !pea.assets.contains(&asset_name) {
         pea.assets.push(asset_name.clone());
-        pea.touch();
-        ctx.repo.update(&pea)?;
+        // NOTE: No touch() call - update() handles it internally now
+        ctx.repo.update(&mut pea)?;
     }
 
     if json {
@@ -158,8 +158,8 @@ fn handle_asset_remove(
     let mut pea = ctx.repo.get(ticket_id)?;
     if let Some(pos) = pea.assets.iter().position(|x| x == filename) {
         pea.assets.remove(pos);
-        pea.touch();
-        ctx.repo.update(&pea)?;
+        // NOTE: No touch() call - update() handles it internally now
+        ctx.repo.update(&mut pea)?;
     }
 
     if json {

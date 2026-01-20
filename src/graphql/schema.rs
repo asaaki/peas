@@ -284,8 +284,8 @@ impl MutationRoot {
             }
         }
 
-        pea.touch();
-        repo.update(&pea)?;
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut pea)?;
         Ok(pea.into())
     }
 
@@ -299,8 +299,8 @@ impl MutationRoot {
         let repo = get_repo(ctx)?;
         let mut pea = repo.get(&id)?;
         pea.status = status.into();
-        pea.touch();
-        repo.update(&pea)?;
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut pea)?;
         Ok(pea.into())
     }
 
@@ -329,8 +329,8 @@ impl MutationRoot {
         let mut pea = repo.get(&id)?;
         if !pea.tags.contains(&tag) {
             pea.tags.push(tag);
-            pea.touch();
-            repo.update(&pea)?;
+            // NOTE: No touch() call - update() handles it internally now
+            repo.update(&mut pea)?;
         }
         Ok(pea.into())
     }
@@ -345,8 +345,8 @@ impl MutationRoot {
         let repo = get_repo(ctx)?;
         let mut pea = repo.get(&id)?;
         pea.tags.retain(|t| t != &tag);
-        pea.touch();
-        repo.update(&pea)?;
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut pea)?;
         Ok(pea.into())
     }
 
@@ -379,9 +379,9 @@ impl MutationRoot {
         if let Some(tags) = input.tags {
             memory.tags = tags;
         }
-        memory.touch();
+        // NOTE: No touch() call - update() handles it internally now
 
-        repo.update(&memory)?;
+        repo.update(&mut memory)?;
         Ok(memory.into())
     }
 

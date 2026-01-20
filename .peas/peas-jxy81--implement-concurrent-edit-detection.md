@@ -2,11 +2,11 @@
 id = "peas-jxy81"
 title = "Implement concurrent edit detection"
 type = "feature"
-status = "todo"
+status = "in-progress"
 priority = "high"
 parent = "peas-w51zp"
 created = "2026-01-20T15:10:37.571817500Z"
-updated = "2026-01-20T15:12:35.422674200Z"
+updated = "2026-01-20T19:46:16.037504500Z"
 +++
 
 ## Problem

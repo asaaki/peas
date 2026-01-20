@@ -32,24 +32,21 @@ fn handle_memory_save(
 ) -> Result<()> {
     let is_update = repo.get(&key).is_ok();
 
-    let memory = if is_update {
+    let (memory, file_path) = if is_update {
         // Update existing memory
         let mut existing_memory = repo.get(&key)?;
         existing_memory.content = content;
         existing_memory.tags = tag;
-        existing_memory.touch();
-        existing_memory
+        // NOTE: No touch() call - update() handles it internally now
+        let path = repo.update(&mut existing_memory)?;
+        (existing_memory, path)
     } else {
         // Create new memory
-        Memory::new(key.clone())
+        let memory = Memory::new(key.clone())
             .with_content(content)
-            .with_tags(tag)
-    };
-
-    let file_path = if is_update {
-        repo.update(&memory)?
-    } else {
-        repo.create(&memory)?
+            .with_tags(tag);
+        let path = repo.create(&memory)?;
+        (memory, path)
     };
 
     if json {

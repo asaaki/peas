@@ -105,7 +105,7 @@ where
         match ctx.repo.get(id) {
             Ok(mut pea) => {
                 if mutate(&mut pea) {
-                    pea.touch();
+                    // NOTE: No touch() call - update() handles it internally now
                     peas_to_update.push(pea);
                 }
             }
@@ -133,8 +133,8 @@ where
     // Phase 2: Apply all updates (now that we know all peas are valid)
     let mut updated_peas = Vec::new();
 
-    for pea in peas_to_update {
-        if let Err(e) = ctx.repo.update(&pea) {
+    for mut pea in peas_to_update {
+        if let Err(e) = ctx.repo.update(&mut pea) {
             if !json {
                 eprintln!("{} {}: {}", "Error updating".red(), pea.id, e);
             }
@@ -197,7 +197,7 @@ where
             Ok(mut pea) => {
                 let (should_update, skip_reason) = mutate(&mut pea);
                 if should_update {
-                    pea.touch();
+                    // NOTE: No touch() call - update() handles it internally now
                     peas_to_update.push(pea);
                 } else {
                     if !json {
@@ -231,8 +231,8 @@ where
     // Phase 2: Apply all updates (now that we know all peas are valid)
     let mut updated_peas = Vec::new();
 
-    for pea in peas_to_update {
-        if let Err(e) = ctx.repo.update(&pea) {
+    for mut pea in peas_to_update {
+        if let Err(e) = ctx.repo.update(&mut pea) {
             if !json {
                 eprintln!("{} {}: {}", "Error updating".red(), pea.id, e);
             }

@@ -33,8 +33,8 @@ where
             }
             let mut updated = pea;
             update_fn(&mut updated, new_value);
-            updated.touch();
-            repo.update(&updated)?;
+            // NOTE: No touch() call - update() handles it internally now
+            repo.update(&mut updated)?;
         }
     }
 
@@ -123,8 +123,8 @@ pub fn apply_parent_change(
 
         let mut updated = pea.clone();
         updated.parent = new_parent.clone();
-        updated.touch();
-        repo.update(&updated)?;
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut updated)?;
 
         let parent_display = new_parent.unwrap_or_else(|| "(none)".to_string());
         Ok(format!("{} parent -> {}", pea.id, parent_display))
@@ -151,8 +151,8 @@ pub fn apply_blocking_change(
         let count = new_blocking.len();
         let mut updated = pea.clone();
         updated.blocking = new_blocking;
-        updated.touch();
-        repo.update(&updated)?;
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut updated)?;
 
         Ok(format!("{} blocking {} tickets", pea.id, count))
     } else {
@@ -177,8 +177,8 @@ pub fn apply_tags_change(
 
         let mut updated = pea;
         updated.tags = new_tags;
-        updated.touch();
-        repo.update(&updated)?;
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut updated)?;
     }
 
     Ok(())

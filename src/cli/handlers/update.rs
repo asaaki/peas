@@ -102,13 +102,12 @@ pub fn handle_update(
         return Ok(());
     }
 
-    pea.touch();
-
     // Record undo operation before update
     let old_path = ctx.repo.find_file_by_id(&pea.id)?;
     record_undo_update(ctx, &pea.id, &old_path);
 
-    let path = ctx.repo.update(&pea)?;
+    // NOTE: No touch() call - update() handles it internally now
+    let path = ctx.repo.update(&mut pea)?;
     let filename = path
         .file_name()
         .map(|f| f.to_string_lossy())

@@ -14,8 +14,8 @@ fn update_status(ctx: &CommandContext, id: &str, new_status: PeaStatus, json: bo
     record_undo_update(ctx, &pea.id, &old_path);
 
     pea.status = new_status;
-    pea.touch();
-    ctx.repo.update(&pea)?;
+    // NOTE: No touch() call - update() handles it internally now
+    ctx.repo.update(&mut pea)?;
 
     if json {
         println!("{}", serde_json::to_string_pretty(&pea)?);

@@ -34,8 +34,8 @@ pub fn save_body(
     // Update pea
     let mut updated = pea.clone();
     updated.body = new_body;
-    updated.touch();
-    repo.update(&updated)?;
+    // NOTE: No touch() call - update() handles it internally now
+    repo.update(&mut updated)?;
 
     Ok(())
 }

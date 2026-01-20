@@ -97,7 +97,7 @@ impl PeaRepository {
         self.find_file_by_id(id).is_ok()
     }
 
-    pub fn update(&self, pea: &Pea) -> Result<PathBuf> {
+    pub fn update(&self, pea: &mut Pea) -> Result<PathBuf> {
         // Validate input
         validation::validate_title(&pea.title)?;
         validation::validate_body(&pea.body)?;
@@ -115,6 +115,22 @@ impl PeaRepository {
         })?;
 
         let old_path = self.find_file_by_id(&pea.id)?;
+
+        // Concurrent edit detection: check if file was modified since we loaded it
+        // This prevents one TUI instance from clobbering another's changes
+        // IMPORTANT: This check must happen BEFORE we call touch(), so we still have
+        // the original timestamp that was loaded from disk
+        let current_pea = self.get(&pea.id)?;
+        if current_pea.updated != pea.updated {
+            return Err(PeasError::Storage(format!(
+                "Concurrent modification detected for pea '{}'. The file was modified by another process.\nYour version was updated at: {}\nCurrent version was updated at: {}\nPlease reload and try again.",
+                pea.id, pea.updated, current_pea.updated
+            )));
+        }
+
+        // Now that we've verified no concurrent edits, update the timestamp
+        pea.touch();
+
         let new_filename = self.generate_filename(&pea.id, &pea.title);
         let new_path = self.data_path.join(&new_filename);
 
@@ -273,5 +289,138 @@ impl PeaRepository {
             .map_err(|e| PeasError::Storage(format!("Failed to persist temp file: {}", e)))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{PeaStatus, PeaType};
+    use tempfile::TempDir;
+
+    fn setup_test_repo() -> (PeaRepository, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let config = PeasConfig {
+            peas: crate::config::PeasSettings {
+                path: ".peas".to_string(),
+                prefix: "test-".to_string(),
+                id_length: 5,
+                default_status: "todo".to_string(),
+                default_type: "task".to_string(),
+                frontmatter: "toml".to_string(),
+            },
+            tui: crate::config::TuiSettings::default(),
+        };
+        let repo = PeaRepository::new(&config, temp_dir.path());
+        (repo, temp_dir)
+    }
+
+    #[test]
+    fn test_concurrent_edit_detection_rejects_stale_update() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let mut pea = Pea::new(
+            "test-12345".to_string(),
+            "Original Title".to_string(),
+            PeaType::Task,
+        );
+        pea.body = "Original body".to_string();
+        repo.create(&pea).unwrap();
+
+        // Load the pea (simulating first TUI instance)
+        let mut pea1 = repo.get("test-12345").unwrap();
+
+        // Load the same pea (simulating second TUI instance)
+        let mut pea2 = repo.get("test-12345").unwrap();
+
+        // First instance modifies and saves
+        pea1.title = "Modified by Instance 1".to_string();
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut pea1).unwrap();
+
+        // Second instance tries to save with stale timestamp
+        pea2.title = "Modified by Instance 2".to_string();
+        // NOTE: No touch() call - update() would handle it, but we expect failure first
+
+        // This should fail with concurrent modification error
+        let result = repo.update(&mut pea2);
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Concurrent modification detected"));
+        assert!(err_msg.contains("test-12345"));
+        assert!(err_msg.contains("reload and try again"));
+    }
+
+    #[test]
+    fn test_concurrent_edit_detection_allows_reload() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let mut pea = Pea::new(
+            "test-67890".to_string(),
+            "Original Title".to_string(),
+            PeaType::Task,
+        );
+        pea.body = "Original body".to_string();
+        repo.create(&pea).unwrap();
+
+        // Load the pea (simulating first TUI instance)
+        let mut pea1 = repo.get("test-67890").unwrap();
+
+        // Load the same pea (simulating second TUI instance)
+        let mut pea2 = repo.get("test-67890").unwrap();
+
+        // First instance modifies and saves
+        pea1.title = "Modified by Instance 1".to_string();
+        // NOTE: No touch() call - update() handles it internally now
+        repo.update(&mut pea1).unwrap();
+
+        // Second instance detects conflict and reloads
+        pea2 = repo.get("test-67890").unwrap();
+
+        // Now modify and save with fresh timestamp - should succeed
+        pea2.title = "Modified by Instance 2 after reload".to_string();
+        // NOTE: No touch() call - update() handles it internally now
+
+        let result = repo.update(&mut pea2);
+        assert!(result.is_ok());
+
+        // Verify the final state
+        let final_pea = repo.get("test-67890").unwrap();
+        assert_eq!(final_pea.title, "Modified by Instance 2 after reload");
+    }
+
+    #[test]
+    fn test_no_false_positive_on_same_timestamp() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        // Create a pea
+        let mut pea = Pea::new(
+            "test-abcde".to_string(),
+            "Original Title".to_string(),
+            PeaType::Task,
+        );
+        pea.body = "Original body".to_string();
+        repo.create(&pea).unwrap();
+
+        // Load and modify
+        let mut pea = repo.get("test-abcde").unwrap();
+        pea.status = PeaStatus::InProgress;
+        // NOTE: No touch() call - update() handles it internally now
+
+        // First update should succeed
+        let result = repo.update(&mut pea);
+        assert!(result.is_ok());
+
+        // Reload and modify again
+        let mut pea = repo.get("test-abcde").unwrap();
+        pea.status = PeaStatus::Completed;
+        // NOTE: No touch() call - update() handles it internally now
+
+        // Second update should also succeed
+        let result = repo.update(&mut pea);
+        assert!(result.is_ok());
     }
 }
