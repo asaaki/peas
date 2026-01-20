@@ -2,11 +2,11 @@
 id = "peas-85bwj"
 title = "Optimize URL regex compilation"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "low"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:56.943481900Z"
-updated = "2026-01-20T15:12:39.381640100Z"
+updated = "2026-01-20T21:25:24.932688700Z"
 +++
 
 ## Problem
