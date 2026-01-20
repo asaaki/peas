@@ -1,4 +1,4 @@
-use super::{handlers, modal_operations, tree_builder, ui};
+use super::{body_editor, handlers, modal_operations, relations, tree_builder, ui, url_utils};
 use crate::{
     config::PeasConfig,
     error::Result,
@@ -6,7 +6,7 @@ use crate::{
     storage::{MemoryRepository, PeaRepository},
     undo::UndoManager,
 };
-use cli_clipboard::ClipboardProvider;
+
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
@@ -22,7 +22,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tree_builder::{PageInfo, TreeNode};
-use tui_textarea::{Input, TextArea};
+use tui_textarea::TextArea;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewMode {
@@ -474,64 +474,13 @@ impl App {
 
     /// Build the relationships list for the current pea
     pub fn build_relations(&mut self) {
-        self.relations_items.clear();
         self.relations_selection = 0;
         self.relations_scroll = 0;
 
-        if let Some(pea) = self.selected_pea().cloned() {
-            // Add parent if exists
-            if let Some(ref parent_id) = pea.parent {
-                if let Some(parent) = self.all_peas.iter().find(|p| p.id == *parent_id) {
-                    self.relations_items.push((
-                        "Parent".to_string(),
-                        parent.id.clone(),
-                        parent.title.clone(),
-                        parent.pea_type,
-                    ));
-                }
-            }
-
-            // Add blocking tickets
-            for id in &pea.blocking {
-                if let Some(blocked) = self.all_peas.iter().find(|p| p.id == *id) {
-                    self.relations_items.push((
-                        "Blocks".to_string(),
-                        blocked.id.clone(),
-                        blocked.title.clone(),
-                        blocked.pea_type,
-                    ));
-                }
-            }
-
-            // Add children
-            let children: Vec<_> = self
-                .all_peas
-                .iter()
-                .filter(|p| p.parent.as_ref() == Some(&pea.id))
-                .collect();
-            for child in children {
-                self.relations_items.push((
-                    "Child".to_string(),
-                    child.id.clone(),
-                    child.title.clone(),
-                    child.pea_type,
-                ));
-            }
-
-            // Add blocked-by (reverse blocking relationships)
-            let blocked_by: Vec<_> = self
-                .all_peas
-                .iter()
-                .filter(|p| p.blocking.contains(&pea.id))
-                .collect();
-            for blocker in blocked_by {
-                self.relations_items.push((
-                    "BlockedBy".to_string(),
-                    blocker.id.clone(),
-                    blocker.title.clone(),
-                    blocker.pea_type,
-                ));
-            }
+        if let Some(pea) = self.selected_pea() {
+            self.relations_items = relations::build_relations(pea, &self.all_peas);
+        } else {
+            self.relations_items.clear();
         }
     }
 
@@ -1086,54 +1035,10 @@ impl App {
         Ok(())
     }
 
-    /// Extract all URLs from ticket body with smart punctuation handling
-    fn extract_urls(text: &str) -> Vec<String> {
-        let mut urls = Vec::new();
-
-        // Find potential URLs with regex
-        let url_pattern = regex::Regex::new(r"https?://[^\s<>]+").unwrap();
-
-        for matched in url_pattern.find_iter(text) {
-            let mut url_str = matched.as_str();
-
-            // Trim trailing punctuation that's likely not part of the URL
-            // Common cases: "Check out https://example.com." or "(see https://example.com)"
-            while !url_str.is_empty() {
-                let last_char = url_str.chars().last().unwrap();
-                if matches!(
-                    last_char,
-                    '.' | ',' | ';' | ':' | '!' | '?' | ')' | ']' | '}' | '\'' | '"'
-                ) {
-                    // Check if this is actually part of the URL or sentence punctuation
-                    // If removing it still gives a valid URL, it was probably sentence punctuation
-                    let trimmed = &url_str[..url_str.len() - last_char.len_utf8()];
-                    if url::Url::parse(trimmed).is_ok() {
-                        url_str = trimmed;
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            // Validate and add if it's a proper URL
-            if url::Url::parse(url_str).is_ok() {
-                urls.push(url_str.to_string());
-            }
-        }
-
-        // Deduplicate while preserving order
-        let mut seen = HashSet::new();
-        urls.retain(|url| seen.insert(url.clone()));
-
-        urls
-    }
-
     /// Open URL modal showing all URLs found in ticket body
     pub fn open_url_modal(&mut self) {
         if let Some(pea) = self.selected_pea() {
-            self.url_candidates = Self::extract_urls(&pea.body);
+            self.url_candidates = url_utils::extract_urls(&pea.body);
             if !self.url_candidates.is_empty() {
                 self.modal_selection = 0;
                 self.previous_mode = self.input_mode;
@@ -1162,16 +1067,8 @@ impl App {
 
     /// Start editing body inline with TextArea
     pub fn start_body_edit(&mut self) {
-        if let Some(pea) = self.selected_pea().cloned() {
-            // Split body into lines for TextArea
-            let lines: Vec<String> = pea.body.lines().map(|s| s.to_string()).collect();
-            let mut textarea = TextArea::new(lines);
-
-            // Configure textarea
-            textarea.set_tab_length(2);
-            textarea.set_max_histories(100); // Undo/redo buffer
-
-            self.body_textarea = Some(textarea);
+        if let Some(pea) = self.selected_pea() {
+            self.body_textarea = Some(body_editor::create_textarea(&pea.body));
             self.input_mode = InputMode::EditBody;
             self.detail_pane = DetailPane::Body; // Force Body pane focus
         }
@@ -1180,20 +1077,7 @@ impl App {
     /// Save body edit and update the pea
     pub fn save_body_edit(&mut self) -> Result<()> {
         if let (Some(textarea), Some(pea)) = (&self.body_textarea, self.selected_pea().cloned()) {
-            // Get edited content
-            let new_body = textarea.lines().join("\n");
-
-            // Record undo before update
-            let undo_manager = UndoManager::new(&self.data_path);
-            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
-            }
-
-            // Update pea
-            let mut updated = pea;
-            updated.body = new_body;
-            updated.touch();
-            self.repo.update(&updated)?;
+            body_editor::save_body(textarea, &pea, &self.repo, &self.data_path)?;
 
             // Cleanup
             self.body_textarea = None;

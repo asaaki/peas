@@ -21,10 +21,13 @@
 //! - `q`: Quit
 
 mod app;
+mod body_editor;
 mod handlers;
 mod modal_operations;
+mod relations;
 pub mod theme;
 mod tree_builder;
 mod ui;
+mod url_utils;
 
 pub use app::run_tui;

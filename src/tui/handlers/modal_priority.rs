@@ -1,4 +1,4 @@
-use crate::tui::app::{App, InputMode};
+use crate::tui::app::App;
 use crossterm::event::{KeyCode, KeyEvent};
 use std::io;
 
