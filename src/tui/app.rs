@@ -1,4 +1,4 @@
-use super::{handlers, tree_builder, ui};
+use super::{handlers, modal_operations, tree_builder, ui};
 use crate::{
     config::PeasConfig,
     error::Result,
@@ -610,26 +610,15 @@ impl App {
         let options = Self::status_options();
         if let Some(&new_status) = options.get(self.modal_selection) {
             let target_ids = self.target_ids();
-            let count = target_ids.len();
-            let undo_manager = UndoManager::new(&self.data_path);
-            for (i, id) in target_ids.iter().enumerate() {
-                if let Some(pea) = self.all_peas.iter().find(|p| p.id == *id).cloned() {
-                    // Record undo for the last item (will be what gets undone)
-                    if i == count - 1 {
-                        if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                            let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
-                        }
-                    }
-                    let mut updated = pea;
-                    updated.status = new_status;
-                    updated.touch();
-                    self.repo.update(&updated)?;
-                }
-            }
-            if count > 1 {
-                self.message = Some(format!("{} tickets -> {}", count, new_status));
-            } else if count == 1 {
-                self.message = Some(format!("-> {}", new_status));
+            let message = modal_operations::apply_status_change(
+                &target_ids,
+                &self.all_peas,
+                &self.repo,
+                &self.data_path,
+                new_status,
+            )?;
+            if !message.is_empty() {
+                self.message = Some(message);
             }
             self.clear_multi_select();
             self.refresh()?;
@@ -664,26 +653,15 @@ impl App {
         let options = Self::priority_options();
         if let Some(&new_priority) = options.get(self.modal_selection) {
             let target_ids = self.target_ids();
-            let count = target_ids.len();
-            let undo_manager = UndoManager::new(&self.data_path);
-            for (i, id) in target_ids.iter().enumerate() {
-                if let Some(pea) = self.all_peas.iter().find(|p| p.id == *id).cloned() {
-                    // Record undo for the last item
-                    if i == count - 1 {
-                        if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                            let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
-                        }
-                    }
-                    let mut updated = pea;
-                    updated.priority = new_priority;
-                    updated.touch();
-                    self.repo.update(&updated)?;
-                }
-            }
-            if count > 1 {
-                self.message = Some(format!("{} tickets -> {}", count, new_priority));
-            } else if count == 1 {
-                self.message = Some(format!("-> {}", new_priority));
+            let message = modal_operations::apply_priority_change(
+                &target_ids,
+                &self.all_peas,
+                &self.repo,
+                &self.data_path,
+                new_priority,
+            )?;
+            if !message.is_empty() {
+                self.message = Some(message);
             }
             self.clear_multi_select();
             self.refresh()?;
@@ -721,26 +699,15 @@ impl App {
         let options = Self::type_options();
         if let Some(&new_type) = options.get(self.modal_selection) {
             let target_ids = self.target_ids();
-            let count = target_ids.len();
-            let undo_manager = UndoManager::new(&self.data_path);
-            for (i, id) in target_ids.iter().enumerate() {
-                if let Some(pea) = self.all_peas.iter().find(|p| p.id == *id).cloned() {
-                    // Record undo for the last item
-                    if i == count - 1 {
-                        if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                            let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
-                        }
-                    }
-                    let mut updated = pea;
-                    updated.pea_type = new_type;
-                    updated.touch();
-                    self.repo.update(&updated)?;
-                }
-            }
-            if count > 1 {
-                self.message = Some(format!("{} tickets -> {}", count, new_type));
-            } else if count == 1 {
-                self.message = Some(format!("-> {}", new_type));
+            let message = modal_operations::apply_type_change(
+                &target_ids,
+                &self.all_peas,
+                &self.repo,
+                &self.data_path,
+                new_type,
+            )?;
+            if !message.is_empty() {
+                self.message = Some(message);
             }
             self.clear_multi_select();
             self.refresh()?;
@@ -770,17 +737,13 @@ impl App {
                 .filter(|s| !s.is_empty())
                 .collect();
 
-            // Record undo before update
-            let undo_manager = UndoManager::new(&self.data_path);
-            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
-            }
-
-            // Update pea
-            let mut updated = pea;
-            updated.tags = new_tags;
-            updated.touch();
-            self.repo.update(&updated)?;
+            modal_operations::apply_tags_change(
+                &pea.id,
+                &self.all_peas,
+                &self.repo,
+                &self.data_path,
+                new_tags,
+            )?;
 
             self.message = Some("Tags updated".to_string());
             self.refresh()?;
@@ -912,19 +875,16 @@ impl App {
         };
 
         if let Some(pea) = self.selected_pea().cloned() {
-            // Record undo before update
-            let undo_manager = UndoManager::new(&self.data_path);
-            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            let message = modal_operations::apply_parent_change(
+                &pea.id,
+                &self.all_peas,
+                &self.repo,
+                &self.data_path,
+                new_parent,
+            )?;
+            if !message.is_empty() {
+                self.message = Some(message);
             }
-
-            let mut updated = pea.clone();
-            updated.parent = new_parent.clone();
-            updated.touch();
-            self.repo.update(&updated)?;
-
-            let parent_display = new_parent.unwrap_or_else(|| "(none)".to_string());
-            self.message = Some(format!("{} parent -> {}", pea.id, parent_display));
             self.refresh()?;
         }
         self.input_mode = self.previous_mode;
@@ -996,19 +956,16 @@ impl App {
             .collect();
 
         if let Some(pea) = self.selected_pea().cloned() {
-            // Record undo before update
-            let undo_manager = UndoManager::new(&self.data_path);
-            if let Ok(path) = self.repo.find_file_by_id(&pea.id) {
-                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            let message = modal_operations::apply_blocking_change(
+                &pea.id,
+                &self.all_peas,
+                &self.repo,
+                &self.data_path,
+                new_blocking,
+            )?;
+            if !message.is_empty() {
+                self.message = Some(message);
             }
-
-            let mut updated = pea.clone();
-            updated.blocking = new_blocking.clone();
-            updated.touch();
-            self.repo.update(&updated)?;
-
-            let count = new_blocking.len();
-            self.message = Some(format!("{} blocking {} tickets", pea.id, count));
             self.refresh()?;
         }
         self.input_mode = self.previous_mode;

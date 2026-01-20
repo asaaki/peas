@@ -22,6 +22,7 @@
 
 mod app;
 mod handlers;
+mod modal_operations;
 pub mod theme;
 mod tree_builder;
 mod ui;
