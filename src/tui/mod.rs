@@ -21,6 +21,7 @@
 //! - `q`: Quit
 
 mod app;
+mod handlers;
 pub mod theme;
 mod ui;
 
