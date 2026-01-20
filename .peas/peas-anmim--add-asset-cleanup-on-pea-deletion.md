@@ -2,11 +2,11 @@
 id = "peas-anmim"
 title = "Add asset cleanup on pea deletion"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-w51zp"
 created = "2026-01-20T15:12:13.150164600Z"
-updated = "2026-01-20T15:12:40.075171900Z"
+updated = "2026-01-20T20:50:01.027914400Z"
 +++
 
 ## Problem

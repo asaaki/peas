@@ -2,11 +2,11 @@
 id = "peas-8au2v"
 title = "Add comprehensive TUI test coverage"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "high"
 parent = "peas-w51zp"
 created = "2026-01-20T15:11:04.862462Z"
-updated = "2026-01-20T15:12:36.874631500Z"
+updated = "2026-01-20T20:50:00.681956100Z"
 +++
 
 ## Problem
