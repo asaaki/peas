@@ -67,12 +67,17 @@ fn main() -> Result<()> {
                     &ctx, id, title, r#type, status, priority, body, parent, add_tag, remove_tag,
                     json, dry_run,
                 ),
-                Commands::Archive { id, json } => {
-                    peas::cli::handlers::handle_archive(&ctx, id, json)
-                }
-                Commands::Delete { id, force, json } => {
-                    peas::cli::handlers::handle_delete(&ctx, id, force, json)
-                }
+                Commands::Archive {
+                    id,
+                    keep_assets,
+                    json,
+                } => peas::cli::handlers::handle_archive(&ctx, id, keep_assets, json),
+                Commands::Delete {
+                    id,
+                    force,
+                    keep_assets,
+                    json,
+                } => peas::cli::handlers::handle_delete(&ctx, id, force, keep_assets, json),
                 Commands::Search { query, json } => {
                     peas::cli::handlers::handle_search(&ctx, query, json)
                 }

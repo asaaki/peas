@@ -179,6 +179,10 @@ pub enum Commands {
         /// Pea ID
         id: String,
 
+        /// Keep associated asset files instead of prompting to delete them
+        #[arg(long)]
+        keep_assets: bool,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -192,6 +196,10 @@ pub enum Commands {
         /// Skip confirmation
         #[arg(short, long)]
         force: bool,
+
+        /// Keep associated asset files instead of prompting to delete them
+        #[arg(long)]
+        keep_assets: bool,
 
         /// Output as JSON
         #[arg(long)]

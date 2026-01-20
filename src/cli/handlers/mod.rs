@@ -57,11 +57,18 @@ pub struct CommandContext {
     pub config: PeasConfig,
     pub root: PathBuf,
     pub repo: PeaRepository,
+    pub asset_manager: crate::assets::AssetManager,
 }
 
 impl CommandContext {
     pub fn new(config: PeasConfig, root: PathBuf) -> Self {
         let repo = PeaRepository::new(&config, &root);
-        Self { config, root, repo }
+        let asset_manager = crate::assets::AssetManager::new(&root);
+        Self {
+            config,
+            root,
+            repo,
+            asset_manager,
+        }
     }
 }

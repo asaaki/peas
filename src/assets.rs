@@ -125,6 +125,46 @@ impl AssetManager {
         Ok(())
     }
 
+    /// Remove all assets for a ticket and the ticket's asset directory
+    /// Returns the number of assets deleted
+    pub fn cleanup_ticket_assets(&self, ticket_id: &str) -> Result<usize> {
+        let ticket_dir = self.ticket_assets_path(ticket_id);
+
+        if !ticket_dir.exists() {
+            return Ok(0);
+        }
+
+        // Count assets before deletion
+        let mut count = 0;
+        for entry in fs::read_dir(&ticket_dir)? {
+            let entry = entry?;
+            if entry.path().is_file() {
+                count += 1;
+            }
+        }
+
+        // Remove the entire directory and all its contents
+        fs::remove_dir_all(&ticket_dir).context("Failed to remove ticket assets directory")?;
+
+        Ok(count)
+    }
+
+    /// Check if a ticket has any assets
+    pub fn has_assets(&self, ticket_id: &str) -> bool {
+        let ticket_dir = self.ticket_assets_path(ticket_id);
+
+        if !ticket_dir.exists() {
+            return false;
+        }
+
+        // Check if directory has any files
+        if let Ok(mut entries) = fs::read_dir(&ticket_dir) {
+            entries.next().is_some()
+        } else {
+            false
+        }
+    }
+
     /// Get the full path to an asset
     pub fn get_asset_path(&self, ticket_id: &str, asset_name: &str) -> PathBuf {
         self.ticket_assets_path(ticket_id).join(asset_name)
@@ -258,5 +298,86 @@ mod tests {
             path: PathBuf::from("spec.pdf"),
         };
         assert_eq!(asset.file_type(), "PDF");
+    }
+
+    #[test]
+    fn test_has_assets() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let manager = AssetManager::new(temp_dir.path());
+
+        // Initially no assets
+        assert!(!manager.has_assets("test-123"));
+
+        // Create a test file
+        let test_file = temp_dir.path().join("test.txt");
+        std::fs::write(&test_file, "test content").unwrap();
+
+        // Add asset
+        manager.add_asset("test-123", &test_file).unwrap();
+
+        // Now should have assets
+        assert!(manager.has_assets("test-123"));
+    }
+
+    #[test]
+    fn test_cleanup_ticket_assets() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let manager = AssetManager::new(temp_dir.path());
+
+        // Create test files
+        let test_file1 = temp_dir.path().join("file1.txt");
+        let test_file2 = temp_dir.path().join("file2.txt");
+        std::fs::write(&test_file1, "content1").unwrap();
+        std::fs::write(&test_file2, "content2").unwrap();
+
+        // Add assets
+        manager.add_asset("test-456", &test_file1).unwrap();
+        manager.add_asset("test-456", &test_file2).unwrap();
+
+        // Verify assets exist
+        assert!(manager.has_assets("test-456"));
+        let assets = manager.list_assets("test-456").unwrap();
+        assert_eq!(assets.len(), 2);
+
+        // Cleanup assets
+        let count = manager.cleanup_ticket_assets("test-456").unwrap();
+        assert_eq!(count, 2);
+
+        // Verify assets are gone
+        assert!(!manager.has_assets("test-456"));
+        assert!(!manager.ticket_assets_path("test-456").exists());
+    }
+
+    #[test]
+    fn test_cleanup_nonexistent_ticket() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let manager = AssetManager::new(temp_dir.path());
+
+        // Cleanup nonexistent ticket should return 0
+        let count = manager.cleanup_ticket_assets("nonexistent").unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_cleanup_empty_directory() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let manager = AssetManager::new(temp_dir.path());
+
+        // Create empty directory
+        let ticket_dir = manager.ticket_assets_path("test-789");
+        std::fs::create_dir_all(&ticket_dir).unwrap();
+
+        // Cleanup should work even with empty directory
+        let count = manager.cleanup_ticket_assets("test-789").unwrap();
+        assert_eq!(count, 0);
+        assert!(!ticket_dir.exists());
     }
 }
