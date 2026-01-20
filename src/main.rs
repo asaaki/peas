@@ -1441,11 +1441,11 @@ peas roadmap                       # Show project roadmap
 peas suggest                       # Get next suggested ticket to work on
 ```
 
-**For LLMs working on multiple tasks:** Use `peas suggest` to get the next recommended ticket based on priority, blocking relationships, and work queue. This helps maintain focus during longer work sessions.
+**Working on multiple tasks?** Use `peas suggest` to get the next recommended ticket based on priority, blocking relationships, and work queue. This helps maintain focus during longer work sessions.
 
 ## Memory System (Knowledge Base)
 
-**IMPORTANT FOR LLMs**: Use the memory system to capture important learnings, facts, decisions, and context as you work. This helps maintain continuity across sessions and builds institutional knowledge.
+**IMPORTANT**: Use the memory system to capture important learnings, facts, decisions, and context as you work. This helps maintain continuity across sessions and builds institutional knowledge.
 
 ```bash
 peas memory save <key> "<content>" --tag <tag1> --tag <tag2>  # Save a memory
@@ -1473,9 +1473,6 @@ peas memory delete <key>                                     # Delete a memory
 - Keep memories focused and actionable
 - Update memories when learnings evolve
 - Reference ticket IDs when relevant
-
-**TUI**: Run `peas tui` and press Tab to switch to Memory view, then 'n' to create new memories.
-```
 
 ## GraphQL Interface
 
