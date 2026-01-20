@@ -17,12 +17,94 @@ pub fn resolve_body(body: Option<String>, body_file: Option<String>) -> Result<O
         }
         return Ok(Some(b));
     }
-    if let Some(path) = body_file {
-        let content = std::fs::read_to_string(&path)
-            .with_context(|| format!("Failed to read body from {}", path))?;
+    if let Some(path_str) = body_file {
+        // Validate path to prevent reading arbitrary files
+        validate_body_file_path(&path_str)?;
+
+        let content = std::fs::read_to_string(&path_str)
+            .with_context(|| format!("Failed to read body from {}", path_str))?;
         return Ok(Some(content.trim().to_string()));
     }
     Ok(None)
+}
+
+/// Validate body file path to prevent path traversal and reading sensitive files
+fn validate_body_file_path(path_str: &str) -> Result<()> {
+    use std::path::Path;
+
+    let path = Path::new(path_str);
+
+    // Reject absolute paths on Unix-like systems
+    #[cfg(unix)]
+    if path.is_absolute() {
+        anyhow::bail!(
+            "Absolute paths are not allowed for --body-file. Use relative paths only.\n\
+             Attempted path: {}",
+            path_str
+        );
+    }
+
+    // Reject absolute paths on Windows (C:\, \\, etc.)
+    #[cfg(windows)]
+    if path.is_absolute() {
+        anyhow::bail!(
+            "Absolute paths are not allowed for --body-file. Use relative paths only.\n\
+             Attempted path: {}",
+            path_str
+        );
+    }
+
+    // Check for path traversal attempts (..)
+    for component in path.components() {
+        use std::path::Component;
+        match component {
+            Component::ParentDir => {
+                anyhow::bail!(
+                    "Path traversal (..) is not allowed in --body-file paths.\n\
+                     Attempted path: {}",
+                    path_str
+                );
+            }
+            Component::RootDir => {
+                anyhow::bail!(
+                    "Root directory paths are not allowed for --body-file.\n\
+                     Attempted path: {}",
+                    path_str
+                );
+            }
+            _ => {}
+        }
+    }
+
+    // Canonicalize and check that resolved path is within current directory
+    // This catches symlink attacks and other edge cases
+    let current_dir = std::env::current_dir().context("Failed to get current directory")?;
+
+    let full_path = current_dir.join(path);
+
+    // Check if file exists before canonicalize (canonicalize requires file to exist)
+    if !full_path.exists() {
+        anyhow::bail!("Body file does not exist: {}", path_str);
+    }
+
+    let canonical_path = full_path
+        .canonicalize()
+        .with_context(|| format!("Failed to resolve path: {}", path_str))?;
+
+    let canonical_current = current_dir
+        .canonicalize()
+        .context("Failed to canonicalize current directory")?;
+
+    // Ensure the canonical path is within the current directory tree
+    if !canonical_path.starts_with(&canonical_current) {
+        anyhow::bail!(
+            "Body file must be within the current directory tree.\n\
+             Attempted to access: {}",
+            canonical_path.display()
+        );
+    }
+
+    Ok(())
 }
 
 /// Format status with color coding

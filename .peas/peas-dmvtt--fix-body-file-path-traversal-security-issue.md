@@ -2,11 +2,11 @@
 id = "peas-dmvtt"
 title = "Fix body-file path traversal security issue"
 type = "bug"
-status = "todo"
+status = "in-progress"
 priority = "high"
 parent = "peas-w51zp"
 created = "2026-01-20T15:10:57.300554300Z"
-updated = "2026-01-20T15:12:36.506935Z"
+updated = "2026-01-20T16:31:10.306302900Z"
 +++
 
 ## Problem
