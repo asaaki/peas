@@ -2,12 +2,12 @@
 id = "peas-unx69"
 title = "Add tests for Memory model and repository"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-kgp6m"
 blocking = ["peas-1uu22"]
 created = "2026-01-19T22:40:41.816202900Z"
-updated = "2026-01-19T22:40:41.816202900Z"
+updated = "2026-01-20T00:02:18.450149Z"
 +++
 
 Write unit and integration tests for memory functionality
