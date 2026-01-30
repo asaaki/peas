@@ -51,7 +51,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 tui-markdown = "0.3"
-tui-textarea = { path = "vendor/tui-textarea" }
+tui-textarea = { git = "https://github.com/bradzacher/tui-textarea", branch = "ratatui-0.30" }
 url = "2.5"
 
 [dev-dependencies]
