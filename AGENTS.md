@@ -1,8 +1,8 @@
 # Agent Rules
 
-**IMPORTANT**: When you're on Windows, prefer powershell (pwsh) over bash if possible!
-
 **IMPORTANT**: before you do anything else, run the `peas prime` command (or `just prime`) and heed its output.
+
+Note: The `peas` executable might be installed globally already. If not, you can run it via `cargo run -- <command>` from the project root. Also use the latter if you need to test a feature in development.
 
 **IMPORTANT**: This project uses `just` for task automation. Always prefer `just` recipes over manual commands when available. Run `just` to see all available tasks.
 

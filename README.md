@@ -10,22 +10,44 @@ Inspired by [beans](https://github.com/hmans/beans) and [beads](https://github.c
 
 - **Flat-file storage**: Issues stored as markdown with TOML frontmatter in `.peas/`
 - **GraphQL interface**: Query and mutate peas with GraphQL for AI agent integration
-- **Interactive TUI**: Browse and manage peas in a terminal UI
-- **Hierarchical structure**: Milestones, epics, features, bugs, and tasks
+- **Interactive TUI**: Browse and manage peas in a terminal UI with multi-select and undo
+- **Hierarchical structure**: Milestones, epics, stories, features, bugs, chores, research, and tasks
+- **Memory system**: Store and retrieve project knowledge, decisions, and context
+- **Asset management**: Attach files, images, and documents to tickets
+- **Relationships**: Link tickets with parent/child and blocking dependencies
 - **Agent-friendly**: `peas prime` outputs instructions for AI coding agents
+- **Undo support**: Multi-level undo for accidental changes
 
 ## Installation
 
-### From source
+### With cargo-binstall (recommended)
+
+The fastest way to install pre-built binaries:
 
 ```bash
-cargo install --path .
+cargo binstall peas
 ```
 
-### From crates.io (coming soon)
+### From GitHub releases
+
+Download pre-built binaries directly from [GitHub releases](https://github.com/asaaki/peas/releases).
+
+### From crates.io
+
+Build from source via crates.io:
 
 ```bash
-cargo install peas
+cargo install peas --locked
+```
+
+### From source
+
+Build from the repository:
+
+```bash
+git clone https://github.com/asaaki/peas
+cd peas
+cargo install --path .
 ```
 
 ## Quick Start
@@ -61,36 +83,55 @@ peas tui
 |---------|-------------|
 | `peas init` | Initialize a new peas project |
 | `peas create <title>` | Create a new pea |
-| `peas list` | List all peas |
+| `peas list` | List all peas (filter by type, status, priority, tags) |
 | `peas show <id>` | Show pea details |
-| `peas update <id>` | Update a pea |
+| `peas update <id>` | Update a pea's properties |
 | `peas start <id>` | Mark pea as in-progress |
 | `peas done <id>` | Mark pea as completed |
-| `peas archive <id>` | Archive a pea |
-| `peas delete <id>` | Delete a pea |
-| `peas search <query>` | Search peas |
-| `peas roadmap` | Generate markdown roadmap |
+| `peas archive <id>` | Archive a pea (move to archive folder) |
+| `peas delete <id>` | Delete a pea permanently |
+| `peas search <query>` | Search peas by text |
+| `peas suggest` | Suggest the next ticket to work on |
+| `peas roadmap` | Generate markdown roadmap from milestones and epics |
 | `peas prime` | Output agent instructions |
-| `peas context` | Output project context as JSON |
-| `peas graphql <query>` | Execute GraphQL query |
+| `peas context` | Output project context for LLMs |
+| `peas query <query>` | Execute a GraphQL query |
+| `peas mutate <mutation>` | Execute a GraphQL mutation |
 | `peas serve` | Start GraphQL HTTP server |
 | `peas tui` | Open interactive TUI |
+| `peas import-beans` | Import from a beans project |
+| `peas export-beans` | Export to beans format |
+| `peas bulk <action>` | Bulk update multiple peas at once |
+| `peas memory <action>` | Manage project memory and knowledge |
+| `peas asset <action>` | Manage ticket assets (files, images, documents) |
+| `peas undo` | Undo the last operation |
 
 ## Pea Types
 
 - `milestone` - High-level project goals
 - `epic` - Large features or initiatives
+- `story` - User stories or scenarios
 - `feature` - New functionality
 - `bug` - Issues to fix
-- `task` - General work items
+- `chore` - Maintenance tasks (refactoring, cleanup, etc.)
+- `research` - Research tasks or spikes
+- `task` - General work items (default)
 
 ## Pea Statuses
 
 - `draft` - Not ready to work on
-- `todo` - Ready to be worked on
+- `todo` - Ready to be worked on (default)
 - `in-progress` - Currently being worked on
 - `completed` - Done
 - `scrapped` - Cancelled
+
+## Pea Priorities
+
+- `critical` - Must be done immediately (also: `p0`)
+- `high` - Important, should be done soon (also: `p1`)
+- `normal` - Standard priority (default, also: `p2`)
+- `low` - Nice to have (also: `p3`)
+- `deferred` - Postponed indefinitely (also: `p4`)
 
 ## GraphQL Interface
 
