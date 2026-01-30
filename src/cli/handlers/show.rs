@@ -70,14 +70,8 @@ fn print_pea_with_refs(pea: &crate::model::Pea, ctx: &CommandContext) {
         }
     }
 
-    println!(
-        "Created:  {}",
-        pea.created.format("%Y-%m-%d %H:%M")
-    );
-    println!(
-        "Updated:  {}",
-        pea.updated.format("%Y-%m-%d %H:%M")
-    );
+    println!("Created:  {}", pea.created.format("%Y-%m-%d %H:%M"));
+    println!("Updated:  {}", pea.updated.format("%Y-%m-%d %H:%M"));
 
     // Print body with resolved ticket references
     if !pea.body.is_empty() {

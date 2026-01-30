@@ -9,7 +9,6 @@ use super::modal_enum::handle_enum_modal;
 pub fn handle_status_modal(app: &mut App, key: KeyEvent) -> io::Result<bool> {
     let options_count = App::status_options().len();
     handle_enum_modal(app, key, options_count, |app| {
-        app.apply_modal_status()
-            .map_err(io::Error::other)
+        app.apply_modal_status().map_err(io::Error::other)
     })
 }

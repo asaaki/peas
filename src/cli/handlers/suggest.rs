@@ -33,9 +33,11 @@ pub fn handle_suggest(ctx: &CommandContext, json: bool, limit: usize) -> Result<
             // Check if all blocking dependencies are completed
             for blocker_id in &p.blocking {
                 if let Some(status) = status_map.get(blocker_id)
-                    && *status != PeaStatus::Completed && *status != PeaStatus::Scrapped {
-                        return false; // Has unmet dependency
-                    }
+                    && *status != PeaStatus::Completed
+                    && *status != PeaStatus::Scrapped
+                {
+                    return false; // Has unmet dependency
+                }
             }
 
             true

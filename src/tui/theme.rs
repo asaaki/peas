@@ -117,13 +117,11 @@ pub struct Theme {
 }
 
 /// Configuration flags for TUI display options
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct TuiConfig {
     /// Whether to use emojis for ticket types
     pub use_type_emojis: bool,
 }
-
 
 impl Default for Theme {
     fn default() -> Self {

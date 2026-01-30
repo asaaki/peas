@@ -83,23 +83,25 @@ where
     F: Fn(&str) -> bool,
 {
     if let Some(parent_id) = parent
-        && !exists_fn(parent_id) {
-            return Err(PeasError::Validation(format!(
-                "Parent pea '{}' does not exist",
-                parent_id
-            )));
-        }
+        && !exists_fn(parent_id)
+    {
+        return Err(PeasError::Validation(format!(
+            "Parent pea '{}' does not exist",
+            parent_id
+        )));
+    }
     Ok(())
 }
 
 /// Validates that a pea doesn't reference itself as parent.
 pub fn validate_no_self_parent(id: &str, parent: &Option<String>) -> Result<()> {
     if let Some(parent_id) = parent
-        && id == parent_id {
-            return Err(PeasError::Validation(
-                "A pea cannot be its own parent".to_string(),
-            ));
-        }
+        && id == parent_id
+    {
+        return Err(PeasError::Validation(
+            "A pea cannot be its own parent".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -234,11 +236,8 @@ mod tests {
 
         assert!(validate_blocking_exist(&["peas-111".to_string()], exists_fn).is_ok());
         assert!(
-            validate_blocking_exist(
-                &["peas-111".to_string(), "peas-222".to_string()],
-                exists_fn
-            )
-            .is_ok()
+            validate_blocking_exist(&["peas-111".to_string(), "peas-222".to_string()], exists_fn)
+                .is_ok()
         );
         assert!(validate_blocking_exist(&["peas-404".to_string()], exists_fn).is_err());
     }
@@ -259,14 +258,12 @@ mod tests {
 
         // ERROR: peas-1 -> peas-3 would create cycle (3 -> 2 -> 1 -> 3)
         assert!(
-            validate_no_circular_parent("peas-1", &Some("peas-3".to_string()), get_parent)
-                .is_err()
+            validate_no_circular_parent("peas-1", &Some("peas-3".to_string()), get_parent).is_err()
         );
 
         // ERROR: Direct self-reference
         assert!(
-            validate_no_circular_parent("peas-1", &Some("peas-1".to_string()), get_parent)
-                .is_err()
+            validate_no_circular_parent("peas-1", &Some("peas-1".to_string()), get_parent).is_err()
         );
     }
 }

@@ -27,9 +27,10 @@ where
         if let Some(pea) = all_peas.iter().find(|p| p.id == *id).cloned() {
             // Record undo for the last item (will be what gets undone)
             if i == count - 1
-                && let Ok(path) = repo.find_file_by_id(&pea.id) {
-                    let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
-                }
+                && let Ok(path) = repo.find_file_by_id(&pea.id)
+            {
+                let _ = crate::undo::record_update(&undo_manager, &pea.id, &path);
+            }
             let mut updated = pea;
             update_fn(&mut updated, new_value);
             // NOTE: No touch() call - update() handles it internally now

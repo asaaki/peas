@@ -9,14 +9,15 @@ pub fn build_relations(pea: &Pea, all_peas: &[Pea]) -> Vec<RelationItem> {
 
     // Add parent if exists
     if let Some(ref parent_id) = pea.parent
-        && let Some(parent) = all_peas.iter().find(|p| p.id == *parent_id) {
-            relations_items.push((
-                "Parent".to_string(),
-                parent.id.clone(),
-                parent.title.clone(),
-                parent.pea_type,
-            ));
-        }
+        && let Some(parent) = all_peas.iter().find(|p| p.id == *parent_id)
+    {
+        relations_items.push((
+            "Parent".to_string(),
+            parent.id.clone(),
+            parent.title.clone(),
+            parent.pea_type,
+        ));
+    }
 
     // Add blocking tickets
     for id in &pea.blocking {
