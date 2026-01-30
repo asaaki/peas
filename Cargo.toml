@@ -16,6 +16,14 @@ exclude = [".beans/", ".peas/", ".github/", "extras/", "tests/"]
 name = "peas"
 path = "src/main.rs"
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/{ version }/{ name }-{ target }-{ version }.{ archive-format }"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
 [profile.release]
 lto = true
 strip = true

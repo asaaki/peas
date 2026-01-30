@@ -89,6 +89,11 @@ jobs:
             ${{ runner.os }}-${{ matrix.target }}-cargo-release-
             ${{ runner.os }}-${{ matrix.target }}-cargo-
 
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Build release
         run: cargo build --release --target ${{ matrix.target }} --verbose
 
@@ -96,25 +101,25 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ../../../peas-${{ matrix.target }}.tar.gz ${{ matrix.artifact }}
+          tar czf ../../../peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.tar.gz ${{ matrix.artifact }}
           cd ../../..
-          shasum -a 256 peas-${{ matrix.target }}.tar.gz > peas-${{ matrix.target }}.tar.gz.sha256
+          shasum -a 256 peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.tar.gz > peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.tar.gz.sha256
 
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../peas-${{ matrix.target }}.zip ${{ matrix.artifact }}
+          7z a ../../../peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.zip ${{ matrix.artifact }}
           cd ../../..
-          sha256sum peas-${{ matrix.target }}.zip > peas-${{ matrix.target }}.zip.sha256
+          sha256sum peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.zip > peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.zip.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: peas-${{ matrix.target }}
+          name: peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}
           path: |
-            peas-${{ matrix.target }}.*
+            peas-${{ matrix.target }}-${{ steps.version.outputs.VERSION }}.*
 
   release:
     needs: build
