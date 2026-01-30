@@ -1,1 +1,4 @@
+.claude/settings.local.json
 /target
+/tmp
+/vendor/

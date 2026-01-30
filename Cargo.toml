@@ -29,16 +29,16 @@ chrono = { version = "0.4.43", features = ["serde"] }
 clap = { version = "4.5.56", features = ["derive", "env"] }
 cli-clipboard = "0.4"
 colored = "3.1.1"
-crossterm = "0.28"
+crossterm = "0.29"
 notify = "8.2"
 notify-debouncer-mini = "0.7"
 directories = "6.0.0"
 nanoid = "0.4.0"
 open = "5.3"
-ratatui = "0.29"
+ratatui = "0.30"
 ratatui-core = "0.1"
 regex = "1.12"
-tachyonfx = "0.8.0"
+tachyonfx = "0.23.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 serde_yaml = "0.9.34"
@@ -51,7 +51,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 tui-markdown = "0.3"
-tui-textarea = "0.7"
+tui-textarea = { path = "vendor/tui-textarea" }
 url = "2.5"
 
 [dev-dependencies]
