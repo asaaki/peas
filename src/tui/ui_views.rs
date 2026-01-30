@@ -871,10 +871,21 @@ pub fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_s
             // Render textarea if in edit mode, otherwise render markdown
             if app.input_mode == InputMode::EditBody {
                 if let Some(textarea) = app.body_textarea.as_mut() {
+                    use rat_text::HasScreenCursor;
                     use rat_text::text_area::TextArea;
                     use ratatui::widgets::StatefulWidget;
-                    let widget = TextArea::default();
+
+                    // Configure TextArea with proper styling and focus
+                    let widget = TextArea::new()
+                        .style(Style::default().fg(theme().text).bg(Color::Reset))
+                        .select_style(Style::default().fg(Color::Black).bg(theme().text_highlight));
+
                     widget.render(inner, f.buffer_mut(), textarea);
+
+                    // Set cursor position for rendering
+                    if let Some((cx, cy)) = textarea.screen_cursor() {
+                        f.set_cursor_position((cx, cy));
+                    }
                 }
                 // No scrolling in edit mode (textarea handles its own scrolling)
                 app.set_detail_max_scroll(0);

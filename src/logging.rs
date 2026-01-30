@@ -6,24 +6,27 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 /// # Arguments
 /// * `verbose` - Enable verbose (DEBUG) logging
 /// * `log_file` - Optional path to log file. If None, logs only to stderr
-pub fn init(verbose: bool, log_file: Option<PathBuf>) {
+/// * `quiet` - If true, disable stderr logging (useful for TUI mode)
+pub fn init(verbose: bool, log_file: Option<PathBuf>, quiet: bool) {
     // Determine log level from verbose flag or RUST_LOG env var
     let default_level = if verbose { "debug" } else { "info" };
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(format!("peas={}", default_level)));
 
-    // Build the subscriber with stderr output
-    let stderr_layer = fmt::layer()
-        .with_writer(std::io::stderr)
-        .with_target(false) // Don't show module path
-        .compact(); // Use compact format
+    // Build stderr layer if not quiet
+    let stderr_layer = if !quiet {
+        Some(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_target(false) // Don't show module path
+                .compact(), // Use compact format
+        )
+    } else {
+        None
+    };
 
-    let subscriber = tracing_subscriber::registry()
-        .with(env_filter)
-        .with(stderr_layer);
-
-    // Add file logging if path provided
-    if let Some(log_path) = log_file {
+    // Build file layer if path provided
+    let file_layer = log_file.map(|log_path| {
         // Create log directory if it doesn't exist
         if let Some(parent) = log_path.parent() {
             let _ = std::fs::create_dir_all(parent);
@@ -39,15 +42,18 @@ pub fn init(verbose: bool, log_file: Option<PathBuf>) {
                 .unwrap_or_else(|| std::ffi::OsStr::new("peas.log")),
         );
 
-        let file_layer = fmt::layer()
+        fmt::layer()
             .with_writer(file_appender)
             .with_ansi(false) // No colors in file
-            .json(); // Use JSON format for structured logs
+            .json() // Use JSON format for structured logs
+    });
 
-        subscriber.with(file_layer).init();
-    } else {
-        subscriber.init();
-    }
+    // Initialize the subscriber with the layers
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(stderr_layer)
+        .with(file_layer)
+        .init();
 }
 
 #[cfg(test)]

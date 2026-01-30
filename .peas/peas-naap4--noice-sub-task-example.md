@@ -3,16 +3,21 @@ id = "peas-naap4"
 title = "NOICE! sub task example"
 type = "task"
 status = "scrapped"
-priority = "normal"
+priority = "low"
+tags = [
+    "for-testing",
+    "dev",
+    "yo",
+]
 parent = "peas-b7ok5"
 blocking = ["peas-jus7w"]
 created = "2026-01-18T21:22:59.418977500Z"
-updated = "2026-01-19T15:38:20.937627300Z"
+updated = "2026-01-30T17:25:30.489482Z"
 +++
 
-# THIS IS INDEED a headline
+# THIS IS REALLY a headline
 
-this works!
+Yup, this works!
 
 ## hello world
 

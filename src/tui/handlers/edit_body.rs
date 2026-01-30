@@ -1,7 +1,5 @@
 use crate::tui::app::App;
 use crossterm::event::{Event, KeyCode, KeyEvent};
-use rat_text::event::HandleEvent;
-use rat_text::event::Regular;
 use std::io;
 
 /// Handle EditBody mode key events
@@ -23,10 +21,10 @@ pub fn handle_edit_body(app: &mut App, key: KeyEvent) -> io::Result<bool> {
             }
         }
         _ => {
-            // Pass all other events to textarea
+            // Pass all other events to textarea using the proper handle_events function
             if let Some(ref mut textarea) = app.body_textarea {
                 let event = Event::Key(key);
-                let _ = textarea.handle(&event, Regular);
+                let _ = rat_text::text_area::handle_events(textarea, true, &event);
             }
         }
     }

@@ -9,9 +9,13 @@ use std::path::PathBuf;
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // Determine if we're in TUI mode (to disable stderr logging)
+    let is_tui_mode = matches!(cli.command, Commands::Tui);
+
     // Initialize logging system
+    // In TUI mode, disable stderr logging to prevent interference with terminal rendering
     let log_file = cli.log_file.as_ref().map(PathBuf::from);
-    peas::logging::init(cli.verbose, log_file);
+    peas::logging::init(cli.verbose, log_file, is_tui_mode);
 
     let config_opt = cli.config;
     let peas_path_opt = cli.peas_path;
