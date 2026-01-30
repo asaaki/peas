@@ -40,6 +40,7 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
+use rat_text::text_area::TextAreaState;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::ListState};
 use std::{
     collections::HashSet,
@@ -49,7 +50,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tree_builder::{PageInfo, TreeNode};
-use tui_textarea::TextArea;
 
 /// Top-level view mode for the TUI
 ///
@@ -243,7 +243,7 @@ pub struct App {
 
     // ========== Body Editor State ==========
     /// TextArea for multi-line body editing (Some when input_mode == EditBody)
-    pub body_textarea: Option<TextArea<'static>>,
+    pub body_textarea: Option<TextAreaState>,
 }
 
 impl App {
