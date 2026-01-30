@@ -89,14 +89,12 @@ pub fn handle_update(
                     "after": pea
                 }))?
             );
+        } else if changes.is_empty() {
+            println!("{} {} (no changes)", "Would update:".yellow(), id.cyan());
         } else {
-            if changes.is_empty() {
-                println!("{} {} (no changes)", "Would update:".yellow(), id.cyan());
-            } else {
-                println!("{} {}", "Would update:".yellow(), id.cyan());
-                for change in changes {
-                    println!("  {}", change);
-                }
+            println!("{} {}", "Would update:".yellow(), id.cyan());
+            for change in changes {
+                println!("  {}", change);
             }
         }
         return Ok(());

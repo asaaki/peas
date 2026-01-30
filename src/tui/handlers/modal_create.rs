@@ -43,12 +43,10 @@ pub fn handle_create_modal(app: &mut App, key: KeyEvent) -> io::Result<bool> {
                     .unwrap_or(0);
                 let new_idx = if key.code == KeyCode::Right {
                     (current_idx + 1) % types.len()
+                } else if current_idx == 0 {
+                    types.len() - 1
                 } else {
-                    if current_idx == 0 {
-                        types.len() - 1
-                    } else {
-                        current_idx - 1
-                    }
+                    current_idx - 1
                 };
                 app.create_type = types[new_idx];
             }

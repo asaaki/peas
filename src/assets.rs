@@ -116,11 +116,10 @@ impl AssetManager {
 
         // Remove ticket directory if empty
         let ticket_dir = self.ticket_assets_path(ticket_id);
-        if let Ok(mut entries) = fs::read_dir(&ticket_dir) {
-            if entries.next().is_none() {
+        if let Ok(mut entries) = fs::read_dir(&ticket_dir)
+            && entries.next().is_none() {
                 let _ = fs::remove_dir(&ticket_dir);
             }
-        }
 
         Ok(())
     }

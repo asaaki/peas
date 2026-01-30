@@ -112,8 +112,8 @@ fn extract_beans_id(frontmatter: &str, filename: &str) -> Result<String> {
     // Try to find ID in comment: # peas-xxxx or # beans-xxxx
     for line in frontmatter.lines() {
         let line = line.trim();
-        if line.starts_with('#') {
-            let id = line[1..].trim();
+        if let Some(stripped) = line.strip_prefix('#') {
+            let id = stripped.trim();
             if !id.is_empty() {
                 return Ok(id.to_string());
             }

@@ -54,7 +54,16 @@ fn main() -> Result<()> {
                     archived,
                     json,
                 } => peas::cli::handlers::handle_list(
-                    &ctx, r#type, status, priority, parent, tag, archived, json,
+                    &ctx,
+                    peas::cli::handlers::ListParams {
+                        r#type,
+                        status,
+                        priority,
+                        parent,
+                        tag,
+                        archived,
+                        json,
+                    },
                 ),
                 Commands::Update {
                     id,

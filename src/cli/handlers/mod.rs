@@ -32,7 +32,7 @@ pub use delete::handle_delete;
 pub use export_beans::handle_export_beans;
 pub use import_beans::handle_import_beans;
 pub use init::handle_init;
-pub use list::handle_list;
+pub use list::{ListParams, handle_list};
 pub use memory::handle_memory;
 pub use mutate::handle_mutate;
 pub use prime::handle_prime;

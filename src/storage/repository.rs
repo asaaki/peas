@@ -497,7 +497,7 @@ mod tests {
         let mut pea1 = repo.get("test-67890").unwrap();
 
         // Load the same pea (simulating second TUI instance)
-        let mut pea2 = repo.get("test-67890").unwrap();
+        let _pea2 = repo.get("test-67890").unwrap();
 
         // First instance modifies and saves
         pea1.title = "Modified by Instance 1".to_string();
@@ -505,7 +505,7 @@ mod tests {
         repo.update(&mut pea1).unwrap();
 
         // Second instance detects conflict and reloads
-        pea2 = repo.get("test-67890").unwrap();
+        let mut pea2 = repo.get("test-67890").unwrap();
 
         // Now modify and save with fresh timestamp - should succeed
         pea2.title = "Modified by Instance 2 after reload".to_string();
@@ -572,8 +572,8 @@ mod tests {
         assert_eq!(list1, list2);
 
         // Verify cache is working by checking we get the same results
-        for i in 0..3 {
-            assert_eq!(list2[i].title, format!("Pea {}", i));
+        for (i, pea) in list2.iter().enumerate().take(3) {
+            assert_eq!(pea.title, format!("Pea {}", i));
         }
     }
 

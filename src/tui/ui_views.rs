@@ -332,7 +332,6 @@ pub fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 /// Get color for type (without the indicator character)
-
 pub fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
     use ratatui::{
         layout::Constraint,
@@ -1066,7 +1065,6 @@ pub fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
 }
 
 /// Get color for priority
-
 pub fn draw_help_popup(f: &mut Frame) {
     let area = ui_utils::centered_rect(60, 70, f.area());
     let t = theme();

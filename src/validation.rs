@@ -82,26 +82,24 @@ pub fn validate_parent_exists<F>(parent: &Option<String>, exists_fn: F) -> Resul
 where
     F: Fn(&str) -> bool,
 {
-    if let Some(parent_id) = parent {
-        if !exists_fn(parent_id) {
+    if let Some(parent_id) = parent
+        && !exists_fn(parent_id) {
             return Err(PeasError::Validation(format!(
                 "Parent pea '{}' does not exist",
                 parent_id
             )));
         }
-    }
     Ok(())
 }
 
 /// Validates that a pea doesn't reference itself as parent.
 pub fn validate_no_self_parent(id: &str, parent: &Option<String>) -> Result<()> {
-    if let Some(parent_id) = parent {
-        if id == parent_id {
+    if let Some(parent_id) = parent
+        && id == parent_id {
             return Err(PeasError::Validation(
                 "A pea cannot be its own parent".to_string(),
             ));
         }
-    }
     Ok(())
 }
 
@@ -216,9 +214,9 @@ mod tests {
 
     #[test]
     fn test_validate_no_self_blocking() {
-        assert!(validate_no_self_blocking("peas-123", &vec!["peas-123".to_string()]).is_err());
-        assert!(validate_no_self_blocking("peas-123", &vec!["peas-456".to_string()]).is_ok());
-        assert!(validate_no_self_blocking("peas-123", &vec![]).is_ok());
+        assert!(validate_no_self_blocking("peas-123", &["peas-123".to_string()]).is_err());
+        assert!(validate_no_self_blocking("peas-123", &["peas-456".to_string()]).is_ok());
+        assert!(validate_no_self_blocking("peas-123", &[]).is_ok());
     }
 
     #[test]
@@ -234,15 +232,15 @@ mod tests {
     fn test_validate_blocking_exist() {
         let exists_fn = |id: &str| id == "peas-111" || id == "peas-222";
 
-        assert!(validate_blocking_exist(&vec!["peas-111".to_string()], &exists_fn).is_ok());
+        assert!(validate_blocking_exist(&["peas-111".to_string()], exists_fn).is_ok());
         assert!(
             validate_blocking_exist(
-                &vec!["peas-111".to_string(), "peas-222".to_string()],
-                &exists_fn
+                &["peas-111".to_string(), "peas-222".to_string()],
+                exists_fn
             )
             .is_ok()
         );
-        assert!(validate_blocking_exist(&vec!["peas-404".to_string()], &exists_fn).is_err());
+        assert!(validate_blocking_exist(&["peas-404".to_string()], exists_fn).is_err());
     }
 
     #[test]
@@ -256,18 +254,18 @@ mod tests {
 
         // OK: peas-4 -> peas-3 (no cycle)
         assert!(
-            validate_no_circular_parent("peas-4", &Some("peas-3".to_string()), &get_parent).is_ok()
+            validate_no_circular_parent("peas-4", &Some("peas-3".to_string()), get_parent).is_ok()
         );
 
         // ERROR: peas-1 -> peas-3 would create cycle (3 -> 2 -> 1 -> 3)
         assert!(
-            validate_no_circular_parent("peas-1", &Some("peas-3".to_string()), &get_parent)
+            validate_no_circular_parent("peas-1", &Some("peas-3".to_string()), get_parent)
                 .is_err()
         );
 
         // ERROR: Direct self-reference
         assert!(
-            validate_no_circular_parent("peas-1", &Some("peas-1".to_string()), &get_parent)
+            validate_no_circular_parent("peas-1", &Some("peas-1".to_string()), get_parent)
                 .is_err()
         );
     }

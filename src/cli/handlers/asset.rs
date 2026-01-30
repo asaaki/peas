@@ -14,7 +14,7 @@ pub fn handle_asset(ctx: &CommandContext, action: AssetAction) -> Result<()> {
             ticket_id,
             file,
             json,
-        } => handle_asset_add(&asset_manager, &ctx, &ticket_id, &file, json),
+        } => handle_asset_add(&asset_manager, ctx, &ticket_id, &file, json),
         AssetAction::List { ticket_id, json } => {
             handle_asset_list(&asset_manager, &ticket_id, json)
         }
@@ -23,7 +23,7 @@ pub fn handle_asset(ctx: &CommandContext, action: AssetAction) -> Result<()> {
             filename,
             force,
             json,
-        } => handle_asset_remove(&asset_manager, &ctx, &ticket_id, &filename, force, json),
+        } => handle_asset_remove(&asset_manager, ctx, &ticket_id, &filename, force, json),
         AssetAction::Open {
             ticket_id,
             filename,
@@ -92,26 +92,24 @@ fn handle_asset_list(asset_manager: &AssetManager, ticket_id: &str, json: bool) 
                 "count": assets.len(),
             }))?
         );
+    } else if assets.is_empty() {
+        println!("No assets found for ticket {}", ticket_id.cyan());
     } else {
-        if assets.is_empty() {
-            println!("No assets found for ticket {}", ticket_id.cyan());
-        } else {
+        println!(
+            "{} {} asset{} for {}:",
+            "Found".green(),
+            assets.len(),
+            if assets.len() == 1 { "" } else { "s" },
+            ticket_id.cyan()
+        );
+        for asset in &assets {
             println!(
-                "{} {} asset{} for {}:",
-                "Found".green(),
-                assets.len(),
-                if assets.len() == 1 { "" } else { "s" },
-                ticket_id.cyan()
+                "  {} {} ({}, {})",
+                "•".cyan(),
+                asset.filename.bold(),
+                asset.size_string(),
+                asset.file_type().yellow()
             );
-            for asset in &assets {
-                println!(
-                    "  {} {} ({}, {})",
-                    "•".cyan(),
-                    asset.filename.bold(),
-                    asset.size_string(),
-                    asset.file_type().yellow()
-                );
-            }
         }
     }
 

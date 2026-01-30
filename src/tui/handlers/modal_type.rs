@@ -10,6 +10,6 @@ pub fn handle_type_modal(app: &mut App, key: KeyEvent) -> io::Result<bool> {
     let options_count = App::type_options().len();
     handle_enum_modal(app, key, options_count, |app| {
         app.apply_modal_type()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .map_err(io::Error::other)
     })
 }

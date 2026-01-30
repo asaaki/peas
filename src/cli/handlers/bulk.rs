@@ -6,6 +6,17 @@ use std::io::{self, Read};
 
 use super::CommandContext;
 
+/// Parameters for bulk create operation
+struct BulkCreateParams {
+    r#type: PeaTypeArg,
+    parent: Option<String>,
+    tag: Vec<String>,
+    priority: Option<PeaPriorityArg>,
+    status: Option<PeaStatusArg>,
+    json: bool,
+    dry_run: bool,
+}
+
 pub fn handle_bulk(ctx: &CommandContext, action: BulkAction) -> Result<()> {
     match action {
         BulkAction::Status { status, ids, json } => {
@@ -80,7 +91,18 @@ pub fn handle_bulk(ctx: &CommandContext, action: BulkAction) -> Result<()> {
             status,
             json,
             dry_run,
-        } => handle_bulk_create(ctx, r#type, parent, tag, priority, status, json, dry_run),
+        } => handle_bulk_create(
+            ctx,
+            BulkCreateParams {
+                r#type,
+                parent,
+                tag,
+                priority,
+                status,
+                json,
+                dry_run,
+            },
+        ),
     }
 }
 
@@ -155,21 +177,19 @@ where
                 "errors": errors_list
             }))?
         );
+    } else if errors_list.is_empty() {
+        println!(
+            "\n{} {} peas",
+            "Successfully updated".green(),
+            updated_peas.len()
+        );
     } else {
-        if errors_list.is_empty() {
-            println!(
-                "\n{} {} peas",
-                "Successfully updated".green(),
-                updated_peas.len()
-            );
-        } else {
-            println!(
-                "\n{} {} peas, {} errors",
-                "Partially completed:".yellow(),
-                updated_peas.len(),
-                errors_list.len()
-            );
-        }
+        println!(
+            "\n{} {} peas, {} errors",
+            "Partially completed:".yellow(),
+            updated_peas.len(),
+            errors_list.len()
+        );
     }
     Ok(())
 }
@@ -266,16 +286,7 @@ where
 }
 
 /// Handle bulk create from stdin
-fn handle_bulk_create(
-    ctx: &CommandContext,
-    r#type: PeaTypeArg,
-    parent: Option<String>,
-    tag: Vec<String>,
-    priority: Option<PeaPriorityArg>,
-    status: Option<PeaStatusArg>,
-    json: bool,
-    dry_run: bool,
-) -> Result<()> {
+fn handle_bulk_create(ctx: &CommandContext, params: BulkCreateParams) -> Result<()> {
     // Read titles from stdin, one per line
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
@@ -287,7 +298,7 @@ fn handle_bulk_create(
         .collect();
 
     if titles.is_empty() {
-        if json {
+        if params.json {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&serde_json::json!({
@@ -302,22 +313,22 @@ fn handle_bulk_create(
         return Ok(());
     }
 
-    let pea_type = r#type.into();
-    let pea_status: Option<PeaStatus> = status.map(|s: PeaStatusArg| s.into());
-    let pea_priority = priority.map(|p: PeaPriorityArg| p.into());
+    let pea_type = params.r#type.into();
+    let pea_status: Option<PeaStatus> = params.status.map(|s: PeaStatusArg| s.into());
+    let pea_priority = params.priority.map(|p: PeaPriorityArg| p.into());
 
     // Dry-run mode: just show what would be created
-    if dry_run {
+    if params.dry_run {
         let mut would_create = Vec::new();
         for title in &titles {
             let id = ctx.repo.generate_id();
             let mut pea = Pea::new(id, title.to_string(), pea_type);
 
-            if let Some(ref p) = parent {
+            if let Some(ref p) = params.parent {
                 pea = pea.with_parent(Some(p.clone()));
             }
-            if !tag.is_empty() {
-                pea = pea.with_tags(tag.clone());
+            if !params.tag.is_empty() {
+                pea = pea.with_tags(params.tag.clone());
             }
             if let Some(s) = pea_status {
                 pea = pea.with_status(s);
@@ -326,7 +337,7 @@ fn handle_bulk_create(
                 pea = pea.with_priority(p);
             }
 
-            if !json {
+            if !params.json {
                 println!(
                     "{} {} [{}] {}",
                     "Would create:".yellow(),
@@ -338,7 +349,7 @@ fn handle_bulk_create(
             would_create.push(pea);
         }
 
-        if json {
+        if params.json {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&serde_json::json!({
@@ -359,11 +370,11 @@ fn handle_bulk_create(
         let id = ctx.repo.generate_id();
         let mut pea = Pea::new(id, title.to_string(), pea_type);
 
-        if let Some(ref p) = parent {
+        if let Some(ref p) = params.parent {
             pea = pea.with_parent(Some(p.clone()));
         }
-        if !tag.is_empty() {
-            pea = pea.with_tags(tag.clone());
+        if !params.tag.is_empty() {
+            pea = pea.with_tags(params.tag.clone());
         }
         if let Some(s) = pea_status {
             pea = pea.with_status(s);
@@ -378,13 +389,13 @@ fn handle_bulk_create(
                     .file_name()
                     .map(|f| f.to_string_lossy())
                     .unwrap_or_default();
-                if !json {
+                if !params.json {
                     println!("{} {} {}", "Created".green(), pea.id.cyan(), filename);
                 }
                 created_peas.push(pea);
             }
             Err(e) => {
-                if !json {
+                if !params.json {
                     eprintln!("{} '{}': {}", "Error".red(), title, e);
                 }
                 errors_list.push(serde_json::json!({
@@ -395,7 +406,7 @@ fn handle_bulk_create(
         }
     }
 
-    if json {
+    if params.json {
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({

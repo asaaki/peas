@@ -381,7 +381,7 @@ impl MutationRoot {
         }
         // NOTE: No touch() call - update() handles it internally now
 
-        repo.update(&mut memory)?;
+        repo.update(&memory)?;
         Ok(memory.into())
     }
 

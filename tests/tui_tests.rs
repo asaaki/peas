@@ -131,7 +131,7 @@ fn test_navigation_empty_list() {
 
 #[test]
 fn test_navigation_single_item() {
-    let (mut app, temp_dir) = create_test_app();
+    let (mut app, _temp_dir) = create_test_app();
 
     create_test_pea(&app.repo, "test-abc01", "Test Task", PeaType::Task);
     app.refresh().unwrap();
@@ -447,7 +447,7 @@ fn test_message_display() {
 fn test_help_toggle() {
     let (mut app, _temp_dir) = create_test_app();
 
-    assert_eq!(app.show_help, false);
+    assert!(!app.show_help);
 
     app.show_help = true;
     assert!(app.show_help);

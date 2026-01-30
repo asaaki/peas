@@ -32,11 +32,10 @@ pub fn handle_suggest(ctx: &CommandContext, json: bool, limit: usize) -> Result<
 
             // Check if all blocking dependencies are completed
             for blocker_id in &p.blocking {
-                if let Some(status) = status_map.get(blocker_id) {
-                    if *status != PeaStatus::Completed && *status != PeaStatus::Scrapped {
+                if let Some(status) = status_map.get(blocker_id)
+                    && *status != PeaStatus::Completed && *status != PeaStatus::Scrapped {
                         return false; // Has unmet dependency
                     }
-                }
             }
 
             true
@@ -196,9 +195,30 @@ pub fn handle_suggest(ctx: &CommandContext, json: bool, limit: usize) -> Result<
                 "count": num_suggestions
             }))?
         );
+    } else if num_suggestions == 1 {
+        let suggestion = suggestions[0];
+        let blocks_count = blocking_count.get(&suggestion.id).unwrap_or(&0);
+        let reason = if suggestion.status == PeaStatus::InProgress {
+            "Currently in progress".to_string()
+        } else if *blocks_count > 0 {
+            format!("Blocking {} ticket(s)", blocks_count)
+        } else if suggestion.priority == PeaPriority::Critical {
+            "Critical priority".to_string()
+        } else if suggestion.priority == PeaPriority::High {
+            "High priority".to_string()
+        } else if suggestion.pea_type == PeaType::Bug {
+            "Bug fix".to_string()
+        } else {
+            "Next in queue".to_string()
+        };
+
+        println!("{}: {}", "Suggested".green().bold(), reason);
+        println!();
+        print_pea(suggestion);
     } else {
-        if num_suggestions == 1 {
-            let suggestion = suggestions[0];
+        println!("{} {} suggestions:", "Top".green().bold(), num_suggestions);
+        println!();
+        for (i, suggestion) in suggestions.iter().enumerate() {
             let blocks_count = blocking_count.get(&suggestion.id).unwrap_or(&0);
             let reason = if suggestion.status == PeaStatus::InProgress {
                 "Currently in progress".to_string()
@@ -214,40 +234,17 @@ pub fn handle_suggest(ctx: &CommandContext, json: bool, limit: usize) -> Result<
                 "Next in queue".to_string()
             };
 
-            println!("{}: {}", "Suggested".green().bold(), reason);
-            println!();
-            print_pea(suggestion);
-        } else {
-            println!("{} {} suggestions:", "Top".green().bold(), num_suggestions);
-            println!();
-            for (i, suggestion) in suggestions.iter().enumerate() {
-                let blocks_count = blocking_count.get(&suggestion.id).unwrap_or(&0);
-                let reason = if suggestion.status == PeaStatus::InProgress {
-                    "Currently in progress".to_string()
-                } else if *blocks_count > 0 {
-                    format!("Blocking {} ticket(s)", blocks_count)
-                } else if suggestion.priority == PeaPriority::Critical {
-                    "Critical priority".to_string()
-                } else if suggestion.priority == PeaPriority::High {
-                    "High priority".to_string()
-                } else if suggestion.pea_type == PeaType::Bug {
-                    "Bug fix".to_string()
-                } else {
-                    "Next in queue".to_string()
-                };
-
-                println!("{}. {} - {}", i + 1, reason.cyan(), suggestion.title);
-                println!(
-                    "   {} [{}] {}",
-                    suggestion.id.dimmed(),
-                    suggestion.pea_type,
-                    suggestion.priority
-                );
-                if *blocks_count > 0 {
-                    println!("   {} Unblocks {} ticket(s)", "⚠".yellow(), blocks_count);
-                }
-                println!();
+            println!("{}. {} - {}", i + 1, reason.cyan(), suggestion.title);
+            println!(
+                "   {} [{}] {}",
+                suggestion.id.dimmed(),
+                suggestion.pea_type,
+                suggestion.priority
+            );
+            if *blocks_count > 0 {
+                println!("   {} Unblocks {} ticket(s)", "⚠".yellow(), blocks_count);
             }
+            println!();
         }
     }
 

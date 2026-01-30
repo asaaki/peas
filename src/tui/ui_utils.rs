@@ -91,7 +91,7 @@ pub fn estimate_wrapped_lines(text: &Text, width: usize) -> u16 {
         let wrapped = if line_width == 0 {
             1 // Empty line still takes 1 line
         } else {
-            ((line_width + width - 1) / width) as u16 // Ceiling division
+            line_width.div_ceil(width) as u16 // Ceiling division
         };
         total_lines = total_lines.saturating_add(wrapped);
     }

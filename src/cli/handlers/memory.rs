@@ -38,7 +38,7 @@ fn handle_memory_save(
         existing_memory.content = content;
         existing_memory.tags = tag;
         // NOTE: No touch() call - update() handles it internally now
-        let path = repo.update(&mut existing_memory)?;
+        let path = repo.update(&existing_memory)?;
         (existing_memory, path)
     } else {
         // Create new memory
@@ -113,18 +113,16 @@ fn handle_memory_list(repo: &MemoryRepository, tag: Option<String>, json: bool) 
                 "count": memories.len(),
             }))?
         );
+    } else if memories.is_empty() {
+        println!("No memories found.");
     } else {
-        if memories.is_empty() {
-            println!("No memories found.");
-        } else {
-            println!("{} {} memories:", "Found".green(), memories.len());
-            for memory in &memories {
-                print!("  {} {}", "•".cyan(), memory.key.bold());
-                if !memory.tags.is_empty() {
-                    print!(" [{}]", memory.tags.join(", ").yellow());
-                }
-                println!();
+        println!("{} {} memories:", "Found".green(), memories.len());
+        for memory in &memories {
+            print!("  {} {}", "•".cyan(), memory.key.bold());
+            if !memory.tags.is_empty() {
+                print!(" [{}]", memory.tags.join(", ").yellow());
             }
+            println!();
         }
     }
 
