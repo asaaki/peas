@@ -1,0 +1,2 @@
+[alias]
+fixit = "clippy --fix --allow-dirty --allow-staged"

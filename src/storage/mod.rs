@@ -1,20 +1,20 @@
 //! File-based storage layer for peas.
 //!
-//! Peas are stored as markdown files with YAML frontmatter in the `.peas/` directory.
+//! Peas are stored as markdown files with TOML frontmatter in the `.peas/` directory.
 //!
 //! ## File Format
 //!
 //! ```markdown
-//! ---
-//! id: peas-1234
-//! title: Fix login bug
-//! type: bug
-//! status: in-progress
-//! priority: high
-//! tags: [auth, urgent]
-//! created: 2024-01-15T10:30:00Z
-//! updated: 2024-01-15T14:20:00Z
-//! ---
+//! +++
+//! id = "peas-1234"
+//! title = "Fix login bug"
+//! type = "bug"
+//! status = "in-progress"
+//! priority = "high"
+//! tags = ["auth", "urgent"]
+//! created = "2024-01-15T10:30:00Z"
+//! updated = "2024-01-15T14:20:00Z"
+//! +++
 //!
 //! Description of the bug and any additional notes.
 //! ```

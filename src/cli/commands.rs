@@ -13,7 +13,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    /// Path to config file (searches upward for .peas.yml by default)
+    /// Path to config file (searches upward for .peas.toml by default)
     #[arg(long, global = true)]
     pub config: Option<String>,
 

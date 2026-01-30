@@ -8,7 +8,7 @@ Inspired by [beans](https://github.com/hmans/beans) and [beads](https://github.c
 
 ## Features
 
-- **Flat-file storage**: Issues stored as markdown with YAML frontmatter in `.peas/`
+- **Flat-file storage**: Issues stored as markdown with TOML frontmatter in `.peas/`
 - **GraphQL interface**: Query and mutate peas with GraphQL for AI agent integration
 - **Interactive TUI**: Browse and manage peas in a terminal UI
 - **Hierarchical structure**: Milestones, epics, features, bugs, and tasks
@@ -146,20 +146,25 @@ Or add to your `AGENTS.md`:
 
 | Key | Action |
 |-----|--------|
-| `j`/`k` or arrows | Navigate up/down |
-| `Tab` | Next filter |
-| `Shift+Tab` | Previous filter |
+| `↑`/`↓` | Navigate up/down |
+| `←`/`→` | Previous/next page |
+| `Tab` | Switch between Tickets/Memory views |
 | `/` | Search |
-| `Space` | Toggle status |
-| `s` | Start (set in-progress) |
-| `d` | Done (set completed) |
+| `Enter` | Open detail view |
+| `Space` | Multi-select toggle |
+| `c` | Create new ticket |
+| `s` | Change status |
+| `t` | Change type |
+| `P` | Change priority |
+| `e` | Edit in $EDITOR |
 | `r` | Refresh |
+| `u` | Undo last operation |
 | `?` | Help |
 | `q` | Quit |
 
 ## Configuration
 
-peas uses `.peas.toml` for configuration (also supports `.peas.yml`, `.peas.yaml`, or `.peas.json`):
+peas uses `.peas.toml` for configuration (also supports `.peas.yml`, `.peas.yaml`, or `.peas.json`, but TOML is preferred):
 
 ```toml
 [peas]
@@ -168,7 +173,7 @@ prefix = "peas-"        # ID prefix
 id_length = 5           # Random ID length
 default_status = "todo"
 default_type = "task"
-frontmatter = "toml"    # Frontmatter format: toml, yaml
+frontmatter = "toml"    # Frontmatter format: toml, yaml, json (TOML preferred)
 
 [tui]
 use_type_emojis = false # Enable emoji icons for ticket types in TUI
@@ -176,22 +181,20 @@ use_type_emojis = false # Enable emoji icons for ticket types in TUI
 
 ## File Format
 
-Peas are stored as markdown files with YAML frontmatter:
+Peas are stored as markdown files with TOML frontmatter (YAML and JSON also supported):
 
 ```markdown
----
-id: peas-abc1
-title: Implement feature X
-type: feature
-status: in-progress
-priority: high
-tags:
-  - backend
-  - api
-parent: peas-xyz9
-created: 2024-01-15T10:30:00Z
-updated: 2024-01-15T14:22:00Z
----
++++
+id = "peas-abc1"
+title = "Implement feature X"
+type = "feature"
+status = "in-progress"
+priority = "high"
+tags = ["backend", "api"]
+parent = "peas-xyz9"
+created = "2024-01-15T10:30:00Z"
+updated = "2024-01-15T14:22:00Z"
++++
 
 Detailed description of the feature goes here.
 

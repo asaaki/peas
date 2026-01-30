@@ -1,6 +1,6 @@
 //! # Peas - A CLI-based, flat-file issue tracker
 //!
-//! Peas is a lightweight issue tracker that stores issues as markdown files with YAML frontmatter.
+//! Peas is a lightweight issue tracker that stores issues as markdown files with TOML frontmatter.
 //! It provides a CLI interface for humans and a GraphQL API for AI agents and automation.
 //!
 //! ## Features
@@ -45,7 +45,7 @@ pub mod cli;
 
 /// Configuration loading and management.
 ///
-/// Handles `.peas.yml` configuration files and project discovery.
+/// Handles `.peas.toml` configuration files and project discovery.
 pub mod config;
 
 /// Error types and result aliases.
@@ -65,7 +65,7 @@ pub mod model;
 
 /// File-based storage layer.
 ///
-/// Handles reading/writing peas as markdown files with YAML frontmatter.
+/// Handles reading/writing peas as markdown files with TOML frontmatter.
 pub mod storage;
 
 /// Terminal user interface.

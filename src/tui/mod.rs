@@ -10,13 +10,19 @@
 //!
 //! ## Keybindings
 //!
-//! - `j/k` or `↓/↑`: Navigate list
-//! - `Tab`: Cycle filters (All, Open, In Progress, etc.)
+//! - `↑/↓`: Navigate up/down
+//! - `←/→`: Previous/next page
+//! - `Tab`: Switch between Tickets/Memory views
 //! - `/`: Search
-//! - `Enter/Space`: Toggle status
-//! - `s`: Start (mark in-progress)
-//! - `d`: Done (mark completed)
+//! - `Enter`: Open detail view
+//! - `Space`: Multi-select toggle
+//! - `c`: Create new ticket
+//! - `s`: Change status
+//! - `t`: Change type
+//! - `P`: Change priority
+//! - `e`: Edit in $EDITOR
 //! - `r`: Refresh
+//! - `u`: Undo last operation
 //! - `?`: Help
 //! - `q`: Quit
 

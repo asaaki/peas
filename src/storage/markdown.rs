@@ -81,9 +81,9 @@ pub fn parse_markdown_with_format(content: &str, format: FrontmatterFormat) -> R
     Ok(pea)
 }
 
-/// Renders a pea to markdown with YAML frontmatter (default).
+/// Renders a pea to markdown with TOML frontmatter (default).
 pub fn render_markdown(pea: &Pea) -> Result<String> {
-    render_markdown_with_format(pea, FrontmatterFormat::Yaml)
+    render_markdown_with_format(pea, FrontmatterFormat::Toml)
 }
 
 /// Renders a pea to markdown with the specified frontmatter format.
@@ -274,7 +274,7 @@ This is a TOML frontmatter body.
         )
         .with_body("Task description here.".to_string());
 
-        let rendered = render_markdown(&pea).unwrap();
+        let rendered = render_markdown_with_format(&pea, FrontmatterFormat::Yaml).unwrap();
         assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("id: peas-xyz9"));
         assert!(rendered.contains("title: My Task"));
