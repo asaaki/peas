@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  checks: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Wait for CI to pass before building release artifacts
+  check-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for CI to succeed
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.ref }}
+          check-name: "test"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: check-ci
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: peas
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: peas
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: peas
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: peas.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-release-
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }} --verbose
+
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../peas-${{ matrix.target }}.tar.gz ${{ matrix.artifact }}
+          cd ../../..
+          shasum -a 256 peas-${{ matrix.target }}.tar.gz > peas-${{ matrix.target }}.tar.gz.sha256
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ../../../peas-${{ matrix.target }}.zip ${{ matrix.artifact }}
+          cd ../../..
+          sha256sum peas-${{ matrix.target }}.zip > peas-${{ matrix.target }}.zip.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: peas-${{ matrix.target }}
+          path: |
+            peas-${{ matrix.target }}.*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
