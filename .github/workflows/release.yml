@@ -124,6 +124,8 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    environment: Release
+    concurrency: Release
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -143,13 +145,20 @@ jobs:
   publish-crates:
     needs: release
     runs-on: ubuntu-latest
+    environment: Release
+    concurrency: Release
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
       - name: Publish to crates.io
-        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
