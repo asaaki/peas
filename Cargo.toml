@@ -22,11 +22,11 @@ strip = true
 
 [dependencies]
 anyhow = "1.0.100"
-async-graphql = "7.2.0"
-async-graphql-axum = "7.2.0"
+async-graphql = "7.2.1"
+async-graphql-axum = "7.2.1"
 axum = "0.8.8"
 chrono = { version = "0.4.43", features = ["serde"] }
-clap = { version = "4.5.54", features = ["derive", "env"] }
+clap = { version = "4.5.56", features = ["derive", "env"] }
 cli-clipboard = "0.4"
 colored = "3.1.1"
 crossterm = "0.28"
