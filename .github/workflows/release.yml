@@ -1,32 +1,24 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 permissions:
   contents: write
-  checks: read
-  actions: read
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Wait for CI to pass before building release artifacts
-  check-ci:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for CI to succeed
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.ref }}
-          check-name: "test"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
   build:
-    needs: check-ci
+    # Only run if CI succeeded and this was triggered by a tag
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'refs/tags/v')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -46,6 +38,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -95,6 +89,10 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'refs/tags/v')
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -104,6 +102,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.event.workflow_run.head_branch }}
           files: artifacts/**/*
           draft: false
           prerelease: false
