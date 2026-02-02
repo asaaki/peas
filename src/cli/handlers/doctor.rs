@@ -53,7 +53,7 @@ pub fn handle_doctor(fix: bool) -> Result<()> {
     check_config_content(&cwd, &mut results, fix)?;
 
     // Check 4: Ticket format validation
-    check_ticket_format(&cwd, &mut results)?;
+    check_ticket_format(&cwd, &mut results, fix)?;
 
     // Check 5: Ticket integrity
     check_ticket_integrity(&cwd, &mut results)?;
@@ -255,7 +255,7 @@ fn check_config_content(cwd: &Path, results: &mut DiagnosticResults, fix: bool) 
     Ok(())
 }
 
-fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()> {
+fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults, fix: bool) -> Result<()> {
     println!("{}", "Ticket Format Validation".bold());
 
     let data_dir = cwd.join(DATA_DIR);
@@ -266,7 +266,8 @@ fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()
     }
 
     let mut total_tickets = 0;
-    let mut format_issues: Vec<(String, String)> = Vec::new();
+    let mut format_issues: Vec<(String, String, bool)> = Vec::new(); // (filename, issue, fixable)
+    let mut fixed_count = 0;
 
     for entry in std::fs::read_dir(&data_dir)? {
         let entry = entry?;
@@ -277,14 +278,16 @@ fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()
             let filename = path
                 .file_name()
                 .and_then(|f| f.to_str())
-                .unwrap_or("unknown");
+                .unwrap_or("unknown")
+                .to_string();
             let content = std::fs::read_to_string(&path)?;
 
             // Check for frontmatter delimiters
             if !content.starts_with("+++") && !content.starts_with("---") {
                 format_issues.push((
-                    filename.to_string(),
+                    filename,
                     "Missing frontmatter delimiters".to_string(),
+                    false,
                 ));
                 continue;
             }
@@ -298,64 +301,96 @@ fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()
             let parts: Vec<&str> = content.splitn(3, delimiter).collect();
             if parts.len() < 3 {
                 format_issues.push((
-                    filename.to_string(),
+                    filename,
                     "Malformed frontmatter structure".to_string(),
+                    false,
                 ));
                 continue;
             }
 
-            let frontmatter = parts[1].trim();
+            let frontmatter = parts[1];
+            let body = parts[2];
+            let mut new_frontmatter = frontmatter.to_string();
+            let mut needs_fix = false;
 
             // Check for malformed array fields (comma-separated strings instead of arrays)
             // This catches: blocking = ["a,b,c"] instead of blocking = ["a", "b", "c"]
             for field in ["blocking", "tags", "assets"] {
-                let pattern = format!("{} = [\"", field);
-                if let Some(start) = frontmatter.find(&pattern) {
-                    let after_bracket = start + pattern.len();
-                    if let Some(end) = frontmatter[after_bracket..].find("\"]") {
-                        let value = &frontmatter[after_bracket..after_bracket + end];
-                        // If the value contains commas but no quotes, it's likely malformed
-                        if value.contains(',') && !value.contains("\", \"") {
-                            format_issues.push((
-                                filename.to_string(),
-                                format!(
-                                    "Malformed {} array: contains comma-separated string instead of array elements",
-                                    field
-                                ),
-                            ));
-                        }
+                if let Some(fixed) = fix_malformed_array(&new_frontmatter, field) {
+                    if fix {
+                        new_frontmatter = fixed;
+                        needs_fix = true;
+                    } else {
+                        format_issues.push((
+                            filename.clone(),
+                            format!(
+                                "Malformed {} array: contains comma-separated string instead of array elements",
+                                field
+                            ),
+                            true, // fixable
+                        ));
                     }
                 }
             }
 
-            // Try to parse and check for additional issues
-            match crate::storage::parse_markdown(&content) {
+            // Write fixed content back
+            if needs_fix {
+                let new_content = format!("{}{}{}{}", delimiter, new_frontmatter, delimiter, body);
+                std::fs::write(&path, new_content)?;
+                fixed_count += 1;
+                println!(
+                    "      {} Fixed malformed arrays in {}",
+                    "✓".green(),
+                    filename
+                );
+            }
+
+            // Try to parse and check for additional issues (non-fixable)
+            let content_to_check = if needs_fix {
+                std::fs::read_to_string(&path)?
+            } else {
+                content
+            };
+
+            match crate::storage::parse_markdown(&content_to_check) {
                 Ok(pea) => {
                     // Check ID format - should start with a prefix and have reasonable length
                     if pea.id.is_empty() {
-                        format_issues.push((filename.to_string(), "Empty ticket ID".to_string()));
+                        format_issues.push((
+                            filename.clone(),
+                            "Empty ticket ID".to_string(),
+                            false,
+                        ));
                     } else if !pea.id.contains('-') {
                         format_issues.push((
-                            filename.to_string(),
+                            filename.clone(),
                             format!("ID '{}' missing prefix separator", pea.id),
+                            false,
                         ));
                     }
 
                     // Check title
                     if pea.title.is_empty() {
-                        format_issues
-                            .push((filename.to_string(), "Empty ticket title".to_string()));
+                        format_issues.push((
+                            filename.clone(),
+                            "Empty ticket title".to_string(),
+                            false,
+                        ));
                     }
 
                     // Check parent format if present
                     if let Some(ref parent) = pea.parent {
                         if parent.is_empty() {
-                            format_issues
-                                .push((filename.to_string(), "Empty parent reference".to_string()));
+                            format_issues.push((
+                                filename.clone(),
+                                "Empty parent reference".to_string(),
+                                false,
+                            ));
                         } else if !parent.contains('-') {
                             format_issues.push((
-                                filename.to_string(),
+                                filename.clone(),
                                 format!("Parent '{}' has invalid ID format", parent),
+                                false,
                             ));
                         }
                     }
@@ -364,23 +399,25 @@ fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()
                     for blocked in &pea.blocking {
                         if blocked.is_empty() {
                             format_issues.push((
-                                filename.to_string(),
+                                filename.clone(),
                                 "Empty blocking reference".to_string(),
+                                false,
                             ));
                         } else if !blocked.contains('-') && blocked.contains(',') {
                             // Likely a comma-separated string that wasn't caught above
                             format_issues.push((
-                                filename.to_string(),
+                                filename.clone(),
                                 format!(
                                     "Blocking '{}' appears to be comma-separated (should be array)",
                                     blocked
                                 ),
+                                true, // fixable via the array fix above
                             ));
                         }
                     }
                 }
                 Err(e) => {
-                    format_issues.push((filename.to_string(), format!("Parse error: {}", e)));
+                    format_issues.push((filename, format!("Parse error: {}", e), false));
                 }
             }
         }
@@ -392,21 +429,69 @@ fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()
         return Ok(());
     }
 
-    if format_issues.is_empty() {
+    // Filter out fixed issues
+    let remaining_issues: Vec<_> = format_issues
+        .iter()
+        .filter(|(_, _, fixable)| !fix || !fixable)
+        .collect();
+
+    if remaining_issues.is_empty() && fixed_count == 0 {
         results.pass(&format!("All {} tickets are well-formed", total_tickets));
-    } else {
-        results.error(&format!(
-            "{} format issues in {} tickets",
-            format_issues.len(),
-            total_tickets
+    } else if remaining_issues.is_empty() && fixed_count > 0 {
+        results.pass(&format!(
+            "Fixed {} issues, all {} tickets now well-formed",
+            fixed_count, total_tickets
         ));
-        for (filename, issue) in &format_issues {
-            println!("      - {}: {}", filename, issue);
+    } else {
+        let fixable_count = format_issues.iter().filter(|(_, _, f)| *f).count();
+        if fixable_count > 0 && !fix {
+            results.error(&format!(
+                "{} format issues ({} auto-fixable with --fix)",
+                remaining_issues.len(),
+                fixable_count
+            ));
+        } else {
+            results.error(&format!("{} format issues", remaining_issues.len()));
+        }
+        for (filename, issue, fixable) in &remaining_issues {
+            let suffix = if *fixable && !fix { " [fixable]" } else { "" };
+            println!("      - {}: {}{}", filename, issue, suffix);
         }
     }
 
     println!();
     Ok(())
+}
+
+/// Attempt to fix a malformed array field in TOML frontmatter.
+/// Returns Some(fixed_frontmatter) if a fix was applied, None otherwise.
+fn fix_malformed_array(frontmatter: &str, field: &str) -> Option<String> {
+    // Match pattern like: field = ["a,b,c"]
+    // We need to convert to: field = ["a", "b", "c"]
+
+    let pattern = format!("{} = [\"", field);
+    let start = frontmatter.find(&pattern)?;
+    let after_bracket = start + pattern.len();
+    let end = frontmatter[after_bracket..].find("\"]")?;
+    let value = &frontmatter[after_bracket..after_bracket + end];
+
+    // Check if it's actually malformed (contains commas but no proper array separators)
+    if !value.contains(',') || value.contains("\", \"") {
+        return None;
+    }
+
+    // Split by comma and rebuild as proper array
+    let items: Vec<&str> = value.split(',').map(|s| s.trim()).collect();
+    let fixed_array = items
+        .iter()
+        .map(|s| format!("\"{}\"", s))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let old_value = format!("{} = [\"{}\"]", field, value);
+    let new_value = format!("{} = [{}]", field, fixed_array);
+
+    Some(frontmatter.replace(&old_value, &new_value))
 }
 
 fn check_ticket_integrity(cwd: &Path, results: &mut DiagnosticResults) -> Result<()> {
