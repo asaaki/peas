@@ -4,7 +4,7 @@ title = "Fix deprecated test API"
 type = "task"
 status = "completed"
 priority = "normal"
-parent = "peas-4988"
+parent = "peas-4988a"
 created = "2026-01-18T15:55:19Z"
 updated = "2026-01-18T19:09:54.534570500Z"
 +++

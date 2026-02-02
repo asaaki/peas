@@ -4,7 +4,7 @@ title = "Consolidate duplicate filtering logic"
 type = "task"
 status = "scrapped"
 priority = "normal"
-parent = "peas-4988"
+parent = "peas-4988a"
 created = "2026-01-18T15:55:19Z"
 updated = "2026-01-19T00:32:25.203857700Z"
 +++
