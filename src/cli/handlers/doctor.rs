@@ -368,18 +368,18 @@ fn check_sequential_counter(cwd: &Path, results: &mut DiagnosticResults, fix: bo
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
-            if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
-                // Try to extract numeric ID (e.g., "peas-00042--title.md" -> 42)
-                if let Some(id_part) = filename.split("--").next() {
-                    if let Some(num_part) = id_part.split('-').last() {
-                        if let Ok(num) = num_part.parse::<u64>() {
-                            sequential_tickets += 1;
-                            if num > highest_id {
-                                highest_id = num;
-                            }
-                        }
-                    }
+        if path.is_file()
+            && path.extension().map(|e| e == "md").unwrap_or(false)
+            && let Some(filename) = path.file_name().and_then(|f| f.to_str())
+        {
+            // Try to extract numeric ID (e.g., "peas-00042--title.md" -> 42)
+            if let Some(id_part) = filename.split("--").next()
+                && let Some(num_part) = id_part.split('-').next_back()
+                && let Ok(num) = num_part.parse::<u64>()
+            {
+                sequential_tickets += 1;
+                if num > highest_id {
+                    highest_id = num;
                 }
             }
         }
