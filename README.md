@@ -228,34 +228,54 @@ use_type_emojis = false # Enable emoji icons for ticket types in TUI
 
 ### Editor Support (JSON Schema)
 
-A JSON Schema is available at `schemas/peas.json` for editor autocompletion and validation.
+A JSON Schema is available for editor autocompletion and validation. New projects created with `peas init` automatically include the schema directive.
 
-**In-file directive (works with Taplo and Tombi):**
+**Schema URL:** `https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json`
 
-Add this comment at the top of your `.peas.toml`:
+**In-file directives (automatically added by `peas init`):**
+
+TOML (Taplo/Tombi):
 ```toml
-#:schema ./schemas/peas.json
+#:schema https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json
 
 [peas]
 prefix = "peas-"
 ```
 
+YAML (yaml-language-server):
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json
+
+peas:
+  prefix: "peas-"
+```
+
+JSON:
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json",
+  "peas": {
+    "prefix": "peas-"
+  }
+}
+```
+
 **Zed with Tombi extension:**
 
-Add to your `tombi.toml` (or project settings):
+The in-file directive works automatically. Alternatively, add to your `tombi.toml`:
 ```toml
 [[schemas]]
-path = "./schemas/peas.json"
+url = "https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json"
 include = [".peas.toml"]
 ```
 
 **VS Code with Even Better TOML (Taplo):**
 
-Add to your `.vscode/settings.json`:
+The in-file directive works automatically. Alternatively, add to `.vscode/settings.json`:
 ```json
 {
   "evenBetterToml.schema.associations": {
-    ".peas.toml": "./schemas/peas.json"
+    ".peas.toml": "https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json"
   }
 }
 ```
@@ -264,14 +284,10 @@ Add to your `.vscode/settings.json`:
 ```json
 {
   "yaml.schemas": {
-    "./schemas/peas.json": [".peas.yml", ".peas.yaml"]
+    "https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json": [".peas.yml", ".peas.yaml"]
   }
 }
 ```
-
-**Neovim with taplo/yaml-language-server:**
-
-Configure your LSP to associate the schema with `.peas.*` files.
 
 ## File Format
 

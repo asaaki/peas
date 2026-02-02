@@ -6,6 +6,11 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema URL for editor support",
+      "format": "uri"
+    },
     "peas": {
       "type": "object",
       "description": "Core peas settings",

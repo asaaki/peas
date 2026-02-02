@@ -1,4 +1,4 @@
-#:schema ./schemas/peas.json
+#:schema https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json
 
 [peas]
 path = ".peas"

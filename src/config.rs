@@ -3,6 +3,10 @@ use crate::storage::FrontmatterFormat;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+/// URL to the JSON Schema for peas configuration files
+pub const SCHEMA_URL: &str =
+    "https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json";
+
 /// ID generation mode for tickets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -163,13 +167,36 @@ impl PeasConfig {
         // Determine format based on file extension, default to TOML
         let content = if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
             match ext {
-                "toml" => toml::to_string_pretty(self)?,
-                "json" => serde_json::to_string_pretty(self)?,
-                "yml" | "yaml" => serde_yaml::to_string(self)?,
-                _ => toml::to_string_pretty(self)?, // Default to TOML
+                "toml" => {
+                    let toml_content = toml::to_string_pretty(self)?;
+                    format!("#:schema {}\n\n{}", SCHEMA_URL, toml_content)
+                }
+                "json" => {
+                    // Add $schema property to JSON output
+                    let mut json_value = serde_json::to_value(self)?;
+                    if let serde_json::Value::Object(ref mut map) = json_value {
+                        map.insert(
+                            "$schema".to_string(),
+                            serde_json::Value::String(SCHEMA_URL.to_string()),
+                        );
+                    }
+                    serde_json::to_string_pretty(&json_value)?
+                }
+                "yml" | "yaml" => {
+                    let yaml_content = serde_yaml::to_string(self)?;
+                    format!(
+                        "# yaml-language-server: $schema={}\n\n{}",
+                        SCHEMA_URL, yaml_content
+                    )
+                }
+                _ => {
+                    let toml_content = toml::to_string_pretty(self)?;
+                    format!("#:schema {}\n\n{}", SCHEMA_URL, toml_content)
+                }
             }
         } else {
-            toml::to_string_pretty(self)? // Default to TOML
+            let toml_content = toml::to_string_pretty(self)?;
+            format!("#:schema {}\n\n{}", SCHEMA_URL, toml_content)
         };
         std::fs::write(path, content)?;
         Ok(())
