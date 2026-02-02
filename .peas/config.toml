@@ -3,6 +3,7 @@
 [peas]
 prefix = "peas-"
 id_length = 5
+id_mode = "random"
 default_status = "todo"
 default_type = "task"
 frontmatter = "toml"

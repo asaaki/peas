@@ -52,13 +52,16 @@ pub fn handle_doctor(fix: bool) -> Result<()> {
     // Check 3: Config content
     check_config_content(&cwd, &mut results, fix)?;
 
-    // Check 4: Ticket integrity
+    // Check 4: Ticket format validation
+    check_ticket_format(&cwd, &mut results)?;
+
+    // Check 5: Ticket integrity
     check_ticket_integrity(&cwd, &mut results)?;
 
-    // Check 5: Mixed ID styles
+    // Check 6: Mixed ID styles
     check_mixed_id_styles(&cwd, &mut results)?;
 
-    // Check 6: Sequential ID counter (if applicable)
+    // Check 7: Sequential ID counter (if applicable)
     check_sequential_counter(&cwd, &mut results, fix)?;
 
     // Summary
@@ -245,6 +248,160 @@ fn check_config_content(cwd: &Path, results: &mut DiagnosticResults, fix: bool) 
         Ok(_) => results.pass("Config parses successfully"),
         Err(e) => {
             results.error(&format!("Config parse error: {}", e));
+        }
+    }
+
+    println!();
+    Ok(())
+}
+
+fn check_ticket_format(cwd: &Path, results: &mut DiagnosticResults) -> Result<()> {
+    println!("{}", "Ticket Format Validation".bold());
+
+    let data_dir = cwd.join(DATA_DIR);
+    if !data_dir.exists() {
+        results.warn("No data directory to check");
+        println!();
+        return Ok(());
+    }
+
+    let mut total_tickets = 0;
+    let mut format_issues: Vec<(String, String)> = Vec::new();
+
+    for entry in std::fs::read_dir(&data_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
+            total_tickets += 1;
+            let filename = path
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or("unknown");
+            let content = std::fs::read_to_string(&path)?;
+
+            // Check for frontmatter delimiters
+            if !content.starts_with("+++") && !content.starts_with("---") {
+                format_issues.push((
+                    filename.to_string(),
+                    "Missing frontmatter delimiters".to_string(),
+                ));
+                continue;
+            }
+
+            // Extract frontmatter for raw validation
+            let delimiter = if content.starts_with("+++") {
+                "+++"
+            } else {
+                "---"
+            };
+            let parts: Vec<&str> = content.splitn(3, delimiter).collect();
+            if parts.len() < 3 {
+                format_issues.push((
+                    filename.to_string(),
+                    "Malformed frontmatter structure".to_string(),
+                ));
+                continue;
+            }
+
+            let frontmatter = parts[1].trim();
+
+            // Check for malformed array fields (comma-separated strings instead of arrays)
+            // This catches: blocking = ["a,b,c"] instead of blocking = ["a", "b", "c"]
+            for field in ["blocking", "tags", "assets"] {
+                let pattern = format!("{} = [\"", field);
+                if let Some(start) = frontmatter.find(&pattern) {
+                    let after_bracket = start + pattern.len();
+                    if let Some(end) = frontmatter[after_bracket..].find("\"]") {
+                        let value = &frontmatter[after_bracket..after_bracket + end];
+                        // If the value contains commas but no quotes, it's likely malformed
+                        if value.contains(',') && !value.contains("\", \"") {
+                            format_issues.push((
+                                filename.to_string(),
+                                format!(
+                                    "Malformed {} array: contains comma-separated string instead of array elements",
+                                    field
+                                ),
+                            ));
+                        }
+                    }
+                }
+            }
+
+            // Try to parse and check for additional issues
+            match crate::storage::parse_markdown(&content) {
+                Ok(pea) => {
+                    // Check ID format - should start with a prefix and have reasonable length
+                    if pea.id.is_empty() {
+                        format_issues.push((filename.to_string(), "Empty ticket ID".to_string()));
+                    } else if !pea.id.contains('-') {
+                        format_issues.push((
+                            filename.to_string(),
+                            format!("ID '{}' missing prefix separator", pea.id),
+                        ));
+                    }
+
+                    // Check title
+                    if pea.title.is_empty() {
+                        format_issues
+                            .push((filename.to_string(), "Empty ticket title".to_string()));
+                    }
+
+                    // Check parent format if present
+                    if let Some(ref parent) = pea.parent {
+                        if parent.is_empty() {
+                            format_issues
+                                .push((filename.to_string(), "Empty parent reference".to_string()));
+                        } else if !parent.contains('-') {
+                            format_issues.push((
+                                filename.to_string(),
+                                format!("Parent '{}' has invalid ID format", parent),
+                            ));
+                        }
+                    }
+
+                    // Check blocking references format
+                    for blocked in &pea.blocking {
+                        if blocked.is_empty() {
+                            format_issues.push((
+                                filename.to_string(),
+                                "Empty blocking reference".to_string(),
+                            ));
+                        } else if !blocked.contains('-') && blocked.contains(',') {
+                            // Likely a comma-separated string that wasn't caught above
+                            format_issues.push((
+                                filename.to_string(),
+                                format!(
+                                    "Blocking '{}' appears to be comma-separated (should be array)",
+                                    blocked
+                                ),
+                            ));
+                        }
+                    }
+                }
+                Err(e) => {
+                    format_issues.push((filename.to_string(), format!("Parse error: {}", e)));
+                }
+            }
+        }
+    }
+
+    if total_tickets == 0 {
+        results.pass("No tickets to validate");
+        println!();
+        return Ok(());
+    }
+
+    if format_issues.is_empty() {
+        results.pass(&format!("All {} tickets are well-formed", total_tickets));
+    } else {
+        results.error(&format!(
+            "{} format issues in {} tickets",
+            format_issues.len(),
+            total_tickets
+        ));
+        for (filename, issue) in &format_issues {
+            println!("      - {}: {}", filename, issue);
         }
     }
 
