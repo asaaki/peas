@@ -1,0 +1,20 @@
+toml-version = "v1.0.0"
+
+[lsp]
+code-action.enabled = true
+
+[[overrides]]
+[overrides.files]
+include = [
+    "*.toml",
+    "**/*.toml"
+]
+# exclude = []
+
+[overrides.lint]
+enabled = true
+
+[overrides.lint.rules]
+dotted-keys-out-of-order = "error"
+key-empty = "error"
+tables-out-of-order = "off"

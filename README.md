@@ -211,7 +211,8 @@ peas uses `.peas.toml` for configuration (also supports `.peas.yml`, `.peas.yaml
 [peas]
 path = ".peas"          # Data directory
 prefix = "peas-"        # ID prefix
-id_length = 5           # Random ID length
+id_length = 5           # ID suffix length
+id_mode = "random"      # ID mode: "random" (default) or "sequential"
 default_status = "todo"
 default_type = "task"
 frontmatter = "toml"    # Frontmatter format: toml, yaml, json (TOML preferred)
@@ -219,6 +220,58 @@ frontmatter = "toml"    # Frontmatter format: toml, yaml, json (TOML preferred)
 [tui]
 use_type_emojis = false # Enable emoji icons for ticket types in TUI
 ```
+
+### ID Modes
+
+- **random** (default): Generates IDs like `peas-a1b2c` using random alphanumeric characters
+- **sequential**: Generates IDs like `peas-00001`, `peas-00002`, etc. using an incrementing counter stored in `.peas/.id`
+
+### Editor Support (JSON Schema)
+
+A JSON Schema is available at `schemas/peas.json` for editor autocompletion and validation.
+
+**In-file directive (works with Taplo and Tombi):**
+
+Add this comment at the top of your `.peas.toml`:
+```toml
+#:schema ./schemas/peas.json
+
+[peas]
+prefix = "peas-"
+```
+
+**Zed with Tombi extension:**
+
+Add to your `tombi.toml` (or project settings):
+```toml
+[[schemas]]
+path = "./schemas/peas.json"
+include = [".peas.toml"]
+```
+
+**VS Code with Even Better TOML (Taplo):**
+
+Add to your `.vscode/settings.json`:
+```json
+{
+  "evenBetterToml.schema.associations": {
+    ".peas.toml": "./schemas/peas.json"
+  }
+}
+```
+
+**VS Code with YAML extension:**
+```json
+{
+  "yaml.schemas": {
+    "./schemas/peas.json": [".peas.yml", ".peas.yaml"]
+  }
+}
+```
+
+**Neovim with taplo/yaml-language-server:**
+
+Configure your LSP to associate the schema with `.peas.*` files.
 
 ## File Format
 

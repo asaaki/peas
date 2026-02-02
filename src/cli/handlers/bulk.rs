@@ -321,7 +321,7 @@ fn handle_bulk_create(ctx: &CommandContext, params: BulkCreateParams) -> Result<
     if params.dry_run {
         let mut would_create = Vec::new();
         for title in &titles {
-            let id = ctx.repo.generate_id();
+            let id = ctx.repo.generate_id()?;
             let mut pea = Pea::new(id, title.to_string(), pea_type);
 
             if let Some(ref p) = params.parent {
@@ -367,7 +367,7 @@ fn handle_bulk_create(ctx: &CommandContext, params: BulkCreateParams) -> Result<
     let mut errors_list: Vec<serde_json::Value> = Vec::new();
 
     for title in titles {
-        let id = ctx.repo.generate_id();
+        let id = ctx.repo.generate_id()?;
         let mut pea = Pea::new(id, title.to_string(), pea_type);
 
         if let Some(ref p) = params.parent {

@@ -209,7 +209,7 @@ impl MutationRoot {
         input: CreatePeaInput,
     ) -> async_graphql::Result<Pea> {
         let repo = get_repo(ctx)?;
-        let id = repo.generate_id();
+        let id = repo.generate_id()?;
 
         let pea_type = input.pea_type.map(|t| t.into()).unwrap_or_default();
         let mut pea = ModelPea::new(id, input.title, pea_type);

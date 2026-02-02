@@ -1,4 +1,4 @@
-use crate::config::{PeasConfig, PeasSettings};
+use crate::config::{IdMode, PeasConfig, PeasSettings};
 use anyhow::Result;
 use colored::Colorize;
 
@@ -17,6 +17,7 @@ pub fn handle_init(prefix: String, id_length: usize, peas_path: Option<String>) 
             path: data_dir.clone(),
             prefix,
             id_length,
+            id_mode: IdMode::Random,
             default_status: "todo".to_string(),
             default_type: "task".to_string(),
             frontmatter: "toml".to_string(),

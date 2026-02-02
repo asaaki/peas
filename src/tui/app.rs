@@ -1191,7 +1191,7 @@ impl App {
             }
         });
 
-        let id = self.repo.generate_id();
+        let id = self.repo.generate_id()?;
         let pea = crate::model::Pea::new(
             id.clone(),
             self.create_title.trim().to_string(),

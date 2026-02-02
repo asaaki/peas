@@ -3,6 +3,17 @@ use crate::storage::FrontmatterFormat;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+/// ID generation mode for tickets
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IdMode {
+    /// Random alphanumeric ID using nanoid (default)
+    #[default]
+    Random,
+    /// Sequential numeric ID (00001, 00002, etc.)
+    Sequential,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PeasConfig {
     #[serde(default)]
@@ -22,6 +33,9 @@ pub struct PeasSettings {
 
     #[serde(default = "default_id_length")]
     pub id_length: usize,
+
+    #[serde(default)]
+    pub id_mode: IdMode,
 
     #[serde(default = "default_status")]
     pub default_status: String,
@@ -81,6 +95,7 @@ impl Default for PeasSettings {
             path: default_path(),
             prefix: default_prefix(),
             id_length: default_id_length(),
+            id_mode: IdMode::default(),
             default_status: default_status(),
             default_type: default_type(),
             frontmatter: default_frontmatter(),

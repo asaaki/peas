@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json.schemastore.org/peas.json",
+  "title": "peas configuration",
+  "description": "Configuration file for peas, a CLI-based flat-file issue tracker",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "peas": {
+      "type": "object",
+      "description": "Core peas settings",
+      "additionalProperties": false,
+      "x-tombi-table-keys-order": [
+        "path",
+        "prefix",
+        "id_length",
+        "id_mode",
+        "default_status",
+        "default_type",
+        "frontmatter"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Directory where pea files are stored",
+          "default": ".peas",
+          "examples": [
+            ".peas",
+            "tickets",
+            ".issues"
+          ]
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Prefix for ticket IDs",
+          "default": "peas-",
+          "examples": [
+            "peas-",
+            "ticket-",
+            "issue-",
+            ""
+          ]
+        },
+        "id_length": {
+          "type": "integer",
+          "description": "Length of the ID suffix (random characters or zero-padded number)",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 20,
+          "examples": [
+            5,
+            8,
+            10
+          ]
+        },
+        "id_mode": {
+          "type": "string",
+          "description": "ID generation mode",
+          "default": "random",
+          "enum": [
+            "random",
+            "sequential"
+          ],
+          "x-taplo": {
+            "docs": {
+              "enumValues": [
+                "Generate random alphanumeric IDs (e.g., peas-a1b2c)",
+                "Generate sequential numeric IDs (e.g., peas-00001, peas-00002)"
+              ]
+            }
+          }
+        },
+        "default_status": {
+          "type": "string",
+          "description": "Default status for new tickets",
+          "default": "todo",
+          "enum": [
+            "draft",
+            "todo",
+            "in-progress",
+            "completed",
+            "scrapped"
+          ]
+        },
+        "default_type": {
+          "type": "string",
+          "description": "Default type for new tickets",
+          "default": "task",
+          "enum": [
+            "milestone",
+            "epic",
+            "story",
+            "feature",
+            "bug",
+            "chore",
+            "research",
+            "task"
+          ]
+        },
+        "frontmatter": {
+          "type": "string",
+          "description": "Frontmatter format for ticket markdown files",
+          "default": "toml",
+          "enum": [
+            "toml",
+            "yaml"
+          ],
+          "x-taplo": {
+            "docs": {
+              "enumValues": [
+                "TOML frontmatter with +++ delimiters (recommended)",
+                "YAML frontmatter with --- delimiters"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "tui": {
+      "type": "object",
+      "description": "Terminal UI settings",
+      "additionalProperties": false,
+      "properties": {
+        "use_type_emojis": {
+          "type": "boolean",
+          "description": "Show emoji icons for ticket types in the TUI",
+          "default": false
+        }
+      }
+    }
+  },
+  "x-taplo": {
+    "initKeys": [
+      "peas"
+    ]
+  }
+}

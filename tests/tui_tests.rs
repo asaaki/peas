@@ -14,6 +14,7 @@ fn create_test_app() -> (App, TempDir) {
             path: ".peas".to_string(),
             prefix: "test-".to_string(),
             id_length: 5,
+            id_mode: peas::config::IdMode::Random,
             default_status: "todo".to_string(),
             default_type: "task".to_string(),
             frontmatter: "toml".to_string(),

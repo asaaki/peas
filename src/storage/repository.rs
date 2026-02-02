@@ -2,7 +2,7 @@ use super::markdown::{
     FrontmatterFormat, detect_format, parse_markdown, render_markdown_with_format,
 };
 use crate::{
-    config::PeasConfig,
+    config::{IdMode, PeasConfig},
     error::{PeasError, Result},
     model::{Pea, PeaType},
     validation,
@@ -71,6 +71,8 @@ pub struct PeaRepository {
     data_path: PathBuf,
     archive_path: PathBuf,
     prefix: String,
+    id_length: usize,
+    id_mode: IdMode,
     frontmatter_format: FrontmatterFormat,
     cache: RefCell<PeaCache>,
 }
@@ -81,6 +83,8 @@ impl PeaRepository {
             data_path: config.data_path(project_root),
             archive_path: config.archive_path(project_root),
             prefix: config.peas.prefix.clone(),
+            id_length: config.peas.id_length,
+            id_mode: config.peas.id_mode,
             frontmatter_format: config.peas.frontmatter_format(),
             cache: RefCell::new(PeaCache::new()),
         }
@@ -91,14 +95,45 @@ impl PeaRepository {
         self.cache.borrow_mut().invalidate();
     }
 
-    pub fn generate_id(&self) -> String {
-        const ALPHABET: &[char] = &[
+    pub fn generate_id(&self) -> Result<String> {
+        let suffix = match self.id_mode {
+            IdMode::Random => self.generate_random_suffix(),
+            IdMode::Sequential => self.generate_sequential_suffix()?,
+        };
+        Ok(format!("{}{}", self.prefix, suffix))
+    }
+
+    fn generate_random_suffix(&self) -> String {
+        const ALPHABET: [char; 36] = [
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
             'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
             'y', 'z',
         ];
-        let random = nanoid::nanoid!(5, ALPHABET);
-        format!("{}{}", self.prefix, random)
+        nanoid::format(nanoid::rngs::default, &ALPHABET, self.id_length)
+    }
+
+    fn generate_sequential_suffix(&self) -> Result<String> {
+        let counter_path = self.data_path.join(".id");
+
+        // Ensure data directory exists
+        std::fs::create_dir_all(&self.data_path)?;
+
+        // Read current counter or start at 0
+        let current = if counter_path.exists() {
+            let content = std::fs::read_to_string(&counter_path)?;
+            content.trim().parse::<u64>().unwrap_or(0)
+        } else {
+            0
+        };
+
+        // Increment counter
+        let next = current + 1;
+
+        // Write new counter value atomically
+        self.atomic_write(&counter_path, &next.to_string())?;
+
+        // Format with leading zeros based on id_length
+        Ok(format!("{:0>width$}", next, width = self.id_length))
     }
 
     pub fn generate_filename(&self, id: &str, title: &str) -> String {
@@ -432,6 +467,7 @@ mod tests {
                 path: ".peas".to_string(),
                 prefix: "test-".to_string(),
                 id_length: 5,
+                id_mode: IdMode::Random,
                 default_status: "todo".to_string(),
                 default_type: "task".to_string(),
                 frontmatter: "toml".to_string(),
@@ -744,5 +780,108 @@ mod tests {
 
         // Data should still be consistent
         assert_eq!(list_before, list_after);
+    }
+
+    #[test]
+    fn test_generate_random_id() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        let id1 = repo.generate_id().unwrap();
+        let id2 = repo.generate_id().unwrap();
+
+        // Should have prefix
+        assert!(id1.starts_with("test-"));
+        assert!(id2.starts_with("test-"));
+
+        // Should be 5 chars after prefix
+        assert_eq!(id1.len(), 10); // "test-" (5) + random (5)
+
+        // Random IDs should (almost certainly) be different
+        assert_ne!(id1, id2);
+    }
+
+    fn setup_sequential_repo() -> (PeaRepository, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let config = PeasConfig {
+            peas: crate::config::PeasSettings {
+                path: ".peas".to_string(),
+                prefix: "peas-".to_string(),
+                id_length: 5,
+                id_mode: IdMode::Sequential,
+                default_status: "todo".to_string(),
+                default_type: "task".to_string(),
+                frontmatter: "toml".to_string(),
+            },
+            tui: crate::config::TuiSettings::default(),
+        };
+        let repo = PeaRepository::new(&config, temp_dir.path());
+        (repo, temp_dir)
+    }
+
+    #[test]
+    fn test_generate_sequential_id() {
+        let (repo, _temp_dir) = setup_sequential_repo();
+
+        let id1 = repo.generate_id().unwrap();
+        let id2 = repo.generate_id().unwrap();
+        let id3 = repo.generate_id().unwrap();
+
+        assert_eq!(id1, "peas-00001");
+        assert_eq!(id2, "peas-00002");
+        assert_eq!(id3, "peas-00003");
+    }
+
+    #[test]
+    fn test_sequential_id_persists_across_repos() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = PeasConfig {
+            peas: crate::config::PeasSettings {
+                path: ".peas".to_string(),
+                prefix: "peas-".to_string(),
+                id_length: 5,
+                id_mode: IdMode::Sequential,
+                default_status: "todo".to_string(),
+                default_type: "task".to_string(),
+                frontmatter: "toml".to_string(),
+            },
+            tui: crate::config::TuiSettings::default(),
+        };
+
+        // First repo generates some IDs
+        let repo1 = PeaRepository::new(&config, temp_dir.path());
+        let id1 = repo1.generate_id().unwrap();
+        let id2 = repo1.generate_id().unwrap();
+
+        assert_eq!(id1, "peas-00001");
+        assert_eq!(id2, "peas-00002");
+
+        // Second repo (simulating restart) should continue from where we left off
+        let repo2 = PeaRepository::new(&config, temp_dir.path());
+        let id3 = repo2.generate_id().unwrap();
+        let id4 = repo2.generate_id().unwrap();
+
+        assert_eq!(id3, "peas-00003");
+        assert_eq!(id4, "peas-00004");
+    }
+
+    #[test]
+    fn test_sequential_id_respects_length() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = PeasConfig {
+            peas: crate::config::PeasSettings {
+                path: ".peas".to_string(),
+                prefix: "t-".to_string(),
+                id_length: 3,
+                id_mode: IdMode::Sequential,
+                default_status: "todo".to_string(),
+                default_type: "task".to_string(),
+                frontmatter: "toml".to_string(),
+            },
+            tui: crate::config::TuiSettings::default(),
+        };
+        let repo = PeaRepository::new(&config, temp_dir.path());
+
+        let id = repo.generate_id().unwrap();
+        assert_eq!(id, "t-001");
     }
 }

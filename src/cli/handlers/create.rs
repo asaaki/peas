@@ -23,7 +23,7 @@ pub fn handle_create(
     dry_run: bool,
 ) -> Result<()> {
     let body_content = resolve_body(body, body_file)?;
-    let id = ctx.repo.generate_id();
+    let id = ctx.repo.generate_id()?;
 
     // Apply template settings if specified, then allow CLI args to override
     let (pea_type, default_priority, default_status, default_tags, body_template) =
