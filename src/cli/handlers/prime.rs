@@ -1,3 +1,4 @@
+use crate::config::DATA_DIR;
 use crate::model::PeaStatus;
 use anyhow::Result;
 
@@ -89,7 +90,7 @@ milestone, epic, feature, bug, task
 ## Pea Statuses
 draft, todo, in-progress, completed, scrapped
 "#,
-        ctx.config.peas.path
+        DATA_DIR
     );
 
     if !in_progress.is_empty() {

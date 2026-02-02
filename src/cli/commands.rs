@@ -17,8 +17,8 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub config: Option<String>,
 
-    /// Path to data directory (overrides config)
-    #[arg(long, global = true)]
+    /// [DEPRECATED] Path to data directory - ignored, data is always in .peas/
+    #[arg(long, global = true, hide = true)]
     pub peas_path: Option<String>,
 
     /// Enable verbose logging (DEBUG level)
@@ -292,6 +292,24 @@ pub enum Commands {
 
     /// Open the interactive TUI
     Tui,
+
+    /// Migrate legacy config to new location (.peas/config.toml)
+    ///
+    /// Alias for `peas doctor --fix` focused on config migration.
+    Migrate {
+        /// Dry run - show what would be migrated without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Check project health and suggest fixes
+    ///
+    /// With --fix, also performs config migration (same as `peas migrate`).
+    Doctor {
+        /// Automatically fix issues where possible (includes migration)
+        #[arg(long)]
+        fix: bool,
+    },
 
     /// Import from a beans project
     #[command(name = "import-beans")]

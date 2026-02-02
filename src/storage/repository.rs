@@ -464,7 +464,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = PeasConfig {
             peas: crate::config::PeasSettings {
-                path: ".peas".to_string(),
+                path: None,
                 prefix: "test-".to_string(),
                 id_length: 5,
                 id_mode: IdMode::Random,
@@ -804,7 +804,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = PeasConfig {
             peas: crate::config::PeasSettings {
-                path: ".peas".to_string(),
+                path: None,
                 prefix: "peas-".to_string(),
                 id_length: 5,
                 id_mode: IdMode::Sequential,
@@ -836,7 +836,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = PeasConfig {
             peas: crate::config::PeasSettings {
-                path: ".peas".to_string(),
+                path: None,
                 prefix: "peas-".to_string(),
                 id_length: 5,
                 id_mode: IdMode::Sequential,
@@ -869,7 +869,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = PeasConfig {
             peas: crate::config::PeasSettings {
-                path: ".peas".to_string(),
+                path: None,
                 prefix: "t-".to_string(),
                 id_length: 3,
                 id_mode: IdMode::Sequential,

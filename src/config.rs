@@ -1,11 +1,15 @@
 use crate::error::{PeasError, Result};
 use crate::storage::FrontmatterFormat;
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 /// URL to the JSON Schema for peas configuration files
 pub const SCHEMA_URL: &str =
     "https://raw.githubusercontent.com/asaaki/peas/refs/heads/main/schemas/peas.json";
+
+/// Canonical data directory name
+pub const DATA_DIR: &str = ".peas";
 
 /// ID generation mode for tickets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -29,8 +33,10 @@ pub struct PeasConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeasSettings {
-    #[serde(default = "default_path")]
-    pub path: String,
+    /// Deprecated: data directory is now always `.peas/`
+    /// This field is ignored but kept for backwards compatibility.
+    #[serde(default, skip_serializing)]
+    pub path: Option<String>,
 
     #[serde(default = "default_prefix")]
     pub prefix: String,
@@ -49,10 +55,6 @@ pub struct PeasSettings {
 
     #[serde(default = "default_frontmatter")]
     pub frontmatter: String,
-}
-
-fn default_path() -> String {
-    ".peas".to_string()
 }
 
 fn default_prefix() -> String {
@@ -96,7 +98,7 @@ impl Default for TuiSettings {
 impl Default for PeasSettings {
     fn default() -> Self {
         Self {
-            path: default_path(),
+            path: None,
             prefix: default_prefix(),
             id_length: default_id_length(),
             id_mode: IdMode::default(),
@@ -118,7 +120,7 @@ impl PeasSettings {
 
 impl PeasConfig {
     pub fn load(start_path: &Path) -> Result<(Self, PathBuf)> {
-        let config_path = Self::find_config_file(start_path)?;
+        let (config_path, is_legacy) = Self::find_config_file(start_path)?;
         let content = std::fs::read_to_string(&config_path)?;
 
         // Determine format based on file extension
@@ -132,23 +134,67 @@ impl PeasConfig {
             serde_yaml::from_str(&content)?
         };
 
-        let project_root = config_path
-            .parent()
-            .ok_or_else(|| PeasError::Config("Config file has no parent directory".to_string()))?
-            .to_path_buf();
+        // Print deprecation warnings
+        if is_legacy {
+            eprintln!(
+                "{}: Config file location `{}` is deprecated. Please move to `{}/config.toml`",
+                "warning".yellow().bold(),
+                config_path.display(),
+                DATA_DIR
+            );
+        }
+        if config.peas.path.is_some() {
+            eprintln!(
+                "{}: The `peas.path` config option is deprecated and ignored. Data is always stored in `{}/`",
+                "warning".yellow().bold(),
+                DATA_DIR
+            );
+        }
+
+        // Project root is parent of .peas/ for new location, or parent of config file for legacy
+        let project_root = if is_legacy {
+            config_path
+                .parent()
+                .ok_or_else(|| {
+                    PeasError::Config("Config file has no parent directory".to_string())
+                })?
+                .to_path_buf()
+        } else {
+            // Config is at .peas/config.toml, so project root is grandparent
+            config_path
+                .parent() // .peas/
+                .and_then(|p| p.parent()) // project root
+                .ok_or_else(|| {
+                    PeasError::Config("Config file has no parent directory".to_string())
+                })?
+                .to_path_buf()
+        };
         Ok((config, project_root))
     }
 
-    pub fn find_config_file(start_path: &Path) -> Result<PathBuf> {
+    /// Find config file, returns (path, is_legacy)
+    pub fn find_config_file(start_path: &Path) -> Result<(PathBuf, bool)> {
         let mut current = start_path.to_path_buf();
         loop {
-            // Try TOML first (preferred), then YAML, then JSON
+            // Try new canonical location first: .peas/config.{toml,yml,yaml,json}
+            let peas_dir = current.join(DATA_DIR);
+            if peas_dir.is_dir() {
+                for filename in ["config.toml", "config.yml", "config.yaml", "config.json"] {
+                    let config_path = peas_dir.join(filename);
+                    if config_path.exists() {
+                        return Ok((config_path, false));
+                    }
+                }
+            }
+
+            // Fall back to legacy locations: .peas.{toml,yml,yaml,json}
             for filename in [".peas.toml", ".peas.yml", ".peas.yaml", ".peas.json"] {
                 let config_path = current.join(filename);
                 if config_path.exists() {
-                    return Ok(config_path);
+                    return Ok((config_path, true));
                 }
             }
+
             if !current.pop() {
                 return Err(PeasError::NotInitialized);
             }
@@ -156,7 +202,7 @@ impl PeasConfig {
     }
 
     pub fn data_path(&self, project_root: &Path) -> PathBuf {
-        project_root.join(&self.peas.path)
+        project_root.join(DATA_DIR)
     }
 
     pub fn archive_path(&self, project_root: &Path) -> PathBuf {

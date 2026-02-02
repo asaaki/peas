@@ -16,7 +16,6 @@
       "description": "Core peas settings",
       "additionalProperties": false,
       "x-tombi-table-keys-order": [
-        "path",
         "prefix",
         "id_length",
         "id_mode",
@@ -27,13 +26,8 @@
       "properties": {
         "path": {
           "type": "string",
-          "description": "Directory where pea files are stored",
-          "default": ".peas",
-          "examples": [
-            ".peas",
-            "tickets",
-            ".issues"
-          ]
+          "description": "[DEPRECATED] This option is ignored. Data is always stored in .peas/",
+          "deprecated": true
         },
         "prefix": {
           "type": "string",

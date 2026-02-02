@@ -58,7 +58,7 @@ fn test_init_creates_config() {
         .success()
         .stdout(predicate::str::contains("Initialized"));
 
-    assert!(temp_dir.path().join(".peas.toml").exists());
+    assert!(temp_dir.path().join(".peas/config.toml").exists());
     assert!(temp_dir.path().join(".peas").exists());
 }
 
@@ -72,7 +72,7 @@ fn test_init_with_custom_prefix() {
         .assert()
         .success();
 
-    let config = std::fs::read_to_string(temp_dir.path().join(".peas.toml")).unwrap();
+    let config = std::fs::read_to_string(temp_dir.path().join(".peas/config.toml")).unwrap();
     assert!(config.contains("myapp-"));
 }
 
@@ -502,7 +502,7 @@ fn test_yaml_frontmatter_config() {
         .success();
 
     // Switch config to YAML
-    let config_path = temp_dir.path().join(".peas.toml");
+    let config_path = temp_dir.path().join(".peas/config.toml");
     let config = std::fs::read_to_string(&config_path).unwrap();
     let updated_config = config.replace("frontmatter = \"toml\"", "frontmatter = \"yaml\"");
     std::fs::write(&config_path, updated_config).unwrap();
@@ -559,7 +559,7 @@ fn test_toml_frontmatter_preserved_on_update() {
     let id = json["id"].as_str().unwrap();
 
     // Switch config to YAML
-    let config_path = temp_dir.path().join(".peas.toml");
+    let config_path = temp_dir.path().join(".peas/config.toml");
     let config = std::fs::read_to_string(&config_path).unwrap();
     let updated_config = config.replace("frontmatter = \"toml\"", "frontmatter = \"yaml\"");
     std::fs::write(&config_path, updated_config).unwrap();
@@ -601,7 +601,7 @@ fn test_yaml_frontmatter_preserved_on_update() {
         .success();
 
     // Switch config to YAML
-    let config_path = temp_dir.path().join(".peas.toml");
+    let config_path = temp_dir.path().join(".peas/config.toml");
     let config = std::fs::read_to_string(&config_path).unwrap();
     let yaml_config = config.replace("frontmatter = \"toml\"", "frontmatter = \"yaml\"");
     std::fs::write(&config_path, &yaml_config).unwrap();

@@ -99,6 +99,8 @@ peas tui
 | `peas mutate <mutation>` | Execute a GraphQL mutation |
 | `peas serve` | Start GraphQL HTTP server |
 | `peas tui` | Open interactive TUI |
+| `peas migrate` | Migrate legacy config to `.peas/config.toml` (alias for focused `doctor --fix`) |
+| `peas doctor` | Check project health and suggest fixes (`--fix` includes migration) |
 | `peas import-beans` | Import from a beans project |
 | `peas export-beans` | Export to beans format |
 | `peas bulk <action>` | Bulk update multiple peas at once |
@@ -205,21 +207,22 @@ Or add to your `AGENTS.md`:
 
 ## Configuration
 
-peas uses `.peas.toml` for configuration (also supports `.peas.yml`, `.peas.yaml`, or `.peas.json`, but TOML is preferred):
+peas stores configuration in `.peas/config.toml` (also supports `config.yml`, `config.yaml`, or `config.json`):
 
 ```toml
 [peas]
-path = ".peas"          # Data directory
 prefix = "peas-"        # ID prefix
 id_length = 5           # ID suffix length
 id_mode = "random"      # ID mode: "random" (default) or "sequential"
 default_status = "todo"
 default_type = "task"
-frontmatter = "toml"    # Frontmatter format: toml, yaml, json (TOML preferred)
+frontmatter = "toml"    # Frontmatter format: toml, yaml (TOML preferred)
 
 [tui]
 use_type_emojis = false # Enable emoji icons for ticket types in TUI
 ```
+
+> **Note:** Legacy config locations (`.peas.toml`, `.peas.yml`, etc. in the project root) are still supported but deprecated. Run `peas doctor --fix` or `peas migrate` to automatically move your config to the new location.
 
 ### ID Modes
 

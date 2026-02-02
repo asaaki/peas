@@ -11,7 +11,7 @@ fn create_test_app() -> (App, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let config = PeasConfig {
         peas: peas::config::PeasSettings {
-            path: ".peas".to_string(),
+            path: None,
             prefix: "test-".to_string(),
             id_length: 5,
             id_mode: peas::config::IdMode::Random,

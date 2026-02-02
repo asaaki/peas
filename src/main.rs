@@ -18,19 +18,28 @@ fn main() -> Result<()> {
     peas::logging::init(cli.verbose, log_file, is_tui_mode);
 
     let config_opt = cli.config;
-    let peas_path_opt = cli.peas_path;
+
+    // Print deprecation warning if --peas-path is used
+    if cli.peas_path.is_some() {
+        eprintln!(
+            "{}: The --peas-path option is deprecated and ignored. Data is always stored in .peas/",
+            colored::Colorize::yellow(colored::Colorize::bold("warning"))
+        );
+    }
 
     match cli.command {
-        Commands::Init { prefix, id_length } => {
-            peas::cli::handlers::handle_init(prefix, id_length, peas_path_opt)
-        }
+        Commands::Init { prefix, id_length } => peas::cli::handlers::handle_init(prefix, id_length),
+        Commands::Migrate { dry_run } => peas::cli::handlers::handle_migrate(dry_run),
+        Commands::Doctor { fix } => peas::cli::handlers::handle_doctor(fix),
         _ => {
             // All other commands require loading config
-            let (config, root) = load_config(config_opt, peas_path_opt)?;
+            let (config, root) = load_config(config_opt)?;
             let ctx = CommandContext::new(config, root);
 
             match cli.command {
-                Commands::Init { .. } => unreachable!(),
+                Commands::Init { .. } | Commands::Migrate { .. } | Commands::Doctor { .. } => {
+                    unreachable!()
+                }
                 Commands::Create {
                     title,
                     r#type,
@@ -131,11 +140,8 @@ fn main() -> Result<()> {
     }
 }
 
-fn load_config(
-    config_path: Option<String>,
-    peas_path: Option<String>,
-) -> Result<(PeasConfig, PathBuf)> {
-    let (mut config, project_root) = if let Some(path) = config_path {
+fn load_config(config_path: Option<String>) -> Result<(PeasConfig, PathBuf)> {
+    if let Some(path) = config_path {
         let path = PathBuf::from(path);
         let content = std::fs::read_to_string(&path)
             .with_context(|| format!("Failed to read config from {}", path.display()))?;
@@ -144,15 +150,9 @@ fn load_config(
             .parent()
             .ok_or_else(|| anyhow::anyhow!("Config path has no parent"))?
             .to_path_buf();
-        (config, root)
+        Ok((config, root))
     } else {
         let cwd = std::env::current_dir()?;
-        PeasConfig::load(&cwd).context("Failed to load peas configuration")?
-    };
-
-    if let Some(path) = peas_path {
-        config.peas.path = path;
+        PeasConfig::load(&cwd).context("Failed to load peas configuration")
     }
-
-    Ok((config, project_root))
 }

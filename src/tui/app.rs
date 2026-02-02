@@ -1354,7 +1354,7 @@ pub fn run_tui(config: PeasConfig, project_root: PathBuf) -> Result<()> {
 
     // Set up file watcher for .peas directory
     let (fs_tx, fs_rx) = mpsc::channel();
-    let peas_dir = project_root.join(&config.peas.path);
+    let peas_dir = config.data_path(&project_root);
 
     // Create debounced watcher (300ms debounce)
     let mut debouncer = new_debouncer(Duration::from_millis(300), fs_tx)?;

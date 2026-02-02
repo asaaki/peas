@@ -1,20 +1,30 @@
-use crate::config::{IdMode, PeasConfig, PeasSettings};
+use crate::config::{DATA_DIR, IdMode, PeasConfig, PeasSettings};
 use anyhow::Result;
 use colored::Colorize;
 
-pub fn handle_init(prefix: String, id_length: usize, peas_path: Option<String>) -> Result<()> {
+pub fn handle_init(prefix: String, id_length: usize) -> Result<()> {
     let cwd = std::env::current_dir()?;
-    let config_path = cwd.join(".peas.toml");
+    let data_path = cwd.join(DATA_DIR);
+    let config_path = data_path.join("config.toml");
 
+    // Check for both new and legacy config locations
     if config_path.exists() {
         anyhow::bail!("Project already initialized at {}", config_path.display());
     }
-
-    let data_dir = peas_path.unwrap_or_else(|| ".peas".to_string());
+    for legacy in [".peas.toml", ".peas.yml", ".peas.yaml", ".peas.json"] {
+        let legacy_path = cwd.join(legacy);
+        if legacy_path.exists() {
+            anyhow::bail!(
+                "Project already initialized with legacy config at {}. Please migrate to {}/config.toml",
+                legacy_path.display(),
+                DATA_DIR
+            );
+        }
+    }
 
     let config = PeasConfig {
         peas: PeasSettings {
-            path: data_dir.clone(),
+            path: None,
             prefix,
             id_length,
             id_mode: IdMode::Random,
@@ -26,10 +36,9 @@ pub fn handle_init(prefix: String, id_length: usize, peas_path: Option<String>) 
     };
 
     // Create data directory
-    let data_path = cwd.join(&data_dir);
     std::fs::create_dir_all(&data_path)?;
 
-    // Save config
+    // Save config inside .peas/
     config.save(&config_path)?;
 
     println!(
