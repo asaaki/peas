@@ -55,7 +55,10 @@ pub fn handle_doctor(fix: bool) -> Result<()> {
     // Check 4: Ticket integrity
     check_ticket_integrity(&cwd, &mut results)?;
 
-    // Check 5: Sequential ID counter (if applicable)
+    // Check 5: Mixed ID styles
+    check_mixed_id_styles(&cwd, &mut results)?;
+
+    // Check 6: Sequential ID counter (if applicable)
     check_sequential_counter(&cwd, &mut results, fix)?;
 
     // Summary
@@ -343,6 +346,60 @@ fn check_ticket_integrity(cwd: &Path, results: &mut DiagnosticResults) -> Result
     }
 
     println!();
+    Ok(())
+}
+
+fn check_mixed_id_styles(cwd: &Path, results: &mut DiagnosticResults) -> Result<()> {
+    let data_dir = cwd.join(DATA_DIR);
+    if !data_dir.exists() {
+        return Ok(());
+    }
+
+    let mut sequential_ids: Vec<String> = Vec::new();
+    let mut random_ids: Vec<String> = Vec::new();
+
+    for entry in std::fs::read_dir(&data_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
+            let content = std::fs::read_to_string(&path)?;
+
+            if let Ok(pea) = crate::storage::parse_markdown(&content) {
+                // Extract the suffix (part after the last hyphen in the prefix)
+                // e.g., "peas-00042" -> "00042", "peas-a1b2c" -> "a1b2c"
+                if let Some(suffix) = pea.id.rsplit('-').next() {
+                    // Sequential IDs are all digits (possibly with leading zeros)
+                    if suffix.chars().all(|c| c.is_ascii_digit()) {
+                        sequential_ids.push(pea.id.clone());
+                    } else {
+                        random_ids.push(pea.id.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // Only report if we have both styles
+    if !sequential_ids.is_empty() && !random_ids.is_empty() {
+        println!("{}", "ID Style Consistency".bold());
+        results.warn("Mixed ID styles detected");
+        println!(
+            "      Sequential IDs: {} (e.g., {})",
+            sequential_ids.len(),
+            sequential_ids.first().unwrap()
+        );
+        println!(
+            "      Random IDs: {} (e.g., {})",
+            random_ids.len(),
+            random_ids.first().unwrap()
+        );
+        results.suggestion(
+            "This can happen when switching id_mode - it's functional but inconsistent",
+        );
+        println!();
+    }
+
     Ok(())
 }
 
