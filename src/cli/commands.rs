@@ -32,6 +32,9 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    // =========================================================================
+    // Project Setup
+    // =========================================================================
     /// Initialize a new peas project
     Init {
         /// Use a custom prefix for pea IDs
@@ -43,6 +46,9 @@ pub enum Commands {
         id_length: usize,
     },
 
+    // =========================================================================
+    // Core CRUD Operations
+    // =========================================================================
     /// Create a new pea
     #[command(visible_alias = "c", visible_alias = "new")]
     Create {
@@ -182,20 +188,6 @@ pub enum Commands {
         dry_run: bool,
     },
 
-    /// Archive a pea (move to archive folder)
-    Archive {
-        /// Pea ID
-        id: String,
-
-        /// Keep associated asset files instead of prompting to delete them
-        #[arg(long)]
-        keep_assets: bool,
-
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
-    },
-
     /// Delete a pea permanently
     Delete {
         /// Pea ID
@@ -224,6 +216,9 @@ pub enum Commands {
         json: bool,
     },
 
+    // =========================================================================
+    // Workflow Shortcuts
+    // =========================================================================
     /// Mark a pea as in-progress
     Start {
         /// Pea ID
@@ -244,6 +239,91 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Archive a pea (move to archive folder)
+    Archive {
+        /// Pea ID
+        id: String,
+
+        /// Keep associated asset files instead of prompting to delete them
+        #[arg(long)]
+        keep_assets: bool,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Rename a ticket ID
+    ///
+    /// Example: `peas mv abc12 xyz99` renames peas-abc12 to peas-xyz99
+    #[command(name = "mv")]
+    Mv {
+        /// The old ID suffix (or full ID - prefix is stripped if present)
+        old_id: String,
+
+        /// The new ID suffix (or full ID - prefix is stripped if present)
+        new_id: String,
+
+        /// Force rename even if suffix length or mode doesn't match config
+        #[arg(long)]
+        force: bool,
+    },
+
+    // =========================================================================
+    // Bulk Operations
+    // =========================================================================
+    /// Bulk update multiple peas at once
+    Bulk {
+        #[command(subcommand)]
+        action: BulkAction,
+    },
+
+    // =========================================================================
+    // Memory & Assets
+    // =========================================================================
+    /// Manage project memory and knowledge
+    Memory {
+        #[command(subcommand)]
+        action: MemoryAction,
+    },
+
+    /// Manage ticket assets (files, images, documents)
+    Asset {
+        #[command(subcommand)]
+        action: AssetAction,
+    },
+
+    // =========================================================================
+    // Views & Reports
+    // =========================================================================
+    /// Open the interactive TUI
+    Tui,
+
+    /// Suggest the next ticket to work on
+    Suggest {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+        /// Number of suggestions to show (default: 1)
+        #[arg(long, short, default_value = "1")]
+        limit: usize,
+    },
+
+    /// Generate a Markdown roadmap from milestones and epics
+    Roadmap,
+
+    // =========================================================================
+    // Agent Integration
+    // =========================================================================
+    /// Output instructions for AI coding agents
+    Prime,
+
+    /// Output project context for LLMs
+    Context,
+
+    // =========================================================================
+    // GraphQL API
+    // =========================================================================
     /// Execute a GraphQL query
     Query {
         /// GraphQL query string
@@ -271,27 +351,17 @@ pub enum Commands {
         port: u16,
     },
 
-    /// Output instructions for AI coding agents
-    Prime,
-
-    /// Output project context for LLMs
-    Context,
-
-    /// Suggest the next ticket to work on
-    Suggest {
-        /// Output as JSON
+    // =========================================================================
+    // Maintenance & Recovery
+    // =========================================================================
+    /// Check project health and suggest fixes
+    ///
+    /// With --fix, also performs config migration (same as `peas migrate`).
+    Doctor {
+        /// Automatically fix issues where possible (includes migration)
         #[arg(long)]
-        json: bool,
-        /// Number of suggestions to show (default: 1)
-        #[arg(long, short, default_value = "1")]
-        limit: usize,
+        fix: bool,
     },
-
-    /// Generate a Markdown roadmap from milestones and epics
-    Roadmap,
-
-    /// Open the interactive TUI
-    Tui,
 
     /// Migrate legacy config to new location (.peas/config.toml)
     ///
@@ -302,31 +372,16 @@ pub enum Commands {
         dry_run: bool,
     },
 
-    /// Check project health and suggest fixes
-    ///
-    /// With --fix, also performs config migration (same as `peas migrate`).
-    Doctor {
-        /// Automatically fix issues where possible (includes migration)
+    /// Undo the last operation
+    Undo {
+        /// Output as JSON
         #[arg(long)]
-        fix: bool,
+        json: bool,
     },
 
-    /// Rename a ticket ID
-    ///
-    /// Example: `peas mv abc12 xyz99` renames peas-abc12 to peas-xyz99
-    #[command(name = "mv")]
-    Mv {
-        /// The old ID suffix (or full ID - prefix is stripped if present)
-        old_id: String,
-
-        /// The new ID suffix (or full ID - prefix is stripped if present)
-        new_id: String,
-
-        /// Force rename even if suffix length or mode doesn't match config
-        #[arg(long)]
-        force: bool,
-    },
-
+    // =========================================================================
+    // Import & Export
+    // =========================================================================
     /// Import from a beans project
     #[command(name = "import-beans")]
     ImportBeans {
@@ -345,31 +400,6 @@ pub enum Commands {
         /// Output directory
         #[arg(default_value = ".beans-export")]
         output: String,
-    },
-
-    /// Bulk update multiple peas at once
-    Bulk {
-        #[command(subcommand)]
-        action: BulkAction,
-    },
-
-    /// Manage project memory and knowledge
-    Memory {
-        #[command(subcommand)]
-        action: MemoryAction,
-    },
-
-    /// Manage ticket assets (files, images, documents)
-    Asset {
-        #[command(subcommand)]
-        action: AssetAction,
-    },
-
-    /// Undo the last operation
-    Undo {
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
     },
 }
 
