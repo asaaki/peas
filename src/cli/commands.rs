@@ -311,16 +311,16 @@ pub enum Commands {
         fix: bool,
     },
 
-    /// Rename a ticket ID (change the suffix, keep the prefix)
+    /// Rename a ticket ID
     ///
-    /// Example: `peas mv peas-abc12 xyz99` renames to peas-xyz99
+    /// Example: `peas mv abc12 xyz99` renames peas-abc12 to peas-xyz99
     #[command(name = "mv")]
     Mv {
-        /// The ticket ID to rename
-        id: String,
+        /// The old ID suffix (or full ID - prefix is stripped if present)
+        old_id: String,
 
-        /// The new suffix (without prefix)
-        new_suffix: String,
+        /// The new ID suffix (or full ID - prefix is stripped if present)
+        new_id: String,
 
         /// Force rename even if suffix length or mode doesn't match config
         #[arg(long)]

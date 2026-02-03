@@ -136,10 +136,10 @@ fn main() -> Result<()> {
                 Commands::Asset { action } => peas::cli::handlers::handle_asset(&ctx, action),
                 Commands::Undo { json } => peas::cli::handlers::handle_undo(&ctx, json),
                 Commands::Mv {
-                    id,
-                    new_suffix,
+                    old_id,
+                    new_id,
                     force,
-                } => peas::cli::handlers::handle_mv(&ctx, id, new_suffix, force),
+                } => peas::cli::handlers::handle_mv(&ctx, old_id, new_id, force),
             }
         }
     }

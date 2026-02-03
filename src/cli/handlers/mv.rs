@@ -3,19 +3,28 @@ use crate::config::{DATA_DIR, IdMode};
 use anyhow::{Context, Result, bail};
 use colored::Colorize;
 
-pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bool) -> Result<()> {
+pub fn handle_mv(
+    ctx: &CommandContext,
+    old_suffix: String,
+    new_suffix: String,
+    force: bool,
+) -> Result<()> {
     let prefix = &ctx.config.peas.prefix;
     let id_length = ctx.config.peas.id_length;
     let id_mode = ctx.config.peas.id_mode;
 
+    // Build full IDs from suffixes (strip prefix if user included it)
+    let old_suffix = old_suffix.strip_prefix(prefix).unwrap_or(&old_suffix);
+    let new_suffix = new_suffix.strip_prefix(prefix).unwrap_or(&new_suffix);
+
+    let old_id = format!("{}{}", prefix, old_suffix);
+    let new_id = format!("{}{}", prefix, new_suffix);
+
     // Validate source ticket exists
     let pea = ctx
         .repo
-        .get(&id)
-        .with_context(|| format!("Ticket not found: {}", id))?;
-
-    // Build the new ID
-    let new_id = format!("{}{}", prefix, new_suffix);
+        .get(&old_id)
+        .with_context(|| format!("Ticket not found: {}", old_id))?;
 
     // Check if new ID already exists
     if ctx.repo.get(&new_id).is_ok() {
@@ -34,9 +43,11 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
     // Validate ID mode
     let is_all_digits = new_suffix.chars().all(|c| c.is_ascii_digit());
     match id_mode {
-        IdMode::Random if is_all_digits && !force => {
-            bail!(
-                "Suffix '{}' is all digits but id_mode is 'random'. Use --force to override.",
+        IdMode::Random if is_all_digits => {
+            // Warn but don't block in random mode
+            eprintln!(
+                "{}: Suffix '{}' is all digits (unusual for random mode)",
+                "warning".yellow().bold(),
                 new_suffix
             );
         }
@@ -49,7 +60,7 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
         _ => {}
     }
 
-    // Show warnings if force was used
+    // Show warnings for force overrides
     if force {
         if new_suffix.len() != id_length {
             eprintln!(
@@ -59,26 +70,16 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
                 id_length
             );
         }
-        match id_mode {
-            IdMode::Random if is_all_digits => {
-                eprintln!(
-                    "{}: Suffix '{}' is all digits but id_mode is 'random'",
-                    "warning".yellow().bold(),
-                    new_suffix
-                );
-            }
-            IdMode::Sequential if !is_all_digits => {
-                eprintln!(
-                    "{}: Suffix '{}' contains non-digits but id_mode is 'sequential'",
-                    "warning".yellow().bold(),
-                    new_suffix
-                );
-            }
-            _ => {}
+        if id_mode == IdMode::Sequential && !is_all_digits {
+            eprintln!(
+                "{}: Suffix '{}' contains non-digits but id_mode is 'sequential'",
+                "warning".yellow().bold(),
+                new_suffix
+            );
         }
     }
 
-    println!("Renaming {} → {}", id, new_id);
+    println!("Renaming {} → {}", old_id, new_id);
 
     // Find all tickets that reference this ID
     let all_peas = ctx.repo.list()?;
@@ -89,7 +90,7 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
 
     // Update references in other tickets
     for other_pea in &all_peas {
-        if other_pea.id == id {
+        if other_pea.id == old_id {
             continue; // Skip the ticket we're renaming
         }
 
@@ -97,18 +98,24 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
         let mut updated_pea = other_pea.clone();
 
         // Check parent reference
-        if updated_pea.parent.as_ref() == Some(&id) {
+        if updated_pea.parent.as_ref() == Some(&old_id) {
             updated_pea.parent = Some(new_id.clone());
             needs_update = true;
             updated_parents += 1;
         }
 
         // Check blocking references
-        if updated_pea.blocking.contains(&id) {
+        if updated_pea.blocking.contains(&old_id) {
             updated_pea.blocking = updated_pea
                 .blocking
                 .iter()
-                .map(|b| if b == &id { new_id.clone() } else { b.clone() })
+                .map(|b| {
+                    if b == &old_id {
+                        new_id.clone()
+                    } else {
+                        b.clone()
+                    }
+                })
                 .collect();
             needs_update = true;
             updated_blocking += 1;
@@ -126,7 +133,7 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
     // Get old and new file paths
     let old_filename = format!(
         "{}--{}.md",
-        id,
+        old_id,
         slug::slugify(&pea.title)
             .chars()
             .take(50)
@@ -160,8 +167,8 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
     let undo_path = data_dir.join(".undo");
     if undo_path.exists() {
         let undo_content = std::fs::read_to_string(&undo_path)?;
-        if undo_content.contains(&id) {
-            let updated_undo = undo_content.replace(&id, &new_id);
+        if undo_content.contains(&old_id) {
+            let updated_undo = undo_content.replace(&old_id, &new_id);
             // Also update file paths in undo
             let updated_undo = updated_undo.replace(&old_filename, &new_filename);
             std::fs::write(&undo_path, updated_undo)?;
@@ -169,7 +176,7 @@ pub fn handle_mv(ctx: &CommandContext, id: String, new_suffix: String, force: bo
         }
     }
 
-    println!("{} Renamed {} → {}", "✓".green(), id, new_id);
+    println!("{} Renamed {} → {}", "✓".green(), old_id, new_id);
     if updated_parents > 0 {
         println!("  Updated {} parent reference(s)", updated_parents);
     }
