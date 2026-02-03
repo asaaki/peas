@@ -311,6 +311,22 @@ pub enum Commands {
         fix: bool,
     },
 
+    /// Rename a ticket ID (change the suffix, keep the prefix)
+    ///
+    /// Example: `peas mv peas-abc12 xyz99` renames to peas-xyz99
+    #[command(name = "mv")]
+    Mv {
+        /// The ticket ID to rename
+        id: String,
+
+        /// The new suffix (without prefix)
+        new_suffix: String,
+
+        /// Force rename even if suffix length or mode doesn't match config
+        #[arg(long)]
+        force: bool,
+    },
+
     /// Import from a beans project
     #[command(name = "import-beans")]
     ImportBeans {

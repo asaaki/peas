@@ -135,6 +135,11 @@ fn main() -> Result<()> {
                 Commands::Memory { action } => peas::cli::handlers::handle_memory(&ctx, action),
                 Commands::Asset { action } => peas::cli::handlers::handle_asset(&ctx, action),
                 Commands::Undo { json } => peas::cli::handlers::handle_undo(&ctx, json),
+                Commands::Mv {
+                    id,
+                    new_suffix,
+                    force,
+                } => peas::cli::handlers::handle_mv(&ctx, id, new_suffix, force),
             }
         }
     }
