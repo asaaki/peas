@@ -374,7 +374,10 @@ impl App {
 
     /// Returns the number of items in the current view
     pub fn display_count(&self) -> usize {
-        self.tree_nodes.len()
+        match self.view_mode {
+            ViewMode::Tickets => self.tree_nodes.len(),
+            ViewMode::Memory => self.filtered_memories.len(),
+        }
     }
 
     /// Returns the current page number (0-indexed) using page table

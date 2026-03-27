@@ -77,19 +77,14 @@ pub fn handle_normal_mode(
         KeyCode::Char('b') => {
             app.open_blocking_modal();
         }
-        KeyCode::Char('c') => {
-            app.open_create_modal();
-        }
-        KeyCode::Char('n') => {
-            match app.view_mode {
-                ViewMode::Memory => {
-                    app.open_memory_create_modal();
-                }
-                ViewMode::Tickets => {
-                    // 'n' is not used in Tickets view
-                }
+        KeyCode::Char('c') => match app.view_mode {
+            ViewMode::Tickets => {
+                app.open_create_modal();
             }
-        }
+            ViewMode::Memory => {
+                app.open_memory_create_modal();
+            }
+        },
         KeyCode::Char('d') => {
             app.open_delete_confirm();
         }

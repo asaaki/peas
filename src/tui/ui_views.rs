@@ -298,6 +298,20 @@ pub fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
         (inner_area, None)
     };
 
+    // Show empty state hint if there are no items
+    if app.tree_nodes.is_empty() {
+        let hint = if app.all_peas.is_empty() {
+            "No tickets yet — press c to create one, or Tab to switch to Memory"
+        } else {
+            "No matches — try a different search, or Tab to switch to Memory"
+        };
+        let hint_paragraph = Paragraph::new(hint)
+            .style(Style::default().fg(theme().text_muted))
+            .wrap(Wrap { trim: true });
+        f.render_widget(hint_paragraph, table_area);
+        return;
+    }
+
     // Table without its own block (we already rendered the outer block)
     let table = Table::new(rows, widths)
         .column_spacing(1)
@@ -337,7 +351,7 @@ pub fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
         layout::Constraint,
         style::{Modifier, Style},
         text::{Line, Span},
-        widgets::{Block, Borders, Cell, Row, Table, TableState},
+        widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState, Wrap},
     };
 
     let t = theme();
@@ -401,6 +415,20 @@ pub fn draw_memory_list(f: &mut Frame, app: &mut App, area: Rect) {
             Row::new(vec![marker_cell, key_cell, tags_cell, time_cell])
         })
         .collect();
+
+    // Show empty state hint if there are no items
+    if app.filtered_memories.is_empty() {
+        let hint = if app.all_memories.is_empty() {
+            "No memory items yet — press c to create one, or Tab to switch to Tickets"
+        } else {
+            "No matches — try a different search, or Tab to switch to Tickets"
+        };
+        let hint_paragraph = Paragraph::new(hint)
+            .style(Style::default().fg(t.text_muted))
+            .wrap(Wrap { trim: true });
+        f.render_widget(hint_paragraph, inner_area);
+        return;
+    }
 
     let widths = [
         Constraint::Length(2),      // Marker
@@ -1019,7 +1047,7 @@ pub fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             super::app::ViewMode::Tickets => {
                 " ↑↓:nav  ←→:page  Space:select  /:search  Tab:memory  c:create  s:status  e:edit  ?:help  q:quit "
             }
-            super::app::ViewMode::Memory => " ↑↓:nav  Tab:tickets  n:new  ?:help  q:quit ",
+            super::app::ViewMode::Memory => " ↑↓:nav  Tab:tickets  c:new  ?:help  q:quit ",
         },
         InputMode::Filter => " Type to search, Enter/Esc to confirm ",
         InputMode::StatusModal
