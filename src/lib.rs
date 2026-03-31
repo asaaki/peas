@@ -84,8 +84,10 @@ pub mod validation;
 pub mod import_export;
 
 pub mod assets;
+pub mod global_config;
 pub mod logging;
 pub mod search;
+pub mod updater;
 /// Undo functionality for reverting operations.
 ///
 /// Tracks the last mutation and allows undoing it.

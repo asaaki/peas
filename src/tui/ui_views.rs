@@ -1092,6 +1092,15 @@ pub fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         ));
     }
 
+    // Show update badge if an update is available
+    if let Some(ref v) = app.available_update {
+        footer_spans.push(Span::raw("  "));
+        footer_spans.push(Span::styled(
+            format!("● update available: v{}", v),
+            Style::default().fg(Color::Yellow),
+        ));
+    }
+
     if let Some(ref msg) = app.message {
         footer_spans.push(Span::raw(" "));
         footer_spans.push(Span::styled(

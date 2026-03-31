@@ -3,14 +3,70 @@ use clap::Parser;
 use peas::{
     cli::{Cli, Commands, handlers::CommandContext},
     config::PeasConfig,
+    global_config::GlobalPeasConfig,
+    updater::{UpdateCheckOutcome, spawn_update_check},
 };
 use std::path::PathBuf;
 
 fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e) => {
+            // Check if this is a help request — if so, append update notice
+            if e.kind() == clap::error::ErrorKind::DisplayHelp {
+                let global_config = GlobalPeasConfig::load();
+                let handle = spawn_update_check(&global_config);
+                // Print clap's help output first
+                let _ = e.print();
+                // Then append update notice if available
+                if let UpdateCheckOutcome::UpdateAvailable(v) =
+                    handle.join().unwrap_or(UpdateCheckOutcome::Skipped)
+                {
+                    eprintln!();
+                    eprintln!(
+                        "A new version is available: {} — https://github.com/asaaki/peas/releases/latest",
+                        v
+                    );
+                }
+                std::process::exit(0);
+            }
+            // For all other errors (unknown args, missing args, etc.), use default behavior
+            e.exit();
+        }
+    };
+
+    // Handle --version manually (with update notice)
+    if cli.version {
+        let current = env!("CARGO_PKG_VERSION");
+        let global_config = GlobalPeasConfig::load();
+        let handle = spawn_update_check(&global_config);
+        println!("peas {}", current);
+        match handle.join().unwrap_or(UpdateCheckOutcome::CheckFailed) {
+            UpdateCheckOutcome::UpdateAvailable(v) => {
+                println!(
+                    "A new version is available: {} — https://github.com/asaaki/peas/releases/latest",
+                    v
+                );
+            }
+            UpdateCheckOutcome::CheckFailed => {
+                println!("No update information available (check failed)");
+            }
+            UpdateCheckOutcome::UpToDate | UpdateCheckOutcome::Skipped => {}
+        }
+        return Ok(());
+    }
+
+    // Require a subcommand (print help if none given)
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            let _ = Cli::try_parse_from(["peas", "--help"]);
+            std::process::exit(1);
+        }
+    };
 
     // Determine if we're in TUI mode (to disable stderr logging)
-    let is_tui_mode = matches!(cli.command, Commands::Tui);
+    let is_tui_mode = matches!(command, Commands::Tui);
 
     // Initialize logging system
     // In TUI mode, disable stderr logging to prevent interference with terminal rendering
@@ -27,7 +83,7 @@ fn main() -> Result<()> {
         );
     }
 
-    match cli.command {
+    match command {
         Commands::Init { prefix, id_length } => peas::cli::handlers::handle_init(prefix, id_length),
         Commands::Migrate { dry_run } => peas::cli::handlers::handle_migrate(dry_run),
         Commands::Doctor { fix } => peas::cli::handlers::handle_doctor(fix),
@@ -36,7 +92,7 @@ fn main() -> Result<()> {
             let (config, root) = load_config(config_opt)?;
             let ctx = CommandContext::new(config, root);
 
-            match cli.command {
+            match command {
                 Commands::Init { .. } | Commands::Migrate { .. } | Commands::Doctor { .. } => {
                     unreachable!()
                 }

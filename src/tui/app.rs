@@ -29,9 +29,11 @@ use super::{body_editor, handlers, modal_operations, relations, tree_builder, ui
 use crate::{
     config::PeasConfig,
     error::Result,
+    global_config::GlobalPeasConfig,
     model::{Memory, Pea, PeaPriority, PeaStatus, PeaType},
     storage::{MemoryRepository, PeaRepository},
     undo::UndoManager,
+    updater::{UpdateCheckOutcome, spawn_update_check},
 };
 
 use crossterm::{
@@ -47,6 +49,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::mpsc,
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tree_builder::{PageInfo, TreeNode};
@@ -244,6 +247,12 @@ pub struct App {
     // ========== Body Editor State ==========
     /// TextArea for multi-line body editing (Some when input_mode == EditBody)
     pub body_textarea: Option<TextAreaState>,
+
+    // ========== Update Checker State ==========
+    /// Background thread handle for the update check (None once resolved)
+    pub update_check_handle: Option<JoinHandle<UpdateCheckOutcome>>,
+    /// Available update version, set once the handle resolves
+    pub available_update: Option<String>,
 }
 
 impl App {
@@ -263,6 +272,10 @@ impl App {
         if !filtered_peas.is_empty() {
             list_state.select(Some(0));
         }
+
+        // Spawn update check in background
+        let global_config = GlobalPeasConfig::load();
+        let update_check_handle = Some(spawn_update_check(&global_config));
 
         let mut app = Self {
             view_mode: ViewMode::Tickets,
@@ -307,6 +320,8 @@ impl App {
             memory_create_tags: String::new(),
             memory_create_content: String::new(),
             memory_modal_selection: 0,
+            update_check_handle,
+            available_update: None,
         };
         app.build_tree();
         // Note: page_table will be built when page_height is set during first draw
@@ -1396,6 +1411,18 @@ fn run_app(
     >,
 ) -> io::Result<()> {
     loop {
+        // Poll update check handle (non-blocking)
+        if let Some(handle) = app.update_check_handle.take() {
+            if handle.is_finished() {
+                if let Ok(UpdateCheckOutcome::UpdateAvailable(v)) = handle.join() {
+                    app.available_update = Some(v);
+                }
+                // handle set to None (already taken)
+            } else {
+                app.update_check_handle = Some(handle);
+            }
+        }
+
         terminal.draw(|f| ui::draw(f, app))?;
 
         // Check for file system events (non-blocking)

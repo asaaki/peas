@@ -1,4 +1,6 @@
 use crate::config::{DATA_DIR, PeasConfig, SCHEMA_URL};
+use crate::global_config::GlobalPeasConfig;
+use crate::updater::{UpdateCheckOutcome, spawn_update_check};
 use anyhow::Result;
 use colored::Colorize;
 use std::collections::HashSet;
@@ -43,6 +45,10 @@ pub fn handle_doctor(fix: bool) -> Result<()> {
     println!("{}", "═".repeat(60));
     println!();
 
+    // Spawn update check early so it runs in parallel with the other checks
+    let global_config = GlobalPeasConfig::load();
+    let update_handle = spawn_update_check(&global_config);
+
     // Check 1: Config location
     check_config_location(&cwd, &mut results, fix)?;
 
@@ -63,6 +69,9 @@ pub fn handle_doctor(fix: bool) -> Result<()> {
 
     // Check 7: Sequential ID counter (if applicable)
     check_sequential_counter(&cwd, &mut results, fix)?;
+
+    // Check 8: Update check
+    check_update(&global_config, update_handle, &mut results);
 
     // Summary
     println!();
@@ -713,6 +722,45 @@ fn check_sequential_counter(cwd: &Path, results: &mut DiagnosticResults, fix: bo
 
     println!();
     Ok(())
+}
+
+fn check_update(
+    global_config: &GlobalPeasConfig,
+    handle: std::thread::JoinHandle<UpdateCheckOutcome>,
+    results: &mut DiagnosticResults,
+) {
+    println!("{}", "Update Check".bold());
+
+    let outcome = handle.join().unwrap_or(UpdateCheckOutcome::CheckFailed);
+    let current = env!("CARGO_PKG_VERSION");
+
+    match outcome {
+        UpdateCheckOutcome::UpToDate => {
+            results.pass(&format!("peas is up to date ({})", current));
+        }
+        UpdateCheckOutcome::UpdateAvailable(v) => {
+            results.warn(&format!("Update available: {}", v));
+            results.suggestion("https://github.com/asaaki/peas/releases/latest");
+        }
+        UpdateCheckOutcome::CheckFailed => {
+            results.warn("Could not check for updates (network error or GitHub unreachable)");
+        }
+        UpdateCheckOutcome::Skipped => {
+            if !global_config.updates.enabled {
+                let config_hint = crate::global_config::GlobalPeasConfig::config_path()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "<config dir>/peas/config.toml".to_string());
+                results.warn(&format!(
+                    "Update checks are disabled (set updates.enabled = true in {} to re-enable)",
+                    config_hint
+                ));
+            } else {
+                results.pass(&format!("peas is up to date ({})", current));
+            }
+        }
+    }
+
+    println!();
 }
 
 fn print_summary(results: &DiagnosticResults) {

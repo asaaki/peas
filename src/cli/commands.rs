@@ -5,13 +5,12 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[command(name = "peas")]
 #[command(
     author,
-    version,
+    disable_version_flag = true,
     about = "A CLI-based, flat-file issue tracker for humans and robots"
 )]
-#[command(propagate_version = true)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 
     /// Path to config file (searches upward for .peas.toml by default)
     #[arg(long, global = true)]
@@ -28,6 +27,10 @@ pub struct Cli {
     /// Log to file (optional)
     #[arg(long, global = true)]
     pub log_file: Option<String>,
+
+    /// Print version information
+    #[arg(short = 'V', long = "version", global = true)]
+    pub version: bool,
 }
 
 #[derive(Subcommand)]
