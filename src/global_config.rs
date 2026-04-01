@@ -50,7 +50,6 @@ impl GlobalPeasConfig {
 
     /// Returns the path to the global config file, regardless of whether it exists.
     pub fn config_path() -> Option<std::path::PathBuf> {
-        ProjectDirs::from("", "", "peas")
-            .map(|d| d.config_dir().join("config.toml"))
+        ProjectDirs::from("", "", "peas").map(|d| d.config_dir().join("config.toml"))
     }
 }

@@ -40,8 +40,7 @@ pub fn spawn_update_check(global_config: &GlobalPeasConfig) -> JoinHandle<Update
 }
 
 fn cache_path() -> Option<std::path::PathBuf> {
-    ProjectDirs::from("", "", "peas")
-        .map(|d| d.cache_dir().join("update-check.json"))
+    ProjectDirs::from("", "", "peas").map(|d| d.cache_dir().join("update-check.json"))
 }
 
 fn read_cache() -> Option<UpdateCache> {
@@ -159,9 +158,7 @@ fn run_update_check() -> UpdateCheckOutcome {
         }
         None => {
             // Failure: step down retry interval
-            let current_interval = read_cache()
-                .map(|c| c.retry_interval_hours)
-                .unwrap_or(24);
+            let current_interval = read_cache().map(|c| c.retry_interval_hours).unwrap_or(24);
             let cache = UpdateCache {
                 last_checked: now,
                 check_succeeded: false,
@@ -188,10 +185,7 @@ mod tests {
             compare_versions("0.2.1", "0.2.1"),
             std::cmp::Ordering::Equal
         );
-        assert_eq!(
-            compare_versions("0.2.0", "0.2.1"),
-            std::cmp::Ordering::Less
-        );
+        assert_eq!(compare_versions("0.2.0", "0.2.1"), std::cmp::Ordering::Less);
         assert_eq!(
             compare_versions("v0.2.2", "0.2.1"),
             std::cmp::Ordering::Greater
