@@ -88,7 +88,8 @@ peas tui
 | `peas update <id>` | Update a pea's properties |
 | `peas start <id>` | Mark pea as in-progress |
 | `peas done <id>` | Mark pea as completed |
-| `peas archive <id>` | Archive a pea (move to archive folder) |
+| `peas archive <id>` | Archive a pea (supports `--recursive`, batch filters, `--dry-run`) |
+| `peas mv <old> <new>` | Rename a ticket ID |
 | `peas delete <id>` | Delete a pea permanently |
 | `peas search <query>` | Search peas by text |
 | `peas suggest` | Suggest the next ticket to work on |
@@ -141,16 +142,16 @@ peas provides a full GraphQL API for programmatic access:
 
 ```bash
 # Query stats
-peas graphql '{ stats { total byStatus { todo inProgress completed } } }'
+peas query '{ stats { total byStatus { todo inProgress completed } } }'
 
 # List open peas
-peas graphql '{ peas(filter: { isOpen: true }) { nodes { id title status } } }'
+peas query '{ peas(filter: { isOpen: true }) { nodes { id title status } } }'
 
-# Create a pea
-peas graphql 'mutation { createPea(input: { title: "New Task", peaType: TASK }) { id } }'
+# Create a pea (mutate auto-wraps in 'mutation { }')
+peas mutate 'createPea(input: { title: "New Task", peaType: TASK }) { id }'
 
 # Update status
-peas graphql 'mutation { setStatus(id: "peas-abc1", status: IN_PROGRESS) { id status } }'
+peas mutate 'setStatus(id: "peas-abc1", status: IN_PROGRESS) { id status }'
 ```
 
 Start the GraphQL playground:

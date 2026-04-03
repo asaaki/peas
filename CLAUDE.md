@@ -60,7 +60,7 @@ updated = "2024-01-01T00:00:00Z"
 Optional body text here.
 ```
 
-Files live in `.peas/tickets/` (active) or `.peas/archive/` (archived).
+Files live in `.peas/` (active) or `.peas/archive/` (archived).
 
 ### Key Modules
 
