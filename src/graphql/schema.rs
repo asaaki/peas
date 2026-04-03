@@ -229,6 +229,9 @@ impl MutationRoot {
         if let Some(blocking) = input.blocking {
             pea = pea.with_blocking(blocking);
         }
+        if let Some(refs) = input.external_refs {
+            pea = pea.with_external_refs(refs);
+        }
         if let Some(tags) = input.tags {
             pea = pea.with_tags(tags);
         }
@@ -270,6 +273,18 @@ impl MutationRoot {
         }
         if let Some(blocking) = input.blocking {
             pea.blocking = blocking;
+        }
+        if let Some(refs) = input.add_external_refs {
+            for r in refs {
+                if !pea.external_refs.contains(&r) {
+                    pea.external_refs.push(r);
+                }
+            }
+        }
+        if let Some(refs) = input.remove_external_refs {
+            for r in refs {
+                pea.external_refs.retain(|x| x != &r);
+            }
         }
         if let Some(tags) = input.add_tags {
             for tag in tags {

@@ -84,7 +84,15 @@ pub enum Commands {
 
         /// IDs of peas this blocks
         #[arg(long)]
-        blocking: Vec<String>,
+        blocks: Vec<String>,
+
+        /// IDs of peas that block this one (adds this pea to their blocking list)
+        #[arg(long)]
+        blocked_by: Vec<String>,
+
+        /// External issue tracker URLs (e.g. GitHub, Jira)
+        #[arg(long = "ref")]
+        external_ref: Vec<String>,
 
         /// Tags to add
         #[arg(long)]
@@ -197,6 +205,14 @@ pub enum Commands {
         /// Remove a blocked-by relationship
         #[arg(long)]
         remove_blocked_by: Vec<String>,
+
+        /// Add an external issue tracker URL
+        #[arg(long = "add-ref")]
+        add_ref: Vec<String>,
+
+        /// Remove an external issue tracker URL
+        #[arg(long = "remove-ref")]
+        remove_ref: Vec<String>,
 
         /// Output as JSON
         #[arg(long)]

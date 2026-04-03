@@ -26,6 +26,9 @@ pub struct Pea {
     pub blocking: Vec<String>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub external_refs: Vec<String>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub assets: Vec<String>,
 
     #[serde(default)]
@@ -50,6 +53,7 @@ impl Pea {
             tags: Vec::new(),
             parent: None,
             blocking: Vec::new(),
+            external_refs: Vec::new(),
             assets: Vec::new(),
             created: now,
             updated: now,
@@ -79,6 +83,11 @@ impl Pea {
 
     pub fn with_blocking(mut self, blocking: Vec<String>) -> Self {
         self.blocking = blocking;
+        self
+    }
+
+    pub fn with_external_refs(mut self, external_refs: Vec<String>) -> Self {
+        self.external_refs = external_refs;
         self
     }
 

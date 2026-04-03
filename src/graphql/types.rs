@@ -119,6 +119,7 @@ pub struct Pea {
     pub tags: Vec<String>,
     pub parent: Option<String>,
     pub blocking: Vec<String>,
+    pub external_refs: Vec<String>,
     pub created: String,
     pub updated: String,
     pub body: String,
@@ -135,6 +136,7 @@ impl From<ModelPea> for Pea {
             tags: p.tags,
             parent: p.parent,
             blocking: p.blocking,
+            external_refs: p.external_refs,
             created: p.created.to_rfc3339(),
             updated: p.updated.to_rfc3339(),
             body: p.body,
@@ -161,6 +163,7 @@ pub struct CreatePeaInput {
     pub body: Option<String>,
     pub parent: Option<String>,
     pub blocking: Option<Vec<String>>,
+    pub external_refs: Option<Vec<String>>,
     pub tags: Option<Vec<String>>,
 }
 
@@ -174,6 +177,8 @@ pub struct UpdatePeaInput {
     pub body: Option<String>,
     pub parent: Option<String>,
     pub blocking: Option<Vec<String>>,
+    pub add_external_refs: Option<Vec<String>>,
+    pub remove_external_refs: Option<Vec<String>>,
     pub add_tags: Option<Vec<String>>,
     pub remove_tags: Option<Vec<String>>,
 }

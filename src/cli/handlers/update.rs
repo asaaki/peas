@@ -21,6 +21,8 @@ pub fn handle_update(
     remove_blocks: Vec<String>,
     add_blocked_by: Vec<String>,
     remove_blocked_by: Vec<String>,
+    add_ref: Vec<String>,
+    remove_ref: Vec<String>,
     json: bool,
     dry_run: bool,
 ) -> Result<()> {
@@ -66,6 +68,16 @@ pub fn handle_update(
     // We collect these to apply after dry-run check, since they modify other peas
     let has_blocked_by_changes = !add_blocked_by.is_empty() || !remove_blocked_by.is_empty();
 
+    // --add-ref / --remove-ref: external issue tracker URLs
+    for r in &add_ref {
+        if !pea.external_refs.contains(r) {
+            pea.external_refs.push(r.clone());
+        }
+    }
+    for r in &remove_ref {
+        pea.external_refs.retain(|x| x != r);
+    }
+
     if dry_run {
         // Build a list of changes
         let mut changes = Vec::new();
@@ -103,6 +115,12 @@ pub fn handle_update(
             for b in &remove_blocked_by {
                 changes.push(format!("blocked-by: remove {} (will update {})", b, b));
             }
+        }
+        if pea.external_refs != original.external_refs {
+            changes.push(format!(
+                "external_refs: {:?} -> {:?}",
+                original.external_refs, pea.external_refs
+            ));
         }
         if pea.body != original.body {
             changes.push("body: [changed]".to_string());

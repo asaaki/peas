@@ -2,10 +2,10 @@
 id = "peas-9icj3"
 title = "Add --blocked-by flag and rename --blocking to --blocks in peas create"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 created = "2026-04-02T14:54:53.193503Z"
-updated = "2026-04-02T14:57:06.826178Z"
+updated = "2026-04-03T11:25:20.055512262Z"
 +++
 
 ## Summary

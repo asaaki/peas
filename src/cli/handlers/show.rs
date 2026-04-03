@@ -48,6 +48,10 @@ fn print_pea_with_refs(pea: &crate::model::Pea, ctx: &CommandContext) {
         println!("Blocking: {}", blocking_info.join(", "));
     }
 
+    if !pea.external_refs.is_empty() {
+        println!("Refs:     {}", pea.external_refs.join(", ").yellow());
+    }
+
     if !pea.tags.is_empty() {
         println!("Tags:     {}", pea.tags.join(", ").magenta());
     }

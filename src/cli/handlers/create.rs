@@ -16,7 +16,9 @@ pub fn handle_create(
     body: Option<String>,
     body_file: Option<String>,
     parent: Option<String>,
-    blocking: Vec<String>,
+    blocks: Vec<String>,
+    blocked_by: Vec<String>,
+    external_ref: Vec<String>,
     tag: Vec<String>,
     template: Option<TemplateArg>,
     json: bool,
@@ -69,8 +71,11 @@ pub fn handle_create(
     if parent.is_some() {
         pea = pea.with_parent(parent);
     }
-    if !blocking.is_empty() {
-        pea = pea.with_blocking(blocking);
+    if !blocks.is_empty() {
+        pea = pea.with_blocking(blocks);
+    }
+    if !external_ref.is_empty() {
+        pea = pea.with_external_refs(external_ref);
     }
 
     // Body: CLI body overrides template, template is fallback
@@ -102,6 +107,15 @@ pub fn handle_create(
     }
 
     let path = ctx.repo.create(&pea)?;
+
+    // Apply blocked-by relationships (add this pea's ID to each blocker's blocking list)
+    for blocker_id in &blocked_by {
+        let mut blocker = ctx.repo.get(blocker_id)?;
+        if !blocker.blocking.contains(&pea.id) {
+            blocker.blocking.push(pea.id.clone());
+            ctx.repo.update(&mut blocker)?;
+        }
+    }
 
     // Record undo operation
     record_undo_create(ctx, &pea.id, &path);
