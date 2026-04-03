@@ -35,7 +35,7 @@ async-graphql-axum = "7.2.1"
 axum = "0.8.8"
 chrono = { version = "0.4.44", features = ["serde"] }
 clap = { version = "4.6.0", features = ["derive", "env"] }
-cli-clipboard = "0.4"
+arboard = "3.6"
 colored = "3.1.1"
 crossterm = "0.29"
 notify = "8.2"
@@ -44,7 +44,7 @@ directories = "6.0.0"
 nanoid = "0.4.0"
 open = "5.3"
 ratatui = "0.30"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }
 ratatui-core = "0.1"
 regex = "1.12"
 tachyonfx = "0.25.0"

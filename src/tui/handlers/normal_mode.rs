@@ -1,5 +1,5 @@
 use crate::tui::app::{App, InputMode, ViewMode};
-use cli_clipboard::ClipboardProvider;
+use arboard::Clipboard;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, KeyCode, KeyEvent},
     execute,
@@ -95,8 +95,8 @@ pub fn handle_normal_mode(
         KeyCode::Char('y') => {
             if let Some(pea) = app.selected_pea() {
                 let id = pea.id.clone();
-                if let Ok(mut ctx) = cli_clipboard::ClipboardContext::new() {
-                    if ctx.set_contents(id.clone()).is_ok() {
+                if let Ok(mut ctx) = Clipboard::new() {
+                    if ctx.set_text(id.clone()).is_ok() {
                         app.message = Some(format!("Copied: {}", id));
                     } else {
                         app.message = Some("Failed to copy to clipboard".to_string());

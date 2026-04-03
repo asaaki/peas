@@ -252,7 +252,6 @@ mod tests {
 
     #[test]
     fn test_validate_path_within() {
-        use std::path::Path;
         let temp_dir = std::env::temp_dir();
         let inside = temp_dir.join("test_file");
         // For non-existent files, validation passes (file doesn't exist to escape)

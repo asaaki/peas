@@ -315,58 +315,50 @@ mod tests {
 
     #[test]
     fn test_empty_prefix_rejected() {
-        let mut config = PeasSettings::default();
-        config.prefix = String::new();
+        let config = PeasSettings { prefix: String::new(), ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_prefix_too_long_rejected() {
-        let mut config = PeasSettings::default();
-        config.prefix = "a".repeat(21);
+        let config = PeasSettings { prefix: "a".repeat(21), ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_id_length_zero_rejected() {
-        let mut config = PeasSettings::default();
-        config.id_length = 0;
+        let config = PeasSettings { id_length: 0, ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_id_length_too_large_rejected() {
-        let mut config = PeasSettings::default();
-        config.id_length = 21;
+        let config = PeasSettings { id_length: 21, ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_invalid_default_status_rejected() {
-        let mut config = PeasSettings::default();
-        config.default_status = "invalid".to_string();
+        let config = PeasSettings { default_status: "invalid".to_string(), ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_invalid_default_type_rejected() {
-        let mut config = PeasSettings::default();
-        config.default_type = "invalid".to_string();
+        let config = PeasSettings { default_type: "invalid".to_string(), ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_invalid_frontmatter_format_rejected() {
-        let mut config = PeasSettings::default();
-        config.frontmatter = "json".to_string();
+        let config = PeasSettings { frontmatter: "json".to_string(), ..PeasSettings::default() };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_all_valid_statuses_accepted() {
         for status in ["draft", "todo", "in-progress", "completed", "scrapped"] {
-            let mut config = PeasSettings::default();
-            config.default_status = status.to_string();
+            let config = PeasSettings { default_status: status.to_string(), ..PeasSettings::default() };
             assert!(
                 config.validate().is_ok(),
                 "status '{}' should be valid",
@@ -387,8 +379,7 @@ mod tests {
             "research",
             "task",
         ] {
-            let mut config = PeasSettings::default();
-            config.default_type = pea_type.to_string();
+            let config = PeasSettings { default_type: pea_type.to_string(), ..PeasSettings::default() };
             assert!(
                 config.validate().is_ok(),
                 "type '{}' should be valid",

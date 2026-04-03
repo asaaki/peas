@@ -2,10 +2,10 @@
 id = "peas-64ctb"
 title = "M7: Desktop GUI Application (GPUI)"
 type = "milestone"
-status = "todo"
+status = "scrapped"
 priority = "high"
 created = "2026-01-22T13:37:19.495070400Z"
-updated = "2026-01-22T13:37:19.495070400Z"
+updated = "2026-04-03T12:23:26.691569660Z"
 +++
 
 # Desktop GUI Application with GPUI
