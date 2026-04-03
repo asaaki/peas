@@ -2,10 +2,10 @@
 id = "peas-mifvg"
 title = "Submit JSON Schema to SchemaStore"
 type = "chore"
-status = "todo"
+status = "scrapped"
 priority = "normal"
 created = "2026-02-02T19:19:10.880253300Z"
-updated = "2026-02-02T19:19:10.880253300Z"
+updated = "2026-04-03T13:16:19.394782516Z"
 +++
 
 Submit the peas configuration schema to SchemaStore for automatic editor discovery.
