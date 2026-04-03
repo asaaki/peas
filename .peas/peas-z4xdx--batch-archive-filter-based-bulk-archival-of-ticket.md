@@ -2,10 +2,10 @@
 id = "peas-z4xdx"
 title = "Batch archive: filter-based bulk archival of tickets"
 type = "feature"
-status = "in-progress"
+status = "completed"
 priority = "normal"
 created = "2026-04-03T13:16:25.307443121Z"
-updated = "2026-04-03T13:17:41.541137684Z"
+updated = "2026-04-03T13:22:44.138473521Z"
 +++
 
 ## Problem
