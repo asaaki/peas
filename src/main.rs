@@ -9,6 +9,15 @@ use peas::{
 use std::path::PathBuf;
 
 fn main() -> Result<()> {
+    // Windows has a 1MB default stack which is too small for clap's generated
+    // parser with many subcommands. Run on a thread with a larger stack.
+    const STACK_SIZE: usize = 8 * 1024 * 1024; // 8 MB
+    let builder = std::thread::Builder::new().stack_size(STACK_SIZE);
+    let handler = builder.spawn(run).expect("failed to spawn main thread");
+    handler.join().expect("main thread panicked")
+}
+
+fn run() -> Result<()> {
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
         Err(e) => {
