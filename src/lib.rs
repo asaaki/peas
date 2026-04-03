@@ -83,12 +83,32 @@ pub mod validation;
 /// Supports importing from and exporting to beans format.
 pub mod import_export;
 
+/// File attachment management for tickets.
+///
+/// Handles adding, listing, and removing asset files associated with peas.
 pub mod assets;
+
+/// Global user-level configuration.
+///
+/// Manages settings stored outside the project (e.g. update check preferences).
 pub mod global_config;
+
+/// Logging initialization and configuration.
+///
+/// Sets up tracing-subscriber with optional file output and TUI-safe modes.
 pub mod logging;
+
+/// Search query parsing and execution.
+///
+/// Supports field-specific and regex search across pea fields.
 pub mod search;
+
 /// Undo functionality for reverting operations.
 ///
 /// Tracks the last mutation and allows undoing it.
 pub mod undo;
+
+/// Automatic update checker.
+///
+/// Checks GitHub releases for newer versions with caching and retry backoff.
 pub mod updater;

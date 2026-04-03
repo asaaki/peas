@@ -2,10 +2,10 @@
 id = "peas-cf7ul"
 title = "Configurable sequential ticket ID generation"
 type = "feature"
-status = "todo"
+status = "completed"
 priority = "normal"
 created = "2026-02-02T19:03:01.460178900Z"
-updated = "2026-02-02T19:03:01.460178900Z"
+updated = "2026-04-03T12:04:36.165308112Z"
 +++
 
 Added configurable ID generation mode to support both random (default) and sequential IDs.
@@ -23,4 +23,3 @@ Set in .peas.toml:
 [peas]
 id_mode = "sequential"
 id_length = 5  # produces peas-00001
-

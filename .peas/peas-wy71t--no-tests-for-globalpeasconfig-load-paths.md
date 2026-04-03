@@ -2,10 +2,10 @@
 id = "peas-wy71t"
 title = "No tests for GlobalPeasConfig load paths"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "low"
 created = "2026-03-31T16:25:26.284980Z"
-updated = "2026-03-31T16:25:26.284980Z"
+updated = "2026-04-03T12:04:36.965792995Z"
 +++
 
 ## Description
