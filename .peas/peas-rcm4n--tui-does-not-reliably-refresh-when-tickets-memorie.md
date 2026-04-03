@@ -2,11 +2,11 @@
 id = "peas-rcm4n"
 title = "TUI does not reliably refresh when tickets/memories change on disk"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "high"
 tags = ["bug"]
 created = "2026-04-01T13:19:50.346997Z"
-updated = "2026-04-01T13:30:22.340757Z"
+updated = "2026-04-03T11:11:03.520142538Z"
 +++
 
 ## User Feedback

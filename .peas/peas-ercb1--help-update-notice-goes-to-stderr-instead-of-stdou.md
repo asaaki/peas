@@ -2,10 +2,10 @@
 id = "peas-ercb1"
 title = "Help update notice goes to stderr instead of stdout"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "high"
 created = "2026-03-31T16:23:39.472982Z"
-updated = "2026-03-31T16:23:39.472982Z"
+updated = "2026-04-03T11:11:03.010985643Z"
 +++
 
 ## Description

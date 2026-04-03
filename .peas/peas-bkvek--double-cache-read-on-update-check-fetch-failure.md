@@ -2,10 +2,10 @@
 id = "peas-bkvek"
 title = "Double cache read on update check fetch failure"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "normal"
 created = "2026-03-31T16:23:39.448620Z"
-updated = "2026-03-31T16:23:39.448620Z"
+updated = "2026-04-03T11:11:02.755325599Z"
 +++
 
 ## Description

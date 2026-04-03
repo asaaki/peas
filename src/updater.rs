@@ -124,7 +124,7 @@ fn run_update_check() -> UpdateCheckOutcome {
     let current_version = env!("CARGO_PKG_VERSION");
 
     // Check cache
-    if let Some(cache) = read_cache() {
+    let cached_retry_interval = if let Some(cache) = read_cache() {
         let age = now - cache.last_checked;
         let interval = Duration::hours(cache.retry_interval_hours);
         if age < interval {
@@ -137,7 +137,10 @@ fn run_update_check() -> UpdateCheckOutcome {
             }
             return UpdateCheckOutcome::Skipped;
         }
-    }
+        cache.retry_interval_hours
+    } else {
+        24
+    };
 
     // Cache stale or missing — fetch
     match fetch_latest_version() {
@@ -158,12 +161,11 @@ fn run_update_check() -> UpdateCheckOutcome {
         }
         None => {
             // Failure: step down retry interval
-            let current_interval = read_cache().map(|c| c.retry_interval_hours).unwrap_or(24);
             let cache = UpdateCache {
                 last_checked: now,
                 check_succeeded: false,
                 latest_version: String::new(),
-                retry_interval_hours: next_retry_interval(current_interval),
+                retry_interval_hours: next_retry_interval(cached_retry_interval),
             };
             write_cache(&cache);
             UpdateCheckOutcome::CheckFailed

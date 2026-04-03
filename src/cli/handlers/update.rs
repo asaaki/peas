@@ -17,6 +17,10 @@ pub fn handle_update(
     parent: Option<String>,
     add_tag: Vec<String>,
     remove_tag: Vec<String>,
+    add_blocks: Vec<String>,
+    remove_blocks: Vec<String>,
+    add_blocked_by: Vec<String>,
+    remove_blocked_by: Vec<String>,
     json: bool,
     dry_run: bool,
 ) -> Result<()> {
@@ -49,6 +53,18 @@ pub fn handle_update(
     for t in remove_tag {
         pea.tags.retain(|x| x != &t);
     }
+    // --add-blocks: this pea blocks the given IDs
+    for b in &add_blocks {
+        if !pea.blocking.contains(b) {
+            pea.blocking.push(b.clone());
+        }
+    }
+    for b in &remove_blocks {
+        pea.blocking.retain(|x| x != b);
+    }
+    // --add-blocked-by: the given IDs block this pea (inverse: add this pea's ID to the other pea's blocking list)
+    // We collect these to apply after dry-run check, since they modify other peas
+    let has_blocked_by_changes = !add_blocked_by.is_empty() || !remove_blocked_by.is_empty();
 
     if dry_run {
         // Build a list of changes
@@ -73,6 +89,20 @@ pub fn handle_update(
         }
         if pea.tags != original.tags {
             changes.push(format!("tags: {:?} -> {:?}", original.tags, pea.tags));
+        }
+        if pea.blocking != original.blocking {
+            changes.push(format!(
+                "blocking: {:?} -> {:?}",
+                original.blocking, pea.blocking
+            ));
+        }
+        if has_blocked_by_changes {
+            for b in &add_blocked_by {
+                changes.push(format!("blocked-by: add {} (will update {})", b, b));
+            }
+            for b in &remove_blocked_by {
+                changes.push(format!("blocked-by: remove {} (will update {})", b, b));
+            }
         }
         if pea.body != original.body {
             changes.push("body: [changed]".to_string());
@@ -110,6 +140,22 @@ pub fn handle_update(
         .file_name()
         .map(|f| f.to_string_lossy())
         .unwrap_or_default();
+
+    // Apply blocked-by changes (modify other peas' blocking lists)
+    if has_blocked_by_changes {
+        for blocker_id in &add_blocked_by {
+            let mut blocker = ctx.repo.get(blocker_id)?;
+            if !blocker.blocking.contains(&id) {
+                blocker.blocking.push(id.clone());
+                ctx.repo.update(&mut blocker)?;
+            }
+        }
+        for blocker_id in &remove_blocked_by {
+            let mut blocker = ctx.repo.get(blocker_id)?;
+            blocker.blocking.retain(|x| x != &id);
+            ctx.repo.update(&mut blocker)?;
+        }
+    }
 
     if json {
         println!("{}", serde_json::to_string_pretty(&pea)?);

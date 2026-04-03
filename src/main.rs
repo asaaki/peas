@@ -22,8 +22,8 @@ fn main() -> Result<()> {
                 if let UpdateCheckOutcome::UpdateAvailable(v) =
                     handle.join().unwrap_or(UpdateCheckOutcome::Skipped)
                 {
-                    eprintln!();
-                    eprintln!(
+                    println!();
+                    println!(
                         "A new version is available: {} — https://github.com/asaaki/peas/releases/latest",
                         v
                     );
@@ -60,8 +60,8 @@ fn main() -> Result<()> {
     let command = match cli.command {
         Some(cmd) => cmd,
         None => {
-            let _ = Cli::try_parse_from(["peas", "--help"]);
-            std::process::exit(1);
+            Cli::parse_from(["peas", "--help"]);
+            std::process::exit(0);
         }
     };
 
@@ -144,11 +144,29 @@ fn main() -> Result<()> {
                     parent,
                     add_tag,
                     remove_tag,
+                    add_blocks,
+                    remove_blocks,
+                    add_blocked_by,
+                    remove_blocked_by,
                     json,
                     dry_run,
                 } => peas::cli::handlers::handle_update(
-                    &ctx, id, title, r#type, status, priority, body, parent, add_tag, remove_tag,
-                    json, dry_run,
+                    &ctx,
+                    id,
+                    title,
+                    r#type,
+                    status,
+                    priority,
+                    body,
+                    parent,
+                    add_tag,
+                    remove_tag,
+                    add_blocks,
+                    remove_blocks,
+                    add_blocked_by,
+                    remove_blocked_by,
+                    json,
+                    dry_run,
                 ),
                 Commands::Archive {
                     id,

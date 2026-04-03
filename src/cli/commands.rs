@@ -182,6 +182,22 @@ pub enum Commands {
         #[arg(long)]
         remove_tag: Vec<String>,
 
+        /// Add a blocking relationship (this pea blocks the given ID)
+        #[arg(long)]
+        add_blocks: Vec<String>,
+
+        /// Remove a blocking relationship
+        #[arg(long)]
+        remove_blocks: Vec<String>,
+
+        /// Add a blocked-by relationship (the given ID blocks this pea)
+        #[arg(long)]
+        add_blocked_by: Vec<String>,
+
+        /// Remove a blocked-by relationship
+        #[arg(long)]
+        remove_blocked_by: Vec<String>,
+
         /// Output as JSON
         #[arg(long)]
         json: bool,

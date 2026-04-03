@@ -2,10 +2,10 @@
 id = "peas-2l4dj"
 title = "No-subcommand invocation exits silently without printing help"
 type = "bug"
-status = "todo"
+status = "completed"
 priority = "normal"
 created = "2026-03-31T16:24:52.580623Z"
-updated = "2026-03-31T16:24:52.580623Z"
+updated = "2026-04-03T11:11:03.081282739Z"
 +++
 
 ## Description

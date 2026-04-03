@@ -1425,12 +1425,17 @@ fn run_app(
 
         terminal.draw(|f| ui::draw(f, app))?;
 
-        // Check for file system events (non-blocking)
-        if let Ok(Ok(_events)) = fs_rx.try_recv() {
-            // Files changed - refresh the list
-            let _ = app.refresh();
-            app.message = Some("Files changed - refreshed".to_string());
-            continue;
+        // Check for file system events (non-blocking) — drain all pending events
+        {
+            let mut had_events = false;
+            while let Ok(Ok(_events)) = fs_rx.try_recv() {
+                had_events = true;
+            }
+            if had_events {
+                let _ = app.refresh();
+                app.message = Some("Files changed - refreshed".to_string());
+                continue;
+            }
         }
 
         // Poll for keyboard events with a short timeout
