@@ -7,6 +7,12 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 
+/// Maximum allowed memory content size: 100 KB
+pub const MAX_MEMORY_CONTENT_SIZE: usize = 100_000;
+
+/// Maximum number of memories allowed
+pub const MAX_MEMORY_COUNT: usize = 500;
+
 pub struct MemoryRepository {
     memory_path: PathBuf,
     frontmatter_format: FrontmatterFormat,
@@ -54,11 +60,34 @@ impl MemoryRepository {
         // Validate input
         self.validate_key(&memory.key)?;
         validation::validate_body(&memory.content)?;
+        if memory.content.len() > MAX_MEMORY_CONTENT_SIZE {
+            return Err(PeasError::Validation(format!(
+                "Memory content exceeds maximum size of {} bytes",
+                MAX_MEMORY_CONTENT_SIZE
+            )));
+        }
         for tag in &memory.tags {
             validation::validate_tag(tag)?;
         }
 
         std::fs::create_dir_all(&self.memory_path)?;
+
+        // Check memory count limit
+        if self.memory_path.exists() {
+            let count = std::fs::read_dir(&self.memory_path)?
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    e.path().is_file()
+                        && e.path().extension().map(|ext| ext == "md").unwrap_or(false)
+                })
+                .count();
+            if count >= MAX_MEMORY_COUNT {
+                return Err(PeasError::Validation(format!(
+                    "Maximum memory count ({}) reached — delete old memories first",
+                    MAX_MEMORY_COUNT
+                )));
+            }
+        }
 
         let file_path = self.get_file_path(&memory.key);
 
@@ -91,6 +120,12 @@ impl MemoryRepository {
         // Validate input
         self.validate_key(&memory.key)?;
         validation::validate_body(&memory.content)?;
+        if memory.content.len() > MAX_MEMORY_CONTENT_SIZE {
+            return Err(PeasError::Validation(format!(
+                "Memory content exceeds maximum size of {} bytes",
+                MAX_MEMORY_CONTENT_SIZE
+            )));
+        }
         for tag in &memory.tags {
             validation::validate_tag(tag)?;
         }
@@ -154,6 +189,29 @@ impl MemoryRepository {
         // Sort by updated timestamp (newest first)
         memories.sort_by(|a, b| b.updated.cmp(&a.updated));
         Ok(memories)
+    }
+
+    /// Return memory usage statistics: count and total size in bytes.
+    pub fn stats(&self) -> Result<(usize, u64)> {
+        if !self.memory_path.exists() {
+            return Ok((0, 0));
+        }
+
+        let mut count = 0usize;
+        let mut total_bytes = 0u64;
+
+        for entry in std::fs::read_dir(&self.memory_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
+                count += 1;
+                if let Ok(meta) = std::fs::metadata(&path) {
+                    total_bytes += meta.len();
+                }
+            }
+        }
+
+        Ok((count, total_bytes))
     }
 
     pub fn search(&self, query: &str) -> Result<Vec<Memory>> {

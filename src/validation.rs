@@ -60,6 +60,40 @@ pub fn validate_id(id: &str) -> Result<()> {
             return Err(PeasError::Validation(format!("ID cannot contain '{}'", c)));
         }
     }
+    // Check for URL-encoded path traversal sequences
+    let lower = id.to_lowercase();
+    if lower.contains("%2f") || lower.contains("%5c") || lower.contains("%2e%2e") {
+        return Err(PeasError::Validation(
+            "ID cannot contain URL-encoded path separators or traversal sequences".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// Validates that a filesystem path stays within the expected sandbox directory.
+/// Returns an error if the resolved path escapes the sandbox.
+pub fn validate_path_within(path: &std::path::Path, sandbox: &std::path::Path) -> Result<()> {
+    // Canonicalize sandbox (must exist)
+    let sandbox_canonical = sandbox.canonicalize().map_err(|_| {
+        PeasError::Validation(format!(
+            "Sandbox directory does not exist: {}",
+            sandbox.display()
+        ))
+    })?;
+
+    // For paths that exist, canonicalize and check containment
+    if path.exists() {
+        let path_canonical = path.canonicalize().map_err(|_| {
+            PeasError::Validation(format!("Cannot resolve path: {}", path.display()))
+        })?;
+        if !path_canonical.starts_with(&sandbox_canonical) {
+            return Err(PeasError::Validation(format!(
+                "Path '{}' escapes the project directory",
+                path.display()
+            )));
+        }
+    }
+
     Ok(())
 }
 
@@ -205,6 +239,24 @@ mod tests {
     fn test_validate_id_forbidden_chars() {
         assert!(validate_id("peas/1234").is_err());
         assert!(validate_id("peas\\1234").is_err());
+    }
+
+    #[test]
+    fn test_validate_id_url_encoded_traversal() {
+        assert!(validate_id("peas%2f1234").is_err());
+        assert!(validate_id("peas%5c1234").is_err());
+        assert!(validate_id("%2e%2e%2fpasswd").is_err());
+        // Mixed case encoding
+        assert!(validate_id("peas%2F1234").is_err());
+    }
+
+    #[test]
+    fn test_validate_path_within() {
+        use std::path::Path;
+        let temp_dir = std::env::temp_dir();
+        let inside = temp_dir.join("test_file");
+        // For non-existent files, validation passes (file doesn't exist to escape)
+        assert!(validate_path_within(&inside, &temp_dir).is_ok());
     }
 
     #[test]

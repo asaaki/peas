@@ -2,11 +2,11 @@
 id = "peas-2l74u"
 title = "Add partial failure handling for complex operations"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-wbgbe"
 created = "2026-01-22T13:05:35.783032800Z"
-updated = "2026-01-22T13:05:35.783032800Z"
+updated = "2026-04-03T11:55:55.544348526Z"
 +++
 
 Implement better partial failure handling:

@@ -2,11 +2,11 @@
 id = "peas-jm2t5"
 title = "Enhance path traversal protection"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "high"
 parent = "peas-999r9"
 created = "2026-01-22T13:05:16.533386700Z"
-updated = "2026-01-22T13:05:16.533386700Z"
+updated = "2026-04-03T11:51:02.212518765Z"
 +++
 
 Strengthen path traversal protection:

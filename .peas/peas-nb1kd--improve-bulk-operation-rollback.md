@@ -2,11 +2,11 @@
 id = "peas-nb1kd"
 title = "Improve bulk operation rollback"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-wbgbe"
 created = "2026-01-22T13:05:33.875110600Z"
-updated = "2026-01-22T13:05:33.875110600Z"
+updated = "2026-04-03T11:55:55.132082138Z"
 +++
 
 Enhance bulk operations with better rollback:

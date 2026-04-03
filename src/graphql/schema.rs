@@ -14,6 +14,12 @@ pub struct AppState {
     pub project_root: PathBuf,
 }
 
+/// Maximum allowed query depth to prevent deeply nested abuse.
+const MAX_QUERY_DEPTH: usize = 10;
+
+/// Maximum query complexity score.
+const MAX_QUERY_COMPLEXITY: usize = 500;
+
 pub fn build_schema(config: PeasConfig, project_root: PathBuf) -> PeasSchema {
     let state = Arc::new(AppState {
         config,
@@ -22,6 +28,8 @@ pub fn build_schema(config: PeasConfig, project_root: PathBuf) -> PeasSchema {
 
     Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(state)
+        .limit_depth(MAX_QUERY_DEPTH)
+        .limit_complexity(MAX_QUERY_COMPLEXITY)
         .finish()
 }
 

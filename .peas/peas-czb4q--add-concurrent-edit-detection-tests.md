@@ -2,11 +2,11 @@
 id = "peas-czb4q"
 title = "Add concurrent edit detection tests"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-t9jwt"
 created = "2026-01-22T13:05:27.832330Z"
-updated = "2026-01-22T13:05:27.832330Z"
+updated = "2026-04-03T11:54:00.345982798Z"
 +++
 
 Write tests for concurrent edit detection:

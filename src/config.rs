@@ -116,6 +116,57 @@ impl PeasSettings {
             _ => FrontmatterFormat::Yaml,
         }
     }
+
+    /// Validate configuration values, returning errors for invalid settings.
+    pub fn validate(&self) -> Result<()> {
+        if self.prefix.is_empty() {
+            return Err(PeasError::Config("peas.prefix cannot be empty".to_string()));
+        }
+        if self.prefix.len() > 20 {
+            return Err(PeasError::Config(
+                "peas.prefix cannot exceed 20 characters".to_string(),
+            ));
+        }
+        if self.id_length == 0 || self.id_length > 20 {
+            return Err(PeasError::Config(
+                "peas.id_length must be between 1 and 20".to_string(),
+            ));
+        }
+        let valid_statuses = ["draft", "todo", "in-progress", "completed", "scrapped"];
+        if !valid_statuses.contains(&self.default_status.as_str()) {
+            return Err(PeasError::Config(format!(
+                "peas.default_status '{}' is not valid (expected one of: {})",
+                self.default_status,
+                valid_statuses.join(", ")
+            )));
+        }
+        let valid_types = [
+            "milestone",
+            "epic",
+            "story",
+            "feature",
+            "bug",
+            "chore",
+            "research",
+            "task",
+        ];
+        if !valid_types.contains(&self.default_type.as_str()) {
+            return Err(PeasError::Config(format!(
+                "peas.default_type '{}' is not valid (expected one of: {})",
+                self.default_type,
+                valid_types.join(", ")
+            )));
+        }
+        let valid_formats = ["toml", "yaml"];
+        if !valid_formats.contains(&self.frontmatter.as_str()) {
+            return Err(PeasError::Config(format!(
+                "peas.frontmatter '{}' is not valid (expected one of: {})",
+                self.frontmatter,
+                valid_formats.join(", ")
+            )));
+        }
+        Ok(())
+    }
 }
 
 impl PeasConfig {
@@ -133,6 +184,9 @@ impl PeasConfig {
             // YAML for .yml/.yaml or unknown
             serde_yaml::from_str(&content)?
         };
+
+        // Validate config values
+        config.peas.validate()?;
 
         // Print deprecation warnings
         if is_legacy {
@@ -246,5 +300,100 @@ impl PeasConfig {
         };
         std::fs::write(path, content)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config_is_valid() {
+        let config = PeasSettings::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_empty_prefix_rejected() {
+        let mut config = PeasSettings::default();
+        config.prefix = String::new();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_prefix_too_long_rejected() {
+        let mut config = PeasSettings::default();
+        config.prefix = "a".repeat(21);
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_id_length_zero_rejected() {
+        let mut config = PeasSettings::default();
+        config.id_length = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_id_length_too_large_rejected() {
+        let mut config = PeasSettings::default();
+        config.id_length = 21;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_invalid_default_status_rejected() {
+        let mut config = PeasSettings::default();
+        config.default_status = "invalid".to_string();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_invalid_default_type_rejected() {
+        let mut config = PeasSettings::default();
+        config.default_type = "invalid".to_string();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_invalid_frontmatter_format_rejected() {
+        let mut config = PeasSettings::default();
+        config.frontmatter = "json".to_string();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_all_valid_statuses_accepted() {
+        for status in ["draft", "todo", "in-progress", "completed", "scrapped"] {
+            let mut config = PeasSettings::default();
+            config.default_status = status.to_string();
+            assert!(
+                config.validate().is_ok(),
+                "status '{}' should be valid",
+                status
+            );
+        }
+    }
+
+    #[test]
+    fn test_all_valid_types_accepted() {
+        for pea_type in [
+            "milestone",
+            "epic",
+            "story",
+            "feature",
+            "bug",
+            "chore",
+            "research",
+            "task",
+        ] {
+            let mut config = PeasSettings::default();
+            config.default_type = pea_type.to_string();
+            assert!(
+                config.validate().is_ok(),
+                "type '{}' should be valid",
+                pea_type
+            );
+        }
     }
 }

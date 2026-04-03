@@ -20,6 +20,7 @@ pub fn handle_memory(ctx: &CommandContext, action: MemoryAction) -> Result<()> {
         MemoryAction::List { tag, json } => handle_memory_list(&repo, tag, json),
         MemoryAction::Edit { key } => handle_memory_edit(&repo, ctx, key),
         MemoryAction::Delete { key, json } => handle_memory_delete(&repo, key, json),
+        MemoryAction::Stats { json } => handle_memory_stats(&repo, json),
     }
 }
 
@@ -148,6 +149,36 @@ fn handle_memory_edit(repo: &MemoryRepository, ctx: &CommandContext, key: String
     }
 
     println!("{} {}", "Edited memory:".green(), key);
+
+    Ok(())
+}
+
+fn handle_memory_stats(repo: &MemoryRepository, json: bool) -> Result<()> {
+    use crate::assets::format_file_size;
+    use crate::storage::{MAX_MEMORY_CONTENT_SIZE, MAX_MEMORY_COUNT};
+
+    let (count, total_bytes) = repo.stats()?;
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "count": count,
+                "max_count": MAX_MEMORY_COUNT,
+                "total_bytes": total_bytes,
+                "max_content_bytes": MAX_MEMORY_CONTENT_SIZE,
+            }))?
+        );
+    } else {
+        println!("{}", "Memory Statistics".cyan().bold());
+        println!(
+            "  Entries:    {}/{} ({:.0}%)",
+            count,
+            MAX_MEMORY_COUNT,
+            (count as f64 / MAX_MEMORY_COUNT as f64) * 100.0
+        );
+        println!("  Total size: {}", format_file_size(total_bytes));
+    }
 
     Ok(())
 }

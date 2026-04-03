@@ -2,11 +2,11 @@
 id = "peas-kzsss"
 title = "Improve TUI test coverage"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-t9jwt"
 created = "2026-01-22T13:05:25.452429700Z"
-updated = "2026-01-22T13:05:25.452429700Z"
+updated = "2026-04-03T11:53:59.814421695Z"
 +++
 
 Expand TUI test coverage:

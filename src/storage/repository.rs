@@ -588,6 +588,55 @@ mod tests {
     }
 
     #[test]
+    fn test_rapid_sequential_updates_succeed() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        let mut pea = Pea::new(
+            "test-rapid".to_string(),
+            "Rapid updates".to_string(),
+            PeaType::Task,
+        );
+        repo.create(&pea).unwrap();
+
+        // Perform many rapid sequential updates (reload between each)
+        for i in 0..10 {
+            pea = repo.get("test-rapid").unwrap();
+            pea.title = format!("Update {}", i);
+            repo.update(&mut pea).unwrap();
+        }
+
+        let final_pea = repo.get("test-rapid").unwrap();
+        assert_eq!(final_pea.title, "Update 9");
+    }
+
+    #[test]
+    fn test_cache_invalidation_on_update() {
+        let (repo, _temp_dir) = setup_test_repo();
+
+        let mut pea = Pea::new(
+            "test-cache1".to_string(),
+            "Cache test".to_string(),
+            PeaType::Task,
+        );
+        repo.create(&pea).unwrap();
+
+        // List to populate cache
+        let list1 = repo.list().unwrap();
+        assert_eq!(list1.len(), 1);
+        assert_eq!(list1[0].title, "Cache test");
+
+        // Update the pea
+        pea = repo.get("test-cache1").unwrap();
+        pea.title = "Updated title".to_string();
+        repo.update(&mut pea).unwrap();
+
+        // List again — cache should be invalidated
+        let list2 = repo.list().unwrap();
+        assert_eq!(list2.len(), 1);
+        assert_eq!(list2[0].title, "Updated title");
+    }
+
+    #[test]
     fn test_cache_list_caching() {
         let (repo, _temp_dir) = setup_test_repo();
 

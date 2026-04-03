@@ -2,11 +2,11 @@
 id = "peas-ks2fo"
 title = "Add rate limiting to GraphQL server"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "high"
 parent = "peas-999r9"
 created = "2026-01-22T13:05:18.714509700Z"
-updated = "2026-01-22T13:05:18.714509700Z"
+updated = "2026-04-03T11:51:02.665719972Z"
 +++
 
 Implement rate limiting for the GraphQL HTTP server:

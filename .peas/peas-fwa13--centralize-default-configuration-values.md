@@ -2,11 +2,11 @@
 id = "peas-fwa13"
 title = "Centralize default configuration values"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 parent = "peas-wd6ih"
 created = "2026-01-22T13:05:56.090937500Z"
-updated = "2026-01-22T13:05:56.090937500Z"
+updated = "2026-04-03T11:57:33.061323733Z"
 +++
 
 Consolidate scattered default values:

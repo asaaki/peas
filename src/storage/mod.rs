@@ -35,5 +35,5 @@ pub use markdown::{
     parse_markdown_with_format, render_markdown, render_markdown_memory,
     render_markdown_with_format,
 };
-pub use memory_repository::MemoryRepository;
+pub use memory_repository::{MAX_MEMORY_CONTENT_SIZE, MAX_MEMORY_COUNT, MemoryRepository};
 pub use repository::PeaRepository;

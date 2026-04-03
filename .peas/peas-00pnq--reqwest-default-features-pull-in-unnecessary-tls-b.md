@@ -2,10 +2,10 @@
 id = "peas-00pnq"
 title = "reqwest default features pull in unnecessary TLS backends"
 type = "chore"
-status = "todo"
+status = "completed"
 priority = "low"
 created = "2026-03-31T16:25:27.798242Z"
-updated = "2026-03-31T16:25:27.798242Z"
+updated = "2026-04-03T12:01:47.666758598Z"
 +++
 
 ## Description

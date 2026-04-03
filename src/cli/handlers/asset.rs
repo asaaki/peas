@@ -47,6 +47,11 @@ fn handle_asset_add(
         anyhow::bail!("File not found: {}", file);
     }
 
+    // Reject symlinks to prevent symlink attacks
+    if source_path.symlink_metadata()?.file_type().is_symlink() {
+        anyhow::bail!("Symlinks are not allowed as assets — provide the actual file path");
+    }
+
     let asset_name = asset_manager.add_asset(ticket_id, source_path)?;
 
     // Update the pea's assets list

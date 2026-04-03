@@ -592,6 +592,13 @@ pub enum MemoryAction {
         #[arg(long)]
         json: bool,
     },
+
+    /// Show memory usage statistics
+    Stats {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand)]

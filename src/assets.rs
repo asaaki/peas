@@ -2,6 +2,16 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Maximum asset file size: 50 MB
+pub const MAX_ASSET_SIZE: u64 = 50 * 1024 * 1024;
+
+/// Blocked file extensions (executables and scripts)
+const BLOCKED_EXTENSIONS: &[&str] = &[
+    "exe", "bat", "cmd", "com", "msi", "scr", "pif", "vbs", "vbe", "js", "jse", "wsf", "wsh",
+    "ps1", "psm1", "psd1", "sh", "bash", "csh", "ksh", "app", "action", "command", "workflow",
+    "dll", "so", "dylib",
+];
+
 /// Asset manager for handling ticket attachments
 pub struct AssetManager {
     assets_path: PathBuf,
@@ -31,8 +41,39 @@ impl AssetManager {
         Ok(())
     }
 
+    /// Validate an asset file before adding it.
+    /// Checks file size and rejects blocked extensions.
+    pub fn validate_asset(source_path: &Path) -> Result<()> {
+        let metadata = fs::metadata(source_path).context("Failed to read asset file metadata")?;
+
+        // Check file size
+        if metadata.len() > MAX_ASSET_SIZE {
+            anyhow::bail!(
+                "Asset file too large ({}) — maximum allowed size is {}",
+                format_file_size(metadata.len()),
+                format_file_size(MAX_ASSET_SIZE)
+            );
+        }
+
+        // Check for blocked extensions
+        if let Some(ext) = source_path.extension().and_then(|e| e.to_str()) {
+            let ext_lower = ext.to_lowercase();
+            if BLOCKED_EXTENSIONS.contains(&ext_lower.as_str()) {
+                anyhow::bail!(
+                    "File type '.{}' is not allowed — executable and script files cannot be added as assets",
+                    ext_lower
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     /// Add an asset file to a ticket
     pub fn add_asset(&self, ticket_id: &str, source_path: &Path) -> Result<String> {
+        // Validate file before adding
+        Self::validate_asset(source_path)?;
+
         // Create ticket's asset directory if it doesn't exist
         let ticket_dir = self.ticket_assets_path(ticket_id);
         fs::create_dir_all(&ticket_dir).context("Failed to create ticket asset directory")?;
@@ -362,6 +403,44 @@ mod tests {
         // Cleanup nonexistent ticket should return 0
         let count = manager.cleanup_ticket_assets("nonexistent").unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_validate_asset_blocked_extension() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let exe_file = temp_dir.path().join("malware.exe");
+        std::fs::write(&exe_file, "not really an exe").unwrap();
+
+        let result = AssetManager::validate_asset(&exe_file);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not allowed"));
+    }
+
+    #[test]
+    fn test_validate_asset_allowed_extension() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let txt_file = temp_dir.path().join("notes.txt");
+        std::fs::write(&txt_file, "just text").unwrap();
+
+        assert!(AssetManager::validate_asset(&txt_file).is_ok());
+    }
+
+    #[test]
+    fn test_add_asset_rejects_blocked_extension() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let manager = AssetManager::new(temp_dir.path());
+
+        let bat_file = temp_dir.path().join("script.bat");
+        std::fs::write(&bat_file, "echo hello").unwrap();
+
+        let result = manager.add_asset("test-123", &bat_file);
+        assert!(result.is_err());
     }
 
     #[test]

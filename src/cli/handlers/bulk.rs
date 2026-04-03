@@ -5,6 +5,7 @@ use colored::Colorize;
 use std::io::{self, Read};
 
 use super::CommandContext;
+use super::utils::record_undo_update;
 
 /// Parameters for bulk create operation
 struct BulkCreateParams {
@@ -156,6 +157,10 @@ where
     let mut updated_peas = Vec::new();
 
     for mut pea in peas_to_update {
+        // Record undo before update
+        if let Ok(old_path) = ctx.repo.find_file_by_id(&pea.id) {
+            record_undo_update(ctx, &pea.id, &old_path);
+        }
         if let Err(e) = ctx.repo.update(&mut pea) {
             if !json {
                 eprintln!("{} {}: {}", "Error updating".red(), pea.id, e);
@@ -185,8 +190,8 @@ where
         );
     } else {
         println!(
-            "\n{} {} peas, {} errors",
-            "Partially completed:".yellow(),
+            "\n{} {} updated, {} failed (use `peas undo` to revert successful changes)",
+            "Partial failure:".yellow(),
             updated_peas.len(),
             errors_list.len()
         );
@@ -252,6 +257,9 @@ where
     let mut updated_peas = Vec::new();
 
     for mut pea in peas_to_update {
+        if let Ok(old_path) = ctx.repo.find_file_by_id(&pea.id) {
+            record_undo_update(ctx, &pea.id, &old_path);
+        }
         if let Err(e) = ctx.repo.update(&mut pea) {
             if !json {
                 eprintln!("{} {}: {}", "Error updating".red(), pea.id, e);
