@@ -336,4 +336,111 @@ This is a TOML frontmatter body.
         assert_eq!(original.status, parsed.status);
         assert_eq!(original.body, parsed.body);
     }
+
+    #[test]
+    fn test_missing_frontmatter_delimiter() {
+        let content = "Just plain text, no frontmatter.";
+        assert!(parse_markdown(content).is_err());
+    }
+
+    #[test]
+    fn test_missing_closing_delimiter() {
+        let content = "+++\nid = \"test\"\ntitle = \"Test\"\n";
+        assert!(parse_markdown(content).is_err());
+    }
+
+    #[test]
+    fn test_wrong_format_delimiter() {
+        let content = "---\nid = \"test\"\n---";
+        // This is YAML format but content is TOML syntax; should fail to parse
+        assert!(parse_markdown_with_format(content, FrontmatterFormat::Toml).is_err());
+    }
+
+    #[test]
+    fn test_malformed_toml_frontmatter() {
+        let content = "+++\nthis is not valid toml {{{}\n+++\n";
+        assert!(parse_markdown(content).is_err());
+    }
+
+    #[test]
+    fn test_empty_body() {
+        let content = r#"+++
+id = "peas-empty"
+title = "No Body"
+type = "task"
+status = "todo"
+priority = "normal"
+created = "2024-01-01T00:00:00Z"
+updated = "2024-01-01T00:00:00Z"
++++
+"#;
+        let pea = parse_markdown(content).unwrap();
+        assert_eq!(pea.body, "");
+    }
+
+    #[test]
+    fn test_pea_with_tags_and_blocking() {
+        let original = Pea::new(
+            "peas-full".to_string(),
+            "Full Pea".to_string(),
+            PeaType::Feature,
+        )
+        .with_tags(vec!["frontend".to_string(), "ux".to_string()])
+        .with_blocking(vec!["peas-dep1".to_string()])
+        .with_body("Feature description.".to_string());
+
+        let rendered = render_markdown(&original).unwrap();
+        let parsed = parse_markdown(&rendered).unwrap();
+
+        assert_eq!(parsed.tags, vec!["frontend", "ux"]);
+        assert_eq!(parsed.blocking, vec!["peas-dep1"]);
+    }
+
+    #[test]
+    fn test_memory_toml_roundtrip() {
+        use crate::model::Memory;
+
+        let original = Memory::new("auth-flow".to_string())
+            .with_tags(vec!["security".to_string(), "auth".to_string()])
+            .with_content("OAuth2 bearer token flow.".to_string());
+
+        let rendered = render_markdown_memory(&original, FrontmatterFormat::Toml).unwrap();
+        let parsed = parse_markdown_memory(&rendered).unwrap();
+
+        assert_eq!(parsed.key, "auth-flow");
+        assert_eq!(parsed.tags, vec!["security", "auth"]);
+        assert_eq!(parsed.content, "OAuth2 bearer token flow.");
+    }
+
+    #[test]
+    fn test_memory_yaml_roundtrip() {
+        use crate::model::Memory;
+
+        let original = Memory::new("db-schema".to_string())
+            .with_content("PostgreSQL with jsonb columns.".to_string());
+
+        let rendered = render_markdown_memory(&original, FrontmatterFormat::Yaml).unwrap();
+        let parsed = parse_markdown_memory(&rendered).unwrap();
+
+        assert_eq!(parsed.key, "db-schema");
+        assert_eq!(parsed.content, "PostgreSQL with jsonb columns.");
+    }
+
+    #[test]
+    fn test_memory_empty_content() {
+        use crate::model::Memory;
+
+        let original = Memory::new("empty-mem".to_string());
+        let rendered = render_markdown_memory(&original, FrontmatterFormat::Toml).unwrap();
+        let parsed = parse_markdown_memory(&rendered).unwrap();
+
+        assert_eq!(parsed.key, "empty-mem");
+        assert_eq!(parsed.content, "");
+    }
+
+    #[test]
+    fn test_frontmatter_format_delimiter() {
+        assert_eq!(FrontmatterFormat::Toml.delimiter(), "+++");
+        assert_eq!(FrontmatterFormat::Yaml.delimiter(), "---");
+    }
 }

@@ -2,6 +2,23 @@ use super::types::{PeaPriority, PeaStatus, PeaType};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A pea (issue/ticket) with metadata and optional body text.
+///
+/// Use the builder pattern to construct a pea:
+///
+/// ```
+/// use peas::model::{Pea, PeaType, PeaStatus, PeaPriority};
+///
+/// let pea = Pea::new("peas-abc12".into(), "Fix login bug".into(), PeaType::Bug)
+///     .with_status(PeaStatus::InProgress)
+///     .with_priority(PeaPriority::High)
+///     .with_tags(vec!["auth".into(), "urgent".into()])
+///     .with_body("The login page crashes on submit.".into());
+///
+/// assert_eq!(pea.id, "peas-abc12");
+/// assert!(pea.is_open());
+/// assert!(!pea.is_closed());
+/// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Pea {
     pub id: String,

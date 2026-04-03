@@ -2,6 +2,26 @@ use crate::error::{PeasError, Result};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
+/// The type of a pea (issue/ticket).
+///
+/// ```
+/// use std::str::FromStr;
+/// use peas::model::PeaType;
+///
+/// let t: PeaType = "bug".parse().unwrap();
+/// assert_eq!(t, PeaType::Bug);
+/// assert_eq!(t.to_string(), "bug");
+///
+/// // "spike" is an alias for Research
+/// let r: PeaType = "spike".parse().unwrap();
+/// assert_eq!(r, PeaType::Research);
+///
+/// // Parsing is case-insensitive
+/// assert_eq!("BUG".parse::<PeaType>().unwrap(), PeaType::Bug);
+///
+/// // Invalid types return an error
+/// assert!("invalid".parse::<PeaType>().is_err());
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum PeaType {
@@ -49,6 +69,22 @@ impl FromStr for PeaType {
     }
 }
 
+/// The status of a pea.
+///
+/// ```
+/// use std::str::FromStr;
+/// use peas::model::PeaStatus;
+///
+/// // Multiple aliases are supported
+/// assert_eq!("in-progress".parse::<PeaStatus>().unwrap(), PeaStatus::InProgress);
+/// assert_eq!("in_progress".parse::<PeaStatus>().unwrap(), PeaStatus::InProgress);
+/// assert_eq!("inprogress".parse::<PeaStatus>().unwrap(), PeaStatus::InProgress);
+///
+/// // "done" and "cancelled" are aliases
+/// assert_eq!("done".parse::<PeaStatus>().unwrap(), PeaStatus::Completed);
+/// assert_eq!("cancelled".parse::<PeaStatus>().unwrap(), PeaStatus::Scrapped);
+/// assert_eq!("canceled".parse::<PeaStatus>().unwrap(), PeaStatus::Scrapped);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum PeaStatus {
@@ -88,6 +124,22 @@ impl FromStr for PeaStatus {
     }
 }
 
+/// The priority of a pea.
+///
+/// ```
+/// use std::str::FromStr;
+/// use peas::model::PeaPriority;
+///
+/// // Short forms are supported
+/// assert_eq!("p0".parse::<PeaPriority>().unwrap(), PeaPriority::Critical);
+/// assert_eq!("p1".parse::<PeaPriority>().unwrap(), PeaPriority::High);
+/// assert_eq!("p2".parse::<PeaPriority>().unwrap(), PeaPriority::Normal);
+/// assert_eq!("p3".parse::<PeaPriority>().unwrap(), PeaPriority::Low);
+/// assert_eq!("p4".parse::<PeaPriority>().unwrap(), PeaPriority::Deferred);
+///
+/// // Full names also work
+/// assert_eq!("critical".parse::<PeaPriority>().unwrap(), PeaPriority::Critical);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum PeaPriority {

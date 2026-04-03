@@ -27,12 +27,32 @@ pub enum SearchField {
 }
 
 impl SearchQuery {
-    /// Parse a search query string
-    /// Supports:
-    /// - Simple: "bug" -> searches all fields
-    /// - Field-specific: "title:bug" -> searches title only
-    /// - Regex: "regex:bug.*fix" -> regex search
-    /// - Combined: "title:regex:bug.*" -> regex in title field
+    /// Parse a search query string.
+    ///
+    /// Supports several query forms:
+    /// - Simple: `"bug"` searches all fields (case-insensitive)
+    /// - Field-specific: `"title:bug"` searches only the title
+    /// - Regex: `"regex:bug.*fix"` uses a regular expression
+    /// - Combined: `"title:regex:bug.*"` regex within a specific field
+    ///
+    /// ```
+    /// use peas::search::SearchQuery;
+    ///
+    /// // Simple substring search
+    /// let q = SearchQuery::parse("login").unwrap();
+    ///
+    /// // Field-specific search
+    /// let q = SearchQuery::parse("status:todo").unwrap();
+    ///
+    /// // Regex search
+    /// let q = SearchQuery::parse("regex:fix|bug").unwrap();
+    ///
+    /// // Invalid regex returns an error
+    /// assert!(SearchQuery::parse("regex:[bad").is_err());
+    ///
+    /// // Empty query returns an error
+    /// assert!(SearchQuery::parse("").is_err());
+    /// ```
     pub fn parse(query: &str) -> Result<Self, String> {
         if query.is_empty() {
             return Err("Empty query".to_string());
@@ -313,5 +333,125 @@ mod tests {
 
         let query = SearchQuery::parse("TITLE:critical").unwrap();
         assert!(query.matches_pea(&pea));
+    }
+
+    #[test]
+    fn test_empty_query_rejected() {
+        assert!(SearchQuery::parse("").is_err());
+    }
+
+    #[test]
+    fn test_invalid_regex_rejected() {
+        assert!(SearchQuery::parse("regex:[bad").is_err());
+    }
+
+    #[test]
+    fn test_search_field_from_str() {
+        assert_eq!("title".parse::<SearchField>().unwrap(), SearchField::Title);
+        assert_eq!("body".parse::<SearchField>().unwrap(), SearchField::Body);
+        assert_eq!("tag".parse::<SearchField>().unwrap(), SearchField::Tag);
+        assert_eq!("tags".parse::<SearchField>().unwrap(), SearchField::Tag);
+        assert_eq!("id".parse::<SearchField>().unwrap(), SearchField::Id);
+        assert_eq!(
+            "status".parse::<SearchField>().unwrap(),
+            SearchField::Status
+        );
+        assert_eq!(
+            "priority".parse::<SearchField>().unwrap(),
+            SearchField::Priority
+        );
+        assert_eq!("type".parse::<SearchField>().unwrap(), SearchField::Type);
+        assert!("unknown".parse::<SearchField>().is_err());
+    }
+
+    #[test]
+    fn test_id_field_search() {
+        let pea = create_test_pea();
+
+        let query = SearchQuery::parse("id:test-123").unwrap();
+        assert!(query.matches_pea(&pea));
+
+        let query = SearchQuery::parse("id:nonexistent").unwrap();
+        assert!(!query.matches_pea(&pea));
+    }
+
+    #[test]
+    fn test_simple_search_matches_id() {
+        let pea = create_test_pea();
+
+        let query = SearchQuery::parse("test-123").unwrap();
+        assert!(query.matches_pea(&pea));
+    }
+
+    #[test]
+    fn test_simple_search_matches_tags() {
+        let pea = create_test_pea();
+
+        let query = SearchQuery::parse("parser").unwrap();
+        assert!(query.matches_pea(&pea));
+    }
+
+    #[test]
+    fn test_memory_simple_search() {
+        let memory = Memory::new("auth-flow".to_string())
+            .with_content("OAuth2 bearer tokens".to_string())
+            .with_tags(vec!["security".to_string()]);
+
+        let query = SearchQuery::parse("auth").unwrap();
+        assert!(query.matches_memory(&memory));
+
+        let query = SearchQuery::parse("bearer").unwrap();
+        assert!(query.matches_memory(&memory));
+
+        let query = SearchQuery::parse("security").unwrap();
+        assert!(query.matches_memory(&memory));
+
+        let query = SearchQuery::parse("nonexistent").unwrap();
+        assert!(!query.matches_memory(&memory));
+    }
+
+    #[test]
+    fn test_memory_tag_field_search() {
+        let memory = Memory::new("db-schema".to_string())
+            .with_tags(vec!["architecture".to_string(), "database".to_string()]);
+
+        let query = SearchQuery::parse("tag:architecture").unwrap();
+        assert!(query.matches_memory(&memory));
+
+        let query = SearchQuery::parse("tag:missing").unwrap();
+        assert!(!query.matches_memory(&memory));
+    }
+
+    #[test]
+    fn test_memory_unsupported_field_returns_false() {
+        let memory = Memory::new("test".to_string()).with_content("some content".to_string());
+
+        // title, body, id, status, priority, type fields don't apply to Memory
+        let query = SearchQuery::parse("title:test").unwrap();
+        assert!(!query.matches_memory(&memory));
+
+        let query = SearchQuery::parse("status:todo").unwrap();
+        assert!(!query.matches_memory(&memory));
+    }
+
+    #[test]
+    fn test_memory_regex_search() {
+        let memory = Memory::new("api-patterns".to_string())
+            .with_content("REST endpoints use /api/v2".to_string());
+
+        let query = SearchQuery::parse("regex:api.*v\\d+").unwrap();
+        assert!(query.matches_memory(&memory));
+    }
+
+    #[test]
+    fn test_colon_in_simple_query_with_unknown_field() {
+        // "http://example.com" has a colon but "http" isn't a field name
+        let query = SearchQuery::parse("http://example.com").unwrap();
+        // Should fall through to simple search since "http" isn't a known field
+        // and "http" != "regex"
+        match query {
+            SearchQuery::Simple(s) => assert_eq!(s, "http://example.com"),
+            _ => panic!("Expected simple query"),
+        }
     }
 }

@@ -15,6 +15,16 @@ pub const MAX_ID_LENGTH: usize = 50;
 const FORBIDDEN_ID_CHARS: &[char] = &['/', '\\', '\0'];
 
 /// Validates a pea title.
+///
+/// Titles must be non-empty and at most [`MAX_TITLE_LENGTH`] characters.
+///
+/// ```
+/// use peas::validation::validate_title;
+///
+/// assert!(validate_title("Fix the login bug").is_ok());
+/// assert!(validate_title("").is_err());
+/// assert!(validate_title(&"a".repeat(201)).is_err());
+/// ```
 pub fn validate_title(title: &str) -> Result<()> {
     if title.is_empty() {
         return Err(PeasError::Validation("Title cannot be empty".to_string()));
@@ -40,6 +50,18 @@ pub fn validate_body(body: &str) -> Result<()> {
 }
 
 /// Validates a pea ID to prevent path traversal attacks.
+///
+/// IDs must be non-empty, at most [`MAX_ID_LENGTH`] characters,
+/// and cannot contain path separators, `..`, or URL-encoded equivalents.
+///
+/// ```
+/// use peas::validation::validate_id;
+///
+/// assert!(validate_id("peas-abc12").is_ok());
+/// assert!(validate_id("").is_err());
+/// assert!(validate_id("../etc/passwd").is_err());
+/// assert!(validate_id("peas%2f1234").is_err());
+/// ```
 pub fn validate_id(id: &str) -> Result<()> {
     if id.is_empty() {
         return Err(PeasError::Validation("ID cannot be empty".to_string()));
@@ -98,6 +120,16 @@ pub fn validate_path_within(path: &std::path::Path, sandbox: &std::path::Path) -
 }
 
 /// Validates a tag name.
+///
+/// Tags must be non-empty and at most 50 characters.
+///
+/// ```
+/// use peas::validation::validate_tag;
+///
+/// assert!(validate_tag("backend").is_ok());
+/// assert!(validate_tag("").is_err());
+/// assert!(validate_tag(&"x".repeat(51)).is_err());
+/// ```
 pub fn validate_tag(tag: &str) -> Result<()> {
     if tag.is_empty() {
         return Err(PeasError::Validation("Tag cannot be empty".to_string()));
@@ -291,6 +323,55 @@ mod tests {
                 .is_ok()
         );
         assert!(validate_blocking_exist(&["peas-404".to_string()], exists_fn).is_err());
+    }
+
+    #[test]
+    fn test_validate_title_at_boundary() {
+        // Exactly MAX_TITLE_LENGTH should be ok
+        assert!(validate_title(&"a".repeat(MAX_TITLE_LENGTH)).is_ok());
+        // One over should fail
+        assert!(validate_title(&"a".repeat(MAX_TITLE_LENGTH + 1)).is_err());
+    }
+
+    #[test]
+    fn test_validate_body_at_boundary() {
+        assert!(validate_body(&"a".repeat(MAX_BODY_LENGTH)).is_ok());
+        assert!(validate_body(&"a".repeat(MAX_BODY_LENGTH + 1)).is_err());
+        // Empty body is valid
+        assert!(validate_body("").is_ok());
+    }
+
+    #[test]
+    fn test_validate_id_at_boundary() {
+        assert!(validate_id(&"a".repeat(MAX_ID_LENGTH)).is_ok());
+        assert!(validate_id(&"a".repeat(MAX_ID_LENGTH + 1)).is_err());
+    }
+
+    #[test]
+    fn test_validate_tag_at_boundary() {
+        assert!(validate_tag(&"a".repeat(50)).is_ok());
+        assert!(validate_tag(&"a".repeat(51)).is_err());
+    }
+
+    #[test]
+    fn test_validate_id_null_byte() {
+        assert!(validate_id("peas\0abc").is_err());
+    }
+
+    #[test]
+    fn test_validate_no_self_blocking_empty() {
+        assert!(validate_no_self_blocking("peas-123", &[]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_no_self_blocking_multiple() {
+        assert!(
+            validate_no_self_blocking(
+                "peas-123",
+                &["peas-456".to_string(), "peas-123".to_string()]
+            )
+            .is_err()
+        );
     }
 
     #[test]

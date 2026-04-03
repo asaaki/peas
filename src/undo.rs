@@ -380,4 +380,127 @@ mod tests {
         assert!(undo_manager.last_operation().unwrap().is_none());
         assert!(undo_manager.undo().is_err());
     }
+
+    #[test]
+    fn test_undo_delete_restores_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        let file = temp_dir.path().join("tickets").join("deleted.md");
+        let content = "+++\nid = \"peas-del\"\n+++\n\nBody text.\n";
+
+        // Record a delete (file is about to be removed)
+        undo_manager
+            .record(UndoOperation::Delete {
+                id: "peas-del".to_string(),
+                file_path: file.clone(),
+                previous_content: content.to_string(),
+            })
+            .unwrap();
+
+        // File doesn't exist (it was "deleted")
+        assert!(!file.exists());
+
+        // Undo should recreate it
+        let result = undo_manager.undo().unwrap();
+        assert!(result.contains("Delete"));
+        assert!(file.exists());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), content);
+    }
+
+    #[test]
+    fn test_undo_archive_moves_back() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        let original = temp_dir.path().join("tickets").join("pea.md");
+        let archive = temp_dir.path().join("archive").join("pea.md");
+
+        // Set up: file is in archive (already moved)
+        std::fs::create_dir_all(archive.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(original.parent().unwrap()).unwrap();
+        std::fs::write(&archive, "archived content").unwrap();
+
+        undo_manager
+            .record(UndoOperation::Archive {
+                id: "peas-arc".to_string(),
+                original_path: original.clone(),
+                archive_path: archive.clone(),
+            })
+            .unwrap();
+
+        // Undo should move it back
+        undo_manager.undo().unwrap();
+        assert!(original.exists());
+        assert!(!archive.exists());
+        assert_eq!(
+            std::fs::read_to_string(&original).unwrap(),
+            "archived content"
+        );
+    }
+
+    #[test]
+    fn test_clear_removes_undo_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        let file = temp_dir.path().join("test.txt");
+        std::fs::write(&file, "x").unwrap();
+
+        undo_manager
+            .record(UndoOperation::Create {
+                id: "test".to_string(),
+                file_path: file,
+            })
+            .unwrap();
+
+        assert_eq!(undo_manager.undo_count(), 1);
+        undo_manager.clear().unwrap();
+        assert_eq!(undo_manager.undo_count(), 0);
+    }
+
+    #[test]
+    fn test_last_operation() {
+        let temp_dir = TempDir::new().unwrap();
+        let undo_manager = UndoManager::new(temp_dir.path());
+
+        let file = temp_dir.path().join("test.txt");
+        std::fs::write(&file, "x").unwrap();
+
+        undo_manager
+            .record(UndoOperation::Create {
+                id: "first".to_string(),
+                file_path: file.clone(),
+            })
+            .unwrap();
+        undo_manager
+            .record(UndoOperation::Update {
+                id: "second".to_string(),
+                file_path: file,
+                previous_content: "old".to_string(),
+            })
+            .unwrap();
+
+        let last = undo_manager.last_operation().unwrap().unwrap();
+        assert_eq!(last.id(), "second");
+        assert_eq!(last.description(), "Update second");
+    }
+
+    #[test]
+    fn test_operation_description_and_id() {
+        let op = UndoOperation::Create {
+            id: "peas-abc".to_string(),
+            file_path: PathBuf::from("/tmp/test"),
+        };
+        assert_eq!(op.id(), "peas-abc");
+        assert_eq!(op.description(), "Create peas-abc");
+
+        let op = UndoOperation::Archive {
+            id: "peas-xyz".to_string(),
+            original_path: PathBuf::from("/a"),
+            archive_path: PathBuf::from("/b"),
+        };
+        assert_eq!(op.id(), "peas-xyz");
+        assert_eq!(op.description(), "Archive peas-xyz");
+    }
 }

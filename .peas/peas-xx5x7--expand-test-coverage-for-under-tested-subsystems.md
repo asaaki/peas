@@ -2,10 +2,10 @@
 id = "peas-xx5x7"
 title = "Expand test coverage for under-tested subsystems"
 type = "task"
-status = "todo"
+status = "completed"
 priority = "normal"
 created = "2026-04-03T12:25:36.304069105Z"
-updated = "2026-04-03T12:25:36.304069105Z"
+updated = "2026-04-03T13:10:04.093081126Z"
 +++
 
 154 tests for ~12,600 lines across 82 files leaves significant gaps. High-value areas to cover:
