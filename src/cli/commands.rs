@@ -274,14 +274,50 @@ pub enum Commands {
         json: bool,
     },
 
-    /// Archive a pea (move to archive folder)
+    /// Archive peas (move to archive folder)
+    ///
+    /// Archive a single pea by ID, or batch archive with filters:
+    ///   peas archive <ID>
+    ///   peas archive --status completed --older-than 30d
     Archive {
-        /// Pea ID
-        id: String,
+        /// Pea ID (for single archive; omit to use filters)
+        id: Option<String>,
+
+        /// Filter by status (for batch archive)
+        #[arg(short, long, value_enum)]
+        status: Option<PeaStatusArg>,
+
+        /// Filter by type (for batch archive)
+        #[arg(short = 't', long, value_enum)]
+        r#type: Option<PeaTypeArg>,
+
+        /// Filter by priority (for batch archive)
+        #[arg(short, long, value_enum)]
+        priority: Option<PeaPriorityArg>,
+
+        /// Filter by tag (for batch archive)
+        #[arg(long)]
+        tag: Option<String>,
+
+        /// Archive tickets older than duration (e.g. 30d, 4w, 6m, 1y)
+        #[arg(long)]
+        older_than: Option<String>,
+
+        /// Recursively archive children (when archiving by ID)
+        #[arg(short = 'r', long)]
+        recursive: bool,
 
         /// Keep associated asset files instead of prompting to delete them
         #[arg(long)]
         keep_assets: bool,
+
+        /// Skip interactive confirmation (for scripts/CI)
+        #[arg(long, short = 'y')]
+        confirm: bool,
+
+        /// Preview what would be archived without making changes
+        #[arg(long)]
+        dry_run: bool,
 
         /// Output as JSON
         #[arg(long)]

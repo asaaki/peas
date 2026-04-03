@@ -26,7 +26,7 @@ mod undo;
 mod update;
 mod utils;
 
-pub use archive::handle_archive;
+pub use archive::{ArchiveParams, handle_archive};
 pub use asset::handle_asset;
 pub use bulk::handle_bulk;
 pub use context::handle_context;
