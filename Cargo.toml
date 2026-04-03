@@ -1,6 +1,6 @@
 [package]
 name = "peas"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 description = "A CLI-based, flat-file issue tracker for humans and robots"
 license = "MIT OR Apache-2.0"
