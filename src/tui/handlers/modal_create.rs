@@ -33,23 +33,21 @@ pub fn handle_create_modal(app: &mut App, key: KeyEvent) -> io::Result<bool> {
                 app.create_title.pop();
             }
         }
-        KeyCode::Left | KeyCode::Right => {
-            if app.modal_selection == 1 {
-                // Cycle type
-                let types = App::type_options();
-                let current_idx = types
-                    .iter()
-                    .position(|t| *t == app.create_type)
-                    .unwrap_or(0);
-                let new_idx = if key.code == KeyCode::Right {
-                    (current_idx + 1) % types.len()
-                } else if current_idx == 0 {
-                    types.len() - 1
-                } else {
-                    current_idx - 1
-                };
-                app.create_type = types[new_idx];
-            }
+        KeyCode::Left | KeyCode::Right if app.modal_selection == 1 => {
+            // Cycle type
+            let types = App::type_options();
+            let current_idx = types
+                .iter()
+                .position(|t| *t == app.create_type)
+                .unwrap_or(0);
+            let new_idx = if key.code == KeyCode::Right {
+                (current_idx + 1) % types.len()
+            } else if current_idx == 0 {
+                types.len() - 1
+            } else {
+                current_idx - 1
+            };
+            app.create_type = types[new_idx];
         }
         _ => {}
     }

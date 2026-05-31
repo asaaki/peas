@@ -942,7 +942,7 @@ pub fn draw_detail_fullscreen(f: &mut Frame, app: &mut App, area: Rect, detail_s
                 let md_text = Text::from(lines);
 
                 // Calculate content height for scroll limiting
-                let view_height = inner.height as u16;
+                let view_height = inner.height;
                 let content_lines =
                     ui_utils::estimate_wrapped_lines(&md_text, inner.width as usize);
                 let max_scroll = content_lines.saturating_sub(view_height);

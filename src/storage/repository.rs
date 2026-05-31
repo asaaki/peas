@@ -373,7 +373,7 @@ impl PeaRepository {
             }
         }
 
-        peas.sort_by(|a, b| a.created.cmp(&b.created));
+        peas.sort_by_key(|a| a.created);
         Ok(peas)
     }
 
