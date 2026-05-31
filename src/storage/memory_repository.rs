@@ -1,11 +1,14 @@
-use super::markdown::{FrontmatterFormat, parse_markdown_memory, render_markdown_memory};
 use crate::{
     config::PeasConfig,
     error::{PeasError, Result},
     model::Memory,
+    storage::markdown::{FrontmatterFormat, parse_markdown_memory, render_markdown_memory},
     validation,
 };
-use std::path::{Path, PathBuf};
+use std::{
+    cmp::Reverse,
+    path::{Path, PathBuf},
+};
 
 /// Maximum allowed memory content size: 100 KB
 pub const MAX_MEMORY_CONTENT_SIZE: usize = 100_000;
@@ -187,7 +190,7 @@ impl MemoryRepository {
         }
 
         // Sort by updated timestamp (newest first)
-        memories.sort_by(|a, b| b.updated.cmp(&a.updated));
+        memories.sort_by_key(|m| Reverse(m.updated));
         Ok(memories)
     }
 
@@ -253,7 +256,7 @@ impl MemoryRepository {
         }
 
         // Sort by updated timestamp (newest first)
-        memories.sort_by(|a, b| b.updated.cmp(&a.updated));
+        memories.sort_by_key(|m| Reverse(m.updated));
         Ok(memories)
     }
 }
