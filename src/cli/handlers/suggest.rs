@@ -15,9 +15,14 @@ pub fn handle_suggest(ctx: &CommandContext, json: bool, limit: usize) -> Result<
 
     // Calculate how many tickets each ticket is blocking
     let mut blocking_count: HashMap<String, usize> = HashMap::new();
+    let mut blocked_by: HashMap<String, Vec<String>> = HashMap::new();
     for pea in &peas {
         for blocked_id in &pea.blocking {
             *blocking_count.entry(blocked_id.clone()).or_insert(0) += 1;
+            blocked_by
+                .entry(blocked_id.clone())
+                .or_default()
+                .push(pea.id.clone());
         }
     }
 
@@ -31,7 +36,7 @@ pub fn handle_suggest(ctx: &CommandContext, json: bool, limit: usize) -> Result<
             }
 
             // Check if all blocking dependencies are completed
-            for blocker_id in &p.blocking {
+            for blocker_id in blocked_by.get(&p.id).into_iter().flatten() {
                 if let Some(status) = status_map.get(blocker_id)
                     && *status != PeaStatus::Completed
                     && *status != PeaStatus::Scrapped

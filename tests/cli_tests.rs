@@ -301,6 +301,65 @@ fn test_start_and_done() {
 }
 
 #[test]
+fn test_suggest_respects_blocking_direction() {
+    let temp_dir = TempDir::new().unwrap();
+
+    peas_cmd()
+        .arg("init")
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+
+    let blocker_output = peas_cmd()
+        .args(["create", "Blocker", "--json"])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+    let blocker_stdout = String::from_utf8(blocker_output.get_output().stdout.clone()).unwrap();
+    let blocker: serde_json::Value = serde_json::from_str(&blocker_stdout).unwrap();
+    let blocker_id = blocker["id"].as_str().unwrap().to_string();
+
+    let blocked_output = peas_cmd()
+        .args(["create", "Blocked", "--json"])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+    let blocked_stdout = String::from_utf8(blocked_output.get_output().stdout.clone()).unwrap();
+    let blocked: serde_json::Value = serde_json::from_str(&blocked_stdout).unwrap();
+    let blocked_id = blocked["id"].as_str().unwrap().to_string();
+
+    peas_cmd()
+        .args(["update", &blocker_id, "--add-blocks", &blocked_id])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+
+    let suggest_output = peas_cmd()
+        .args(["suggest", "--json"])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+    let suggest_stdout = String::from_utf8(suggest_output.get_output().stdout.clone()).unwrap();
+    let suggestion: serde_json::Value = serde_json::from_str(&suggest_stdout).unwrap();
+    assert_eq!(suggestion["suggestions"][0]["pea"]["id"], blocker_id);
+
+    peas_cmd()
+        .args(["done", &blocker_id])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+
+    let suggest_output = peas_cmd()
+        .args(["suggest", "--json"])
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+    let suggest_stdout = String::from_utf8(suggest_output.get_output().stdout.clone()).unwrap();
+    let suggestion: serde_json::Value = serde_json::from_str(&suggest_stdout).unwrap();
+    assert_eq!(suggestion["suggestions"][0]["pea"]["id"], blocked_id);
+}
+
+#[test]
 fn test_archive() {
     let temp_dir = TempDir::new().unwrap();
 
